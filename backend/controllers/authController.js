@@ -3,40 +3,82 @@
 const jwt = require('jsonwebtoken');
 const User = require('../models/User'); // Adjust the path as necessary
 
-// Function to generate JWT
-const generateToken = (userId) => {
+// Function to generate refresh token
+const generateRefreshToken = (userId) => {
     return jwt.sign(
         { userId },
-        process.env.JWT_SECRET, // Ensure this matches the secret in auth.js
-        { expiresIn: '1h' }      // Token validity duration
+        process.env.JWT_REFRESH_SECRET || 'your-refresh-secret-key',
+        { expiresIn: '7d' }
+    );
+};
+
+// Function to generate JWT
+const generateToken = (user) => {
+    return jwt.sign(
+        { 
+            userId: user._id,
+            username: user.username,
+            email: user.email
+        },
+        process.env.JWT_SECRET,
+        { expiresIn: '15m' }
     );
 };
 
 // Login Function
 const login = async (req, res) => {
-    const { username, password } = req.body;
+    const { email, password } = req.body;
 
     try {
-        // Find user by username
-        const user = await User.findOne({ username });
+        // Find user by email
+        const user = await User.findOne({ email });
         if (!user) {
             return res.status(400).json({ message: 'Invalid credentials' });
         }
 
         // Check if password matches
-        const isMatch = await user.comparePassword(password); // Implement comparePassword in your User model
+        const isMatch = await user.comparePassword(password);
         if (!isMatch) {
             return res.status(400).json({ message: 'Invalid credentials' });
         }
 
-        // Generate token
-        const token = generateToken(user._id);
+        // Generate tokens
+        const token = generateToken(user);
+        const refreshToken = generateRefreshToken(user._id);
 
-        // Return token to client
-        res.json({ token });
+        // Return tokens to client
+        res.json({ token, refreshToken });
     } catch (err) {
         console.error('Login error:', err);
         res.status(500).json({ message: 'Server error' });
+    }
+};
+
+// Refresh token function
+const refreshToken = async (req, res) => {
+    const { refreshToken } = req.body;
+
+    if (!refreshToken) {
+        return res.status(400).json({ message: 'Refresh token is required' });
+    }
+
+    try {
+        // Verify refresh token
+        const decoded = jwt.verify(refreshToken, process.env.JWT_REFRESH_SECRET || 'your-refresh-secret-key');
+        
+        // Check if user exists
+        const user = await User.findById(decoded.userId);
+        if (!user) {
+            return res.status(404).json({ message: 'User not found' });
+        }
+
+        // Generate new access token
+        const token = generateToken(user);
+        
+        res.json({ token });
+    } catch (err) {
+        console.error('Refresh token error:', err);
+        res.status(401).json({ message: 'Invalid refresh token' });
     }
 };
 
@@ -70,11 +112,12 @@ const register = async (req, res) => {
         
         await user.save();
 
-        // Generate token
-        const token = generateToken(user._id);
+        // Generate tokens
+        const token = generateToken(user);
+        const refreshToken = generateRefreshToken(user._id);
 
-        // Return token to client
-        res.status(201).json({ token });
+        // Return tokens to client
+        res.status(201).json({ token, refreshToken });
     } catch (err) {
         console.error('Registration error:', err);
         res.status(500).json({ message: 'Server error', details: err.message });
@@ -133,4 +176,4 @@ const updateProfile = async (req, res) => {
     }
 };
 
-module.exports = { login, register, getCurrentUser, updateProfile };
+module.exports = { login, register, getCurrentUser, updateProfile, refreshToken };
