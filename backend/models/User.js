@@ -5,9 +5,15 @@ const UserSchema = new mongoose.Schema({
     username: { type: String, required: true, unique: true },
     email:    { type: String, required: true, unique: true },
     password: { type: String, required: true },
-    role: { type: String, enum: ['user', 'admin'], default: 'user' }, // Added role field
-    desiredPhysique: { type: String, enum: ['lean', 'muscular', 'athletic'], required: true },
-    fitnessGoals: [String], // e.g., ['strength', 'endurance']
+    role: { type: String, enum: ['user', 'admin'], default: 'user' },
+    // Onboarding information
+    gender: { type: String, enum: ['male', 'female', 'other'] },
+    height: { type: Number }, // in cm
+    weight: { type: Number }, // in kg
+    fitnessGoal: { type: String, enum: ['lose_weight', 'get_fitter', 'gain_muscle'] },
+    // Additional preferences
+    desiredPhysique: { type: String, enum: ['lean', 'muscular', 'athletic'], default: 'athletic' },
+    fitnessGoals: [String],
     dietaryPreferences: [String],
     dietaryRestrictions: [String],
 }, { timestamps: true });

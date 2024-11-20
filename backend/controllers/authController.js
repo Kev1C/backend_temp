@@ -103,19 +103,33 @@ const updateProfile = async (req, res) => {
             return res.status(404).json({ message: 'User not found' });
         }
 
-        // Update user fields
-        const updateFields = ['name', 'email', 'fitnessGoals', 'preferences'];
-        updateFields.forEach(field => {
+        // Fields that can be updated from onboarding flow
+        const allowedUpdates = [
+            'gender',
+            'height',
+            'weight',
+            'fitnessGoal',
+            'desiredPhysique',
+            'fitnessGoals',
+            'dietaryPreferences',
+            'dietaryRestrictions'
+        ];
+
+        // Only update fields that are provided in the request
+        allowedUpdates.forEach(field => {
             if (req.body[field] !== undefined) {
                 user[field] = req.body[field];
             }
         });
 
         await user.save();
-        res.json(user);
+        res.json({ message: 'Profile updated successfully', user: user.toObject({ hide: 'password' }) });
     } catch (err) {
         console.error('Update profile error:', err);
-        res.status(500).json({ message: 'Server error' });
+        res.status(500).json({ 
+            message: 'Server error', 
+            details: err.message 
+        });
     }
 };
 
