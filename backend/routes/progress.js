@@ -10,7 +10,7 @@ router.post('/', auth, async (req, res) => {
     try {
         console.log('=== DEBUG: Progress POST Request ===');
         console.log('Request body:', req.body);
-        console.log('User ID:', req.user.id);
+        console.log('User ID:', req.user.userId);
 
         const { weight, muscleMass, fatPercentage, measurements } = req.body;
 
@@ -23,7 +23,7 @@ router.post('/', auth, async (req, res) => {
         }
 
         const progress = new Progress({
-            user: req.user.id,
+            user: req.user.userId,
             weight: Number(weight),
             muscleMass: Number(muscleMass),
             fatPercentage: Number(fatPercentage),
@@ -52,15 +52,15 @@ router.post('/', auth, async (req, res) => {
 router.get('/', auth, async (req, res) => {
     try {
         console.log('=== DEBUG: Progress GET Request ===');
-        console.log('User ID from request:', req.user.id);
+        console.log('User ID from request:', req.user.userId);
         console.log('Auth header:', req.header('Authorization'));
 
         // Verify user exists
-        const userExists = await User.findById(req.user.id);
+        const userExists = await User.findById(req.user.userId);
         console.log('User exists:', !!userExists);
 
         // Get progress entries
-        const progresses = await Progress.find({ user: req.user.id })
+        const progresses = await Progress.find({ user: req.user.userId })
             .sort({ date: -1 })
             .lean();
 

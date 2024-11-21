@@ -17,6 +17,7 @@ const generateToken = (user) => {
     return jwt.sign(
         { 
             userId: user._id,
+            id: user._id, // Include both userId and id for backward compatibility
             username: user.username,
             email: user.email
         },
