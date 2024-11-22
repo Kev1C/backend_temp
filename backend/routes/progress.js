@@ -12,13 +12,13 @@ router.post('/', auth, async (req, res) => {
         console.log('Request body:', req.body);
         console.log('User ID:', req.user.userId);
 
-        const { weight, muscleMass, fatPercentage, measurements } = req.body;
+        const { weight, muscleMass, fatPercentage } = req.body;
 
         // Validate input
-        if (!weight || !muscleMass || !fatPercentage || !measurements) {
+        if (!weight || !muscleMass || !fatPercentage) {
             return res.status(400).json({ 
-                error: 'All fields are required.',
-                received: { weight, muscleMass, fatPercentage, measurements }
+                error: 'Weight, muscle mass, and fat percentage are required.',
+                received: { weight, muscleMass, fatPercentage }
             });
         }
 
@@ -27,11 +27,8 @@ router.post('/', auth, async (req, res) => {
             weight: Number(weight),
             muscleMass: Number(muscleMass),
             fatPercentage: Number(fatPercentage),
-            measurements: {
-                chest: Number(measurements.chest),
-                waist: Number(measurements.waist),
-                hips: Number(measurements.hips)
-            }
+            measurements: req.body.measurements,
+            date: req.body.date || new Date()
         });
 
         console.log('Progress object before save:', progress);
