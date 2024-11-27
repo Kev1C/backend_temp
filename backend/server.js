@@ -11,7 +11,8 @@ const rateLimit = require('express-rate-limit'); // For rate limiting
 const app = express();
 
 // Middleware
-app.use(express.json());
+app.use(express.json({ limit: '50mb' }));
+app.use(express.urlencoded({ limit: '50mb', extended: true }));
 app.use(helmet());
 app.use(morgan('dev')); // Use 'combined' for production
 
@@ -46,13 +47,13 @@ app.use('/api/auth', authLimiter, authRoutes);
 
 // Mount Other Routes
 const exerciseRoutes = require('./routes/exercises');
-app.use('/api/exercises', exerciseRoutes);
-
 const progressRoutes = require('./routes/progress');
-app.use('/api/progress', progressRoutes);
-
-// Mount Workouts Routes
+const foodAnalysisRoutes = require('./routes/foodAnalysis');
 const workoutsRoutes = require('./routes/workouts');
+
+app.use('/api/exercises', exerciseRoutes);
+app.use('/api/progress', progressRoutes);
+app.use('/api', foodAnalysisRoutes);
 app.use('/api/workouts', workoutsRoutes);
 
 // Health Check Route

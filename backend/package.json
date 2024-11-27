@@ -10,6 +10,7 @@
   "license": "ISC",
   "description": "",
   "dependencies": {
+    "@google/generative-ai": "^0.21.0",
     "@react-native-community/masked-view": "^0.1.11",
     "@react-native-picker/picker": "^2.8.1",
     "@react-navigation/native": "^6.1.18",
