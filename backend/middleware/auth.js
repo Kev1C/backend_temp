@@ -23,9 +23,13 @@ const auth = (req, res, next) => {
             exp: decoded.exp
         });
         
+        // Use userId if available, otherwise fallback to id
+        const userIdToUse = decoded.userId || decoded.id;
+        console.log('Using user ID:', userIdToUse);
+        
         req.user = { 
-            userId: decoded.userId || decoded.id,
-            id: decoded.userId || decoded.id // Include both for backward compatibility
+            userId: userIdToUse,
+            id: userIdToUse
         };
         console.log('User object set:', req.user);
         

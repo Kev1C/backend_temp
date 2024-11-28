@@ -10,7 +10,7 @@ const UserSchema = new mongoose.Schema({
     gender: { type: String, enum: ['male', 'female', 'other'] },
     height: { type: Number }, // in cm
     weight: { type: Number }, // in kg
-    fitnessGoal: { type: String, enum: ['lose_weight', 'get_fitter', 'gain_muscle'] },
+    goal: { type: String, enum: ['lose_weight', 'get_fitter', 'gain_muscle'] },
     // Additional preferences
     desiredPhysique: { type: String, enum: ['lean', 'muscular', 'athletic'], default: 'athletic' },
     fitnessGoals: [String],
@@ -31,8 +31,12 @@ UserSchema.pre('save', async function(next) {
 });
 
 // Password comparison method
-UserSchema.methods.comparePassword = function(candidatePassword) {
-    return bcrypt.compare(candidatePassword, this.password);
-}
+UserSchema.methods.comparePassword = async function(candidatePassword) {
+    try {
+        return await bcrypt.compare(candidatePassword, this.password);
+    } catch(err) {
+        throw err;
+    }
+};
 
 module.exports = mongoose.model('User', UserSchema);
