@@ -10,10 +10,9 @@ const UserSchema = new mongoose.Schema({
     gender: { type: String, enum: ['male', 'female', 'other'] },
     height: { type: Number }, // in cm
     weight: { type: Number }, // in kg
-    goal: { type: String, enum: ['lose_weight', 'get_fitter', 'gain_muscle'] },
+    goal: { type: String, enum: ['lose_weight', 'get_fitter', 'gain_muscle'], default: 'get_fitter' },
     // Additional preferences
     desiredPhysique: { type: String, enum: ['lean', 'muscular', 'athletic'], default: 'athletic' },
-    fitnessGoals: [String],
     dietaryPreferences: [String],
     dietaryRestrictions: [String],
 }, { timestamps: true });
