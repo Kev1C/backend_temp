@@ -52,14 +52,16 @@ const foodAnalysisRoutes = require('./routes/foodAnalysis');
 const mealRoutes = require('./routes/meals');
 const workoutsRoutes = require('./routes/workouts');
 const userRoutes = require('./routes/users');
+const nutritionRoutes = require('./routes/nutritionRoutes');
 
 app.use('/api/exercises', exerciseRoutes);
 app.use('/api/progress', progressRoutes);
-app.use('/api/analyze-food', foodAnalysisRoutes);
+app.use('/api/food-analysis', foodAnalysisRoutes);
 app.use('/api/meals', mealRoutes);
 app.use('/api', foodAnalysisRoutes);
 app.use('/api/workouts', workoutsRoutes);
 app.use('/api/users', userRoutes);
+app.use('/api/nutrition', nutritionRoutes);
 
 // Health Check Route
 app.get('/', (req, res) => {
