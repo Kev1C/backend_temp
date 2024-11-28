@@ -9,13 +9,18 @@ const getDailyNutrition = asyncHandler(async (req, res) => {
   const { date } = req.params;
   const userId = req.user.userId; // Updated to match auth middleware
 
-  // Create dates in the user's timezone
-  const startDate = new Date(date + 'T00:00:00');
-  const endDate = new Date(date + 'T23:59:59.999');
+  // Create UTC date range for the given local date
+  const [year, month, day] = date.split('-').map(Number);
+  const startDate = new Date(Date.UTC(year, month - 1, day, 0, 0, 0));
+  const endDate = new Date(Date.UTC(year, month - 1, day, 23, 59, 59, 999));
 
-  // Ensure we're using local time, not UTC
-  startDate.setUTCHours(0, 0, 0, 0);
-  endDate.setUTCHours(23, 59, 59, 999);
+  console.log('Querying meals between:', {
+    inputDate: date,
+    startDateUTC: startDate.toISOString(),
+    endDateUTC: endDate.toISOString(),
+    startDateLocal: startDate.toLocaleString(),
+    endDateLocal: endDate.toLocaleString()
+  });
 
   const meals = await Meal.find({
     userId,
@@ -24,6 +29,11 @@ const getDailyNutrition = asyncHandler(async (req, res) => {
       $lte: endDate
     }
   }).sort({ date: -1 });
+
+  console.log('Found meals:', meals.map(meal => ({
+    date: meal.date,
+    localDate: new Date(meal.date).toString()
+  })));
 
   // Calculate total nutrition for the day
   const dailyNutrition = meals.reduce((acc, meal) => {

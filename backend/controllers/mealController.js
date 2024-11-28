@@ -20,9 +20,24 @@ const addMeal = async (req, res) => {
     const { name, image, calories, carbs, protein, fats, time } = req.body;
     console.log('Adding meal for user:', req.user.id);
     
-    // Create date in local timezone
-    const now = new Date();
-    now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
+    // Create date in local timezone and convert to UTC for MongoDB
+    const localDate = new Date();
+    const utcDate = new Date(Date.UTC(
+      localDate.getFullYear(),
+      localDate.getMonth(),
+      localDate.getDate(),
+      localDate.getHours(),
+      localDate.getMinutes(),
+      localDate.getSeconds()
+    ));
+    
+    console.log('Saving meal with dates:', {
+      localDate: localDate.toLocaleString(),
+      utcDate: utcDate.toISOString(),
+      localDateString: localDate.toDateString(),
+      utcDateString: utcDate.toUTCString(),
+      dayName: ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'][localDate.getDay()]
+    });
     
     const meal = new Meal({
       userId: req.user.id,
@@ -33,7 +48,7 @@ const addMeal = async (req, res) => {
       protein: parseInt(protein),
       fats: parseInt(fats),
       time,
-      date: now
+      date: utcDate
     });
 
     const savedMeal = await meal.save();
