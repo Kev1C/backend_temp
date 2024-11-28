@@ -9,12 +9,13 @@ const getDailyNutrition = asyncHandler(async (req, res) => {
   const { date } = req.params;
   const userId = req.user.userId; // Updated to match auth middleware
 
-  // Get all meals for the specified date
-  const startDate = new Date(date);
-  startDate.setHours(0, 0, 0, 0);
-  
-  const endDate = new Date(date);
-  endDate.setHours(23, 59, 59, 999);
+  // Create dates in the user's timezone
+  const startDate = new Date(date + 'T00:00:00');
+  const endDate = new Date(date + 'T23:59:59.999');
+
+  // Ensure we're using local time, not UTC
+  startDate.setUTCHours(0, 0, 0, 0);
+  endDate.setUTCHours(23, 59, 59, 999);
 
   const meals = await Meal.find({
     userId,

@@ -20,8 +20,12 @@ const addMeal = async (req, res) => {
     const { name, image, calories, carbs, protein, fats, time } = req.body;
     console.log('Adding meal for user:', req.user.id);
     
+    // Create date in local timezone
+    const now = new Date();
+    now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
+    
     const meal = new Meal({
-      userId: req.user.id,  // Use consistent id field from auth middleware
+      userId: req.user.id,
       name,
       image,
       calories: parseInt(calories),
@@ -29,7 +33,7 @@ const addMeal = async (req, res) => {
       protein: parseInt(protein),
       fats: parseInt(fats),
       time,
-      date: new Date()
+      date: now
     });
 
     const savedMeal = await meal.save();
