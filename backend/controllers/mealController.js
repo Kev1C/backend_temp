@@ -4,9 +4,47 @@ const Meal = require('../models/Meal');
 const getRecentMeals = async (req, res) => {
   try {
     console.log('Getting meals for user:', req.user.id);
-    const meals = await Meal.find({ userId: req.user.id })
-      .sort({ date: -1 })
-      .limit(10);
+    console.log('Date parameter:', req.query.date);
+    
+    let query = { userId: req.user.id };
+    
+    // If date is provided, filter meals for that specific date
+    if (req.query.date) {
+      const requestedDate = new Date(req.query.date);
+      console.log('Requested date:', requestedDate);
+      
+      // Create start and end of day in local time
+      const startOfDay = new Date(
+        requestedDate.getFullYear(),
+        requestedDate.getMonth(),
+        requestedDate.getDate(),
+        0, 0, 0
+      );
+      
+      const endOfDay = new Date(
+        requestedDate.getFullYear(),
+        requestedDate.getMonth(),
+        requestedDate.getDate(),
+        23, 59, 59, 999
+      );
+      
+      console.log('Local timezone - Start of day:', startOfDay);
+      console.log('Local timezone - End of day:', endOfDay);
+      
+      // Convert to UTC for MongoDB query
+      const startOfDayUTC = new Date(startOfDay.toISOString());
+      const endOfDayUTC = new Date(endOfDay.toISOString());
+      
+      console.log('UTC - Querying meals between:', startOfDayUTC, 'and', endOfDayUTC);
+      
+      query.date = {
+        $gte: startOfDayUTC,
+        $lte: endOfDayUTC
+      };
+    }
+
+    const meals = await Meal.find(query).sort({ date: -1 });
+    console.log('Found meals:', meals.length);
     res.json(meals);
   } catch (error) {
     console.error('Error getting recent meals:', error);
