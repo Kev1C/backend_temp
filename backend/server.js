@@ -11,10 +11,14 @@ const rateLimit = require('express-rate-limit'); // For rate limiting
 const app = express();
 
 // Middleware
-app.use(express.json({ limit: '50mb' }));
-app.use(express.urlencoded({ limit: '50mb', extended: true }));
+app.use(express.json({ limit: '10mb' }));
+app.use(express.urlencoded({ limit: '10mb', extended: true }));
 app.use(helmet());
-app.use(morgan('dev')); // Use 'combined' for production
+
+// Only use Morgan in development
+if (process.env.NODE_ENV === 'development') {
+    app.use(morgan('dev')); // Use 'combined' for production
+}
 
 // CORS Configuration
 const allowedOrigins = ['http://localhost:19006', 'http://10.0.0.203:5000']; // Update with your frontend's origin(s)
@@ -58,7 +62,6 @@ app.use('/api/exercises', exerciseRoutes);
 app.use('/api/progress', progressRoutes);
 app.use('/api/food-analysis', foodAnalysisRoutes);
 app.use('/api/meals', mealRoutes);
-app.use('/api', foodAnalysisRoutes);
 app.use('/api/workouts', workoutsRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/nutrition', nutritionRoutes);
@@ -79,11 +82,18 @@ app.use((err, req, res, next) => {
     res.status(500).json({ message: 'Server error' });
 });
 
-// Connect to MongoDB and Start Server
-mongoose.connect(process.env.MONGO_URI, {
+// MongoDB Configuration
+const mongooseOptions = {
     useNewUrlParser: true,
     useUnifiedTopology: true,
-})
+    maxPoolSize: 10,
+    serverSelectionTimeoutMS: 5000,
+    socketTimeoutMS: 45000,
+    family: 4
+};
+
+// Connect to MongoDB and Start Server
+mongoose.connect(process.env.MONGO_URI, mongooseOptions)
 .then(() => {
     console.log('MongoDB Connected');
     const PORT = process.env.PORT || 5000;
