@@ -1,5 +1,7 @@
 {
   "dependencies": {
-    "expo-camera": "^16.0.6"
+    "expo-camera": "^16.0.6",
+    "react-native-circular-progress": "^1.4.1",
+    "react-native-svg": "^15.9.0"
   }
 }
