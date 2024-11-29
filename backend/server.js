@@ -36,8 +36,8 @@ const cache = (duration) => {
 
 // Middleware
 app.use(compression({ level: 6 })); // Optimize compression
-app.use(express.json({ limit: '5mb' })); // Reduce payload size limit
-app.use(express.urlencoded({ limit: '5mb', extended: true }));
+app.use(express.json({ limit: '50mb' })); // Reduce payload size limit
+app.use(express.urlencoded({ limit: '50mb', extended: true }));
 app.use(helmet());
 
 // Only use Morgan in development

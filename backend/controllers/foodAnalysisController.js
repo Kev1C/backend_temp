@@ -7,6 +7,15 @@ const analyzeFood = async (req, res) => {
     try {
         console.log('Received food analysis request');
         
+        // Validate environment variables
+        if (!process.env.GEMINI_API_KEY) {
+            console.error('GEMINI_API_KEY not found in environment variables');
+            return res.status(500).json({ 
+                success: false, 
+                message: 'Server configuration error' 
+            });
+        }
+
         if (!req.body) {
             console.error('No request body received');
             return res.status(400).json({ 
@@ -25,6 +34,7 @@ const analyzeFood = async (req, res) => {
             });
         }
 
+        console.log('Image size:', Math.round(imageBase64.length / 1024), 'KB');
         console.log('Image data received, analyzing with Gemini...');
 
         // Initialize the model
@@ -57,71 +67,81 @@ const analyzeFood = async (req, res) => {
         
         Only respond with the JSON, no other text.`;
 
-        // Generate content
-        const result = await model.generateContent([prompt, imageData]);
-        const response = await result.response;
-        const text = response.text();
-        
-        console.log('Raw response from Gemini:', text);
-
-        // Enhanced cleaning of the response text
-        let cleanedText = text
-            .replace(/^```json\n?/, '')     // Remove starting ```json
-            .replace(/^```\n?/, '')         // Remove starting ```
-            .replace(/\n?```$/, '')         // Remove ending ```
-            .replace(/[\u0000-\u001F\u007F-\u009F]/g, '') // Remove control characters
-            .trim();                        // Remove extra whitespace
-
-        // Try to extract JSON if it's wrapped in other text
-        const jsonMatch = cleanedText.match(/\{[\s\S]*\}/);
-        if (jsonMatch) {
-            cleanedText = jsonMatch[0];
-        }
-
-        console.log('Cleaned response text:', cleanedText);
-        
-        // Validate JSON structure before parsing
-        if (!cleanedText.startsWith('{') || !cleanedText.endsWith('}')) {
-            console.error('Invalid JSON structure. Raw text:', text);
-            console.error('Cleaned text:', cleanedText);
-            throw new Error('Invalid JSON structure in response');
-        }
-        
-        // Parse the cleaned JSON response
-        let nutritionData;
         try {
-            nutritionData = JSON.parse(cleanedText);
-        } catch (parseError) {
-            console.error('JSON parsing error:', parseError);
-            console.error('Problematic text:', cleanedText);
+            // Generate content
+            const result = await model.generateContent([prompt, imageData]);
+            const response = await result.response;
+            const text = response.text();
             
-            // Attempt to fix common JSON issues
-            cleanedText = cleanedText
-                .replace(/(['"])?([a-zA-Z0-9_]+)(['"])?\s*:/g, '"$2": ') // Fix unquoted keys
-                .replace(/:\s*'([^']*)'/g, ': "$1"')  // Replace single quotes with double quotes
-                .replace(/,\s*}/g, '}');  // Remove trailing commas
+            console.log('Raw response from Gemini:', text);
+
+            // Enhanced cleaning of the response text
+            let cleanedText = text
+                .replace(/^```json\n?/, '')     // Remove starting ```json
+                .replace(/^```\n?/, '')         // Remove starting ```
+                .replace(/\n?```$/, '')         // Remove ending ```
+                .replace(/[\u0000-\u001F\u007F-\u009F]/g, '') // Remove control characters
+                .trim();                        // Remove extra whitespace
+
+            // Try to extract JSON if it's wrapped in other text
+            const jsonMatch = cleanedText.match(/\{[\s\S]*\}/);
+            if (jsonMatch) {
+                cleanedText = jsonMatch[0];
+            }
+
+            console.log('Cleaned response text:', cleanedText);
             
+            // Validate JSON structure before parsing
+            if (!cleanedText.startsWith('{') || !cleanedText.endsWith('}')) {
+                console.error('Invalid JSON structure. Raw text:', text);
+                console.error('Cleaned text:', cleanedText);
+                throw new Error('Invalid JSON structure in response');
+            }
+            
+            // Parse the cleaned JSON response
+            let nutritionData;
             try {
                 nutritionData = JSON.parse(cleanedText);
-                console.log('Successfully parsed JSON after fixes');
-            } catch (secondError) {
-                console.error('Failed to parse JSON even after fixes:', secondError);
-                throw new Error(`Failed to parse nutrition data: ${parseError.message}`);
+            } catch (parseError) {
+                console.error('JSON parsing error:', parseError);
+                console.error('Problematic text:', cleanedText);
+                
+                // Attempt to fix common JSON issues
+                cleanedText = cleanedText
+                    .replace(/(['"'])?([a-zA-Z0-9_]+)(['"'])?\\s*:/g, '"$2": ') // Fix unquoted keys
+                    .replace(/:\\s*'([^']*)']/g, ': "$1"')  // Replace single quotes with double quotes
+                    .replace(/,\\s*}/g, '}');  // Remove trailing commas
+                
+                try {
+                    nutritionData = JSON.parse(cleanedText);
+                    console.log('Successfully parsed JSON after fixes');
+                } catch (secondError) {
+                    console.error('Failed to parse JSON even after fixes:', secondError);
+                    throw new Error(`Failed to parse nutrition data: ${parseError.message}`);
+                }
             }
+            
+            // Validate required fields
+            const requiredFields = ['foodTitle', 'calories', 'carbs', 'protein', 'fats', 'healthScore'];
+            const missingFields = requiredFields.filter(field => !nutritionData[field]);
+            if (missingFields.length > 0) {
+                throw new Error(`Missing required fields: ${missingFields.join(', ')}`);
+            }
+            
+            console.log('Sending successful response:', nutritionData);
+            res.status(200).json({
+                success: true,
+                ...nutritionData
+            });
+
+        } catch (geminiError) {
+            console.error('Gemini API error:', geminiError);
+            res.status(500).json({ 
+                success: false, 
+                message: 'Error processing image with Gemini API',
+                error: geminiError.message
+            });
         }
-        
-        // Validate required fields
-        const requiredFields = ['foodTitle', 'calories', 'carbs', 'protein', 'fats', 'healthScore'];
-        const missingFields = requiredFields.filter(field => !nutritionData[field]);
-        if (missingFields.length > 0) {
-            throw new Error(`Missing required fields: ${missingFields.join(', ')}`);
-        }
-        
-        console.log('Sending successful response:', nutritionData);
-        res.status(200).json({
-            success: true,
-            ...nutritionData
-        });
 
     } catch (error) {
         console.error('Food analysis error:', error);
