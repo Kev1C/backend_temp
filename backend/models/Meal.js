@@ -41,7 +41,7 @@ const mealSchema = new mongoose.Schema({
   }
 });
 
-// Add compound index for userId and date
-mealSchema.index({ userId: 1, date: 1 }, { unique: true });
+// Add index for userId and date for better query performance
+mealSchema.index({ userId: 1, date: 1 });
 
 module.exports = mongoose.model('Meal', mealSchema);

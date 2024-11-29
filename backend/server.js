@@ -12,7 +12,7 @@ const mcache = require('memory-cache');
 
 const app = express();
 
-// Cache middleware
+// Cache middleware with size limit and expiration
 const cache = (duration) => {
     return (req, res, next) => {
         const key = '__express__' + req.originalUrl || req.url;
@@ -23,7 +23,10 @@ const cache = (duration) => {
         } else {
             res.sendResponse = res.send;
             res.send = (body) => {
-                mcache.put(key, JSON.stringify(body), duration * 1000);
+                // Only cache if body size is less than 1MB
+                if (JSON.stringify(body).length < 1000000) {
+                    mcache.put(key, JSON.stringify(body), duration * 1000);
+                }
                 res.sendResponse(body);
             }
             next();
@@ -32,9 +35,9 @@ const cache = (duration) => {
 };
 
 // Middleware
-app.use(compression()); // Add compression
-app.use(express.json({ limit: '10mb' }));
-app.use(express.urlencoded({ limit: '10mb', extended: true }));
+app.use(compression({ level: 6 })); // Optimize compression
+app.use(express.json({ limit: '5mb' })); // Reduce payload size limit
+app.use(express.urlencoded({ limit: '5mb', extended: true }));
 app.use(helmet());
 
 // Only use Morgan in development
