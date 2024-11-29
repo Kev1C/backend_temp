@@ -7,10 +7,32 @@ const cors = require('cors');
 const morgan = require('morgan'); // For logging HTTP requests
 const helmet = require('helmet'); // For securing HTTP headers
 const rateLimit = require('express-rate-limit'); // For rate limiting
+const compression = require('compression');
+const mcache = require('memory-cache');
 
 const app = express();
 
+// Cache middleware
+const cache = (duration) => {
+    return (req, res, next) => {
+        const key = '__express__' + req.originalUrl || req.url;
+        const cachedBody = mcache.get(key);
+        if (cachedBody) {
+            res.send(JSON.parse(cachedBody));
+            return;
+        } else {
+            res.sendResponse = res.send;
+            res.send = (body) => {
+                mcache.put(key, JSON.stringify(body), duration * 1000);
+                res.sendResponse(body);
+            }
+            next();
+        }
+    }
+};
+
 // Middleware
+app.use(compression()); // Add compression
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ limit: '10mb', extended: true }));
 app.use(helmet());
