@@ -7,43 +7,31 @@ const Meal = require('../models/Meal');
 // @access  Private
 const getDailyNutrition = asyncHandler(async (req, res) => {
   const { date } = req.params;
-  const userId = req.user.userId; // Updated to match auth middleware
+  const userId = req.user.userId;
 
   // Create UTC date range for the given local date
   const [year, month, day] = date.split('-').map(Number);
-  const startDate = new Date(Date.UTC(year, month - 1, day, 0, 0, 0));
-  const endDate = new Date(Date.UTC(year, month - 1, day, 23, 59, 59, 999));
-
-  console.log('Querying meals between:', {
-    inputDate: date,
-    startDateUTC: startDate.toISOString(),
-    endDateUTC: endDate.toISOString(),
-    startDateLocal: startDate.toLocaleString(),
-    endDateLocal: endDate.toLocaleString()
-  });
+  const startDate = new Date(Date.UTC(year, month - 1, day));
+  const endDate = new Date(Date.UTC(year, month - 1, day + 1));
 
   const meals = await Meal.find({
     userId,
     date: {
       $gte: startDate,
-      $lte: endDate
+      $lt: endDate
     }
-  }).sort({ date: -1 });
-
-  console.log('Found meals:', meals.map(meal => ({
-    date: meal.date,
-    localDate: new Date(meal.date).toString()
-  })));
+  })
+  .select('_id name calories protein carbs fats image time date')
+  .lean()
+  .exec();
 
   // Calculate total nutrition for the day
-  const dailyNutrition = meals.reduce((acc, meal) => {
-    return {
-      calories: acc.calories + (meal.calories || 0),
-      protein: acc.protein + (meal.protein || 0),
-      carbs: acc.carbs + (meal.carbs || 0),
-      fat: acc.fat + (meal.fats || 0), // Note: frontend uses 'fat', backend uses 'fats'
-    };
-  }, { calories: 0, protein: 0, carbs: 0, fat: 0 });
+  const dailyNutrition = meals.reduce((acc, meal) => ({
+    calories: acc.calories + (meal.calories || 0),
+    protein: acc.protein + (meal.protein || 0),
+    carbs: acc.carbs + (meal.carbs || 0),
+    fat: acc.fat + (meal.fats || 0),
+  }), { calories: 0, protein: 0, carbs: 0, fat: 0 });
 
   // Return both the totals and the meals
   res.json({
