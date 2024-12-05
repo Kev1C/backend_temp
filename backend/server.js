@@ -39,27 +39,13 @@ app.use(compression({ level: 6 })); // Optimize compression
 app.use(express.json({ limit: '50mb' })); // Reduce payload size limit
 app.use(express.urlencoded({ limit: '50mb', extended: true }));
 app.use(helmet());
-
-// Only use Morgan in development
-if (process.env.NODE_ENV === 'development') {
-    app.use(morgan('dev')); // Use 'combined' for production
-}
+app.use(morgan('dev')); // Log HTTP requests
 
 // CORS Configuration
-const allowedOrigins = ['http://localhost:19006', 'http://10.0.0.203:5000']; // Update with your frontend's origin(s)
-
 app.use(cors({
-    origin: function (origin, callback) {
-        // Allow requests with no origin (like mobile apps, curl requests)
-        if (!origin) return callback(null, true);
-        if (allowedOrigins.indexOf(origin) === -1) {
-            const msg = 'The CORS policy for this site does not allow access from the specified Origin.';
-            return callback(new Error(msg), false);
-        }
-        return callback(null, true);
-    },
+    origin: '*', // Allow all origins during development
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'Accept'],
     credentials: true,
 }));
 

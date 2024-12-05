@@ -36,11 +36,16 @@ app.use((req, res, next) => {
 
 // CORS configuration
 app.use(cors({
-    origin: '*', // Allow all origins in development
+    origin: ['http://localhost:19000', 'http://localhost:19006', 'exp://localhost:19000'],
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'Accept'],
     credentials: true,
+    preflightContinue: false,
+    optionsSuccessStatus: 204
 }));
+
+// Enable pre-flight requests for all routes
+app.options('*', cors());
 
 // Body parsing middleware
 app.use(express.json({ limit: '50mb' }));
