@@ -83,45 +83,95 @@ const refreshToken = async (req, res) => {
     }
 };
 
-// Register Function (Optional)
+// Register Function
 const register = async (req, res) => {
-    const { username, email, password } = req.body;
-
     try {
-        // Check if user already exists
-        let user = await User.findOne({ 
-            $or: [
-                { username },
-                { email }
-            ]
-        });
-        
-        if (user) {
-            return res.status(400).json({ 
-                message: user.username === username ? 'Username already exists' : 'Email already exists'
+        const { type, userData } = req.body;
+        console.log('Registration request:', { type, userData });
+
+        if (type === 'guest') {
+            // For guest users, create a temporary user without username/email/password
+            const guestUser = new User({
+                type: 'guest',
+                ...userData,
+                username: `guest_${Date.now()}`, // Temporary unique username
+                email: `guest_${Date.now()}@temp.com`, // Temporary unique email
+                password: 'guest' // This won't be hashed due to guest type check in pre-save
+            });
+
+            const savedUser = await guestUser.save();
+            console.log('Guest user created:', savedUser);
+
+            // Generate tokens
+            const token = generateToken(savedUser);
+            const refreshToken = generateRefreshToken(savedUser._id);
+
+            res.status(201).json({
+                success: true,
+                token,
+                refreshToken,
+                user: {
+                    id: savedUser._id,
+                    type: savedUser.type,
+                    gender: savedUser.gender,
+                    height: savedUser.height,
+                    weight: savedUser.weight,
+                    fitnessGoal: savedUser.fitnessGoal,
+                    isOnboardingComplete: savedUser.isOnboardingComplete
+                }
+            });
+        } else {
+            // Handle regular user registration
+            const { email, password, username } = userData;
+            
+            // Check if user already exists
+            const existingUser = await User.findOne({ 
+                $or: [{ email }, { username }] 
+            });
+
+            if (existingUser) {
+                return res.status(400).json({
+                    message: 'User already exists with that email or username'
+                });
+            }
+
+            // Create new user
+            const user = new User({
+                ...userData,
+                type: 'regular'
+            });
+
+            const savedUser = await user.save();
+            console.log('Regular user created:', savedUser);
+
+            // Generate tokens
+            const token = generateToken(savedUser);
+            const refreshToken = generateRefreshToken(savedUser._id);
+
+            res.status(201).json({
+                success: true,
+                token,
+                refreshToken,
+                user: {
+                    id: savedUser._id,
+                    email: savedUser.email,
+                    username: savedUser.username,
+                    type: savedUser.type,
+                    gender: savedUser.gender,
+                    height: savedUser.height,
+                    weight: savedUser.weight,
+                    fitnessGoal: savedUser.fitnessGoal,
+                    isOnboardingComplete: savedUser.isOnboardingComplete
+                }
             });
         }
-
-        // Create new user with default desiredPhysique
-        // This will be updated during the onboarding flow
-        user = new User({ 
-            username, 
-            email, 
-            password,
-            desiredPhysique: 'athletic' // Default value, will be updated during onboarding
+    } catch (error) {
+        console.error('Registration error:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Error registering user',
+            error: error.message
         });
-        
-        await user.save();
-
-        // Generate tokens
-        const token = generateToken(user);
-        const refreshToken = generateRefreshToken(user._id);
-
-        // Return tokens to client
-        res.status(201).json({ token, refreshToken });
-    } catch (err) {
-        console.error('Registration error:', err);
-        res.status(500).json({ message: 'Server error', details: err.message });
     }
 };
 
