@@ -61,7 +61,7 @@ app.get('/api/health', (req, res) => {
 });
 
 // Mount routes
-app.use('/api/auth', authRoutes);
+app.use('/auth', authRoutes);
 app.use('/api/exercises', exerciseRoutes);
 app.use('/api/progress', progressRoutes);
 app.use('/api/food-analysis', foodAnalysisRoutes);
