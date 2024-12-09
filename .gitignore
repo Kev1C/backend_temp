@@ -41,7 +41,7 @@ yarn-error.log*
 *.mobileprovision
 *.orig.*
 web-build/
-dist/
+/dist/
 
 # Android/IntelliJ
 android/
