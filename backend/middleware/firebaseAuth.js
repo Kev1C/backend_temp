@@ -3,8 +3,9 @@ const jwt = require('jsonwebtoken');
 
 // Initialize Firebase Admin
 if (!admin.apps.length) {
+    const serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT);
     admin.initializeApp({
-        credential: admin.credential.applicationDefault(),
+        credential: admin.credential.cert(serviceAccount),
     });
 }
 
@@ -18,7 +19,7 @@ const firebaseAuth = async (req, res, next) => {
     try {
         // Verify the Firebase token
         const decodedToken = await admin.auth().verifyIdToken(firebaseToken);
-        
+
         // Create or update user in your database
         // This should be moved to a user service in production
         const user = {
@@ -37,7 +38,7 @@ const firebaseAuth = async (req, res, next) => {
         // Attach the user and token to the request
         req.user = user;
         req.backendToken = backendToken;
-        
+
         next();
     } catch (error) {
         console.error('Firebase Auth Error:', error);
