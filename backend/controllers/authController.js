@@ -4,13 +4,6 @@ const jwt = require('jsonwebtoken');
 const User = require('../models/User'); // Adjust the path as necessary
 const admin = require('firebase-admin');
 
-// Initialize Firebase Admin SDK if not already initialized
-if (!admin.apps.length) {
-    admin.initializeApp({
-        credential: admin.credential.applicationDefault(),
-    });
-}
-
 // Function to generate refresh token
 const generateRefreshToken = (userId) => {
     return jwt.sign(

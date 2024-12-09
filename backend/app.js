@@ -4,6 +4,22 @@ const cors = require('cors');
 const morgan = require('morgan');
 const { errorHandler, notFound } = require('./middleware/errorMiddleware');
 const connectDB = require('./config/db');
+const admin = require('firebase-admin');
+
+// Load environment variables from .env file
+require('dotenv').config();
+
+// Initialize Firebase Admin SDK
+try {
+    const serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT_KEY);
+    admin.initializeApp({
+        credential: admin.credential.cert(serviceAccount),
+        projectId: process.env.FIREBASE_PROJECT_ID,
+    });
+    console.log('Firebase Admin SDK initialized successfully.');
+} catch (error) {
+    console.error('Error initializing Firebase Admin SDK:', error);
+}
 
 // Import routes
 const authRoutes = require('./routes/auth');
