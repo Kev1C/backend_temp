@@ -1,0 +1,153 @@
+import React, { createContext, useState, useContext, useEffect } from 'react';
+import * as SecureStore from 'expo-secure-store';
+import { AuthContext } from './AuthContext';
+import { api } from '../services/api';
+
+export const OnboardingContext = createContext();
+
+export const OnboardingProvider = ({ children, navigation }) => {
+  const { signIn } = useContext(AuthContext);
+  const [onboardingData, setOnboardingData] = useState({
+    gender: null,
+    height: null,
+    weight: null,
+    fitnessGoal: null,
+    isOnboardingComplete: false,
+  });
+
+  const ONBOARDING_DATA_KEY = 'onboardingData';
+
+  // Load onboarding data from storage on mount
+  useEffect(() => {
+    const loadOnboardingData = async () => {
+      try {
+        const storedData = await SecureStore.getItemAsync(ONBOARDING_DATA_KEY);
+        if (storedData) {
+          setOnboardingData(JSON.parse(storedData));
+        }
+      } catch (error) {
+        console.error('Error loading onboarding data:', error);
+      }
+    };
+
+    loadOnboardingData();
+  }, []);
+
+  const updateOnboardingData = async (newData) => {
+    return new Promise(async (resolve) => {
+      setOnboardingData(prevData => {
+        const updatedData = { ...prevData, ...newData };
+        // Store updated data in SecureStore
+        SecureStore.setItemAsync(ONBOARDING_DATA_KEY, JSON.stringify(updatedData));
+        resolve(updatedData);
+        return updatedData;
+      });
+    });
+  };
+
+  const validateOnboardingData = () => {
+    const { gender, height, weight, fitnessGoal } = onboardingData;
+    return Boolean(gender && height && weight && fitnessGoal);
+  };
+
+  const completeOnboarding = async (authData) => {
+    try {
+      const { gender, height, weight, fitnessGoal } = onboardingData;
+      
+      if (!gender || !height || !weight || !fitnessGoal) {
+        throw new Error('Incomplete onboarding data');
+      }
+
+      // For guest users, register first
+      if (authData.type === 'guest') {
+        const response = await api.post('/auth/register', {
+          type: 'guest',
+          userData: {
+            ...onboardingData,
+            id: authData?.id,
+            email: authData?.email,
+            provider: 'guest',
+            isOnboardingComplete: true
+          }
+        });
+
+        // Get the token from registration response
+        const { token } = response.data;
+        
+        // Sign in with the new token
+        await signIn(token);
+
+        // Update local onboarding state
+        const updatedData = {
+          ...onboardingData,
+          isOnboardingComplete: true
+        };
+        setOnboardingData(updatedData);
+        await SecureStore.setItemAsync(ONBOARDING_DATA_KEY, JSON.stringify(updatedData));
+
+        // Return the profile data
+        return updatedData;
+      }
+
+      // For social auth users, update their profile
+      const token = await SecureStore.getItemAsync('authToken');
+      if (!token) {
+        throw new Error('No authentication token found');
+      }
+
+      const profileData = {
+        ...onboardingData,
+        id: authData?.id,
+        email: authData?.email,
+        provider: authData?.provider,
+        isOnboardingComplete: true
+      };
+
+      // Update profile with onboarding data
+      await api.put('/auth/profile', profileData, {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      
+      // Mark onboarding as complete and store in SecureStore
+      const updatedData = {
+        ...onboardingData,
+        isOnboardingComplete: true
+      };
+      setOnboardingData(updatedData);
+      await SecureStore.setItemAsync(ONBOARDING_DATA_KEY, JSON.stringify(updatedData));
+
+      return profileData;
+    } catch (error) {
+      console.error('Onboarding error:', error);
+      throw error;
+    }
+  };
+
+  const resetOnboardingData = async () => {
+    const initialData = {
+      gender: null,
+      height: null,
+      weight: null,
+      fitnessGoal: null,
+      isOnboardingComplete: false,
+    };
+    setOnboardingData(initialData);
+    await SecureStore.deleteItemAsync(ONBOARDING_DATA_KEY);
+  };
+
+  return (
+    <OnboardingContext.Provider
+      value={{
+        onboardingData,
+        updateOnboardingData,
+        completeOnboarding,
+        resetOnboardingData,
+        validateOnboardingData,
+      }}
+    >
+      {children}
+    </OnboardingContext.Provider>
+  );
+};
