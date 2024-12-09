@@ -2,6 +2,14 @@
 
 const jwt = require('jsonwebtoken');
 const User = require('../models/User'); // Adjust the path as necessary
+const admin = require('firebase-admin');
+
+// Initialize Firebase Admin SDK if not already initialized
+if (!admin.apps.length) {
+    admin.initializeApp({
+        credential: admin.credential.applicationDefault(),
+    });
+}
 
 // Function to generate refresh token
 const generateRefreshToken = (userId) => {
@@ -236,22 +244,22 @@ const verifyFirebaseToken = async (req, res) => {
             return res.status(400).json({ message: 'Firebase token is required' });
         }
 
-        // Decode the Firebase token (it's already verified by Firebase on the client side)
-        const decodedToken = jwt.decode(firebaseToken);
+        // Verify the Firebase token using firebase-admin
+        const decodedToken = await admin.auth().verifyIdToken(firebaseToken);
         
         if (!decodedToken) {
             return res.status(401).json({ message: 'Invalid Firebase token' });
         }
 
         // Find or create user based on Firebase UID
-        let user = await User.findOne({ firebaseUid: decodedToken.user_id });
+        let user = await User.findOne({ firebaseUid: decodedToken.uid });
         
         if (!user) {
             // Create new user
             user = await User.create({
-                firebaseUid: decodedToken.user_id,
-                email: decodedToken.email || `user_${decodedToken.user_id}@firebase.com`,
-                username: decodedToken.name || `user_${decodedToken.user_id}`,
+                firebaseUid: decodedToken.uid,
+                email: decodedToken.email,
+                username: decodedToken.email ? decodedToken.email.split('@')[0] : `user_${decodedToken.uid}`,
                 authProvider: decodedToken.firebase?.sign_in_provider || 'firebase'
             });
         }

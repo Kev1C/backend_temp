@@ -38,7 +38,7 @@ app.use((req, res, next) => {
 app.use(cors({
     origin: ['http://localhost:19000', 'http://localhost:19006', 'exp://localhost:19000'],
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization', 'Accept'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'Accept', 'Firebase-Token'],
     credentials: true,
     preflightContinue: false,
     optionsSuccessStatus: 204
