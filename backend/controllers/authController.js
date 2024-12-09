@@ -248,10 +248,10 @@ const verifyFirebaseToken = async (req, res) => {
         let user = await User.findOne({ firebaseUid: decodedToken.uid });
         
         if (!user) {
-            // Create new user
+            // Create new user with email if available, otherwise set a placeholder
             user = await User.create({
                 firebaseUid: decodedToken.uid,
-                email: decodedToken.email,
+                email: decodedToken.email || `temp-${decodedToken.uid}@temp.com`, // Set placeholder email
                 username: decodedToken.email ? decodedToken.email.split('@')[0] : `user_${decodedToken.uid}`,
                 authProvider: decodedToken.firebase?.sign_in_provider || 'firebase'
             });

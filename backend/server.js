@@ -9,6 +9,14 @@ const helmet = require('helmet'); // For securing HTTP headers
 const rateLimit = require('express-rate-limit'); // For rate limiting
 const compression = require('compression');
 const mcache = require('memory-cache');
+const admin = require('firebase-admin');
+
+// Initialize Firebase Admin SDK
+const serviceAccount = require('./path/to/your/firebase-service-account.json'); // Update with your service account file path
+
+admin.initializeApp({
+    credential: admin.credential.cert(serviceAccount)
+});
 
 const app = express();
 
