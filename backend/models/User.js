@@ -2,9 +2,16 @@ const mongoose = require('mongoose');
 const bcrypt = require('bcryptjs');
 
 const UserSchema = new mongoose.Schema({
-    username: { type: String, required: function() { return this.type !== 'guest'; }, unique: true },
-    email: { type: String, required: function() { return this.type !== 'guest'; }, unique: true },
-    password: { type: String, required: function() { return this.type !== 'guest'; } },
+    username: { type: String, required: function() { return this.type !== 'guest'; } },
+    email: { type: String, required: function() { return this.type !== 'guest'; } },
+    password: { 
+        type: String, 
+        required: function() { 
+            return this.type === 'regular' && !this.firebaseUid; 
+        } 
+    },
+    firebaseUid: { type: String, sparse: true, unique: true },
+    authProvider: { type: String, enum: ['local', 'google', 'anonymous', 'firebase'], default: 'local' },
     type: { type: String, enum: ['guest', 'regular'], default: 'regular' },
     role: { type: String, enum: ['user', 'admin'], default: 'user' },
     // Onboarding information
@@ -21,7 +28,7 @@ const UserSchema = new mongoose.Schema({
 
 // Password hashing middleware
 UserSchema.pre('save', async function(next) {
-    if (!this.isModified('password') || this.type === 'guest') return next();
+    if (!this.isModified('password') || this.type === 'guest' || this.authProvider !== 'local') return next();
     try {
         const salt = await bcrypt.genSalt(10);
         this.password = await bcrypt.hash(this.password, salt);
@@ -33,7 +40,7 @@ UserSchema.pre('save', async function(next) {
 
 // Password comparison method
 UserSchema.methods.comparePassword = async function(candidatePassword) {
-    if (this.type === 'guest') return true;
+    if (this.type === 'guest' || this.authProvider !== 'local') return true;
     try {
         return await bcrypt.compare(candidatePassword, this.password);
     } catch(err) {

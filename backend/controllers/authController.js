@@ -227,4 +227,53 @@ const updateProfile = async (req, res) => {
     }
 };
 
-module.exports = { login, register, getCurrentUser, updateProfile, refreshToken };
+// Verify Firebase token and create/update user
+const verifyFirebaseToken = async (req, res) => {
+    try {
+        const { firebaseToken } = req.body;
+        
+        if (!firebaseToken) {
+            return res.status(400).json({ message: 'Firebase token is required' });
+        }
+
+        // Decode the Firebase token (it's already verified by Firebase on the client side)
+        const decodedToken = jwt.decode(firebaseToken);
+        
+        if (!decodedToken) {
+            return res.status(401).json({ message: 'Invalid Firebase token' });
+        }
+
+        // Find or create user based on Firebase UID
+        let user = await User.findOne({ firebaseUid: decodedToken.user_id });
+        
+        if (!user) {
+            // Create new user
+            user = await User.create({
+                firebaseUid: decodedToken.user_id,
+                email: decodedToken.email || `user_${decodedToken.user_id}@firebase.com`,
+                username: decodedToken.name || `user_${decodedToken.user_id}`,
+                authProvider: decodedToken.firebase?.sign_in_provider || 'firebase'
+            });
+        }
+
+        // Generate backend JWT
+        const token = generateToken(user);
+        const refreshToken = generateRefreshToken(user._id);
+
+        res.json({
+            token,
+            refreshToken,
+            user: {
+                id: user._id,
+                email: user.email,
+                username: user.username,
+                authProvider: user.authProvider
+            }
+        });
+    } catch (error) {
+        console.error('Firebase token verification error:', error);
+        res.status(500).json({ message: 'Error verifying Firebase token' });
+    }
+};
+
+module.exports = { login, register, getCurrentUser, updateProfile, refreshToken, verifyFirebaseToken };
