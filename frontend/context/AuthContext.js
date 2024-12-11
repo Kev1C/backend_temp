@@ -73,6 +73,7 @@ export const AuthProvider = ({ children }) => {
       
       const { token: backendToken, refreshToken, user: userData } = response.data;
       
+      // Ensure all values stored in SecureStore are strings
       await Promise.all([
         SecureStore.setItemAsync(SIGNIN_KEY, backendToken),
         SecureStore.setItemAsync(REFRESH_TOKEN_KEY, refreshToken),
@@ -116,6 +117,7 @@ export const AuthProvider = ({ children }) => {
 
   const signIn = useCallback(async (token, userData) => {
     try {
+      // Ensure all values stored in SecureStore are strings
       await Promise.all([
         SecureStore.setItemAsync(SIGNIN_KEY, token),
         SecureStore.setItemAsync(USER_DATA_KEY, JSON.stringify(userData))
@@ -140,12 +142,26 @@ export const AuthProvider = ({ children }) => {
   const refreshAccessToken = useCallback(async () => {
     try {
       const refreshToken = await SecureStore.getItemAsync(REFRESH_TOKEN_KEY);
+      if (!refreshToken) {
+        throw new Error('No refresh token available');
+      }
+  
       const response = await api.post('/auth/refresh', { refreshToken });
+      if (!response.data || !response.data.token || !response.data.refreshToken) {
+        throw new Error('Invalid response from refresh endpoint');
+      }
+  
       const { token: newToken, refreshToken: newRefreshToken } = response.data;
+      if (typeof newToken !== 'string' || typeof newRefreshToken !== 'string') {
+        throw new Error('Token received is not a string');
+      }
+  
+      // Ensure all values stored in SecureStore are strings
       await Promise.all([
         SecureStore.setItemAsync(SIGNIN_KEY, newToken),
         SecureStore.setItemAsync(REFRESH_TOKEN_KEY, newRefreshToken)
       ]);
+  
       setAuthToken(newToken);
     } catch (error) {
       console.error('Error refreshing token:', error);
@@ -197,9 +213,10 @@ export const AuthProvider = ({ children }) => {
       
       setUser(userData);
       setLastUserFetch(now);
+      // Ensure all values stored in SecureStore are strings
       await SecureStore.setItemAsync(USER_DATA_KEY, JSON.stringify(userData));
     } catch (error) {
-      console.error('Error updating user data:', error);
+      console.error('Error updating user ', error);
       // Don't throw error to prevent app crashes
     }
   }, [lastUserFetch]);

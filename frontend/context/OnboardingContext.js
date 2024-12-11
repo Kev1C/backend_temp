@@ -40,7 +40,7 @@ export const OnboardingProvider = ({ children, navigation }) => {
       setOnboardingData(prevData => {
         const updatedData = { ...prevData, ...newData };
         const key = user?.isGuest ? GUEST_ONBOARDING_DATA_KEY : ONBOARDING_DATA_KEY;
-        // Store updated data in SecureStore
+        // Ensure all values stored in SecureStore are strings
         SecureStore.setItemAsync(key, JSON.stringify(updatedData));
         resolve(updatedData);
         return updatedData;
@@ -81,6 +81,7 @@ export const OnboardingProvider = ({ children, navigation }) => {
       } else {
         // For guest users, just update the onboarding data in SecureStore
         const key = GUEST_ONBOARDING_DATA_KEY;
+        // Ensure all values stored in SecureStore are strings
         await SecureStore.setItemAsync(key, JSON.stringify(profileData));
       }
 
