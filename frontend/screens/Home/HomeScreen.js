@@ -58,10 +58,10 @@ const HomeScreen = () => {
   const fetchRecentMeals = useCallback(async (date) => {
     try {
       setLoadingStates(prev => ({ ...prev, meals: true }));
-      
+
       // Format date to YYYY-MM-DD in local timezone
       const formattedDate = new Date(date.getFullYear(), date.getMonth(), date.getDate()).toISOString();
-      
+
       if (isGuest) {
         // Get meals from local storage for guest mode
         const storedMeals = await AsyncStorage.getItem(`guest-meals-${formattedDate}`);
@@ -125,7 +125,7 @@ const HomeScreen = () => {
   // Fetch meals and nutrition data when date changes
   useEffect(() => {
     if (!authToken && !isGuest) return;
-    
+
     const fetchData = async () => {
       if (selectedDate) {
         console.log('Fetching data for date:', selectedDate);
@@ -135,38 +135,38 @@ const HomeScreen = () => {
             fetchDailyNutrition(selectedDate)
           ]);
         } catch (error) {
-          console.error('Error fetching nutrition data:', error);
+          console.error('Error fetching nutrition ', error);
         }
       }
     };
-    
+
     fetchData();
   }, [selectedDate, authToken, isGuest]); // Remove fetchRecentMeals and fetchDailyNutrition from deps
 
   // Update macros when daily nutrition data changes
   useEffect(() => {
     console.log('Daily nutrition update triggered:', dailyNutrition);
-    
+
     if (!dailyNutrition) return;
-    
+
     resetMacros();
     resetCalories();
-    
+
     const nutritionData = {
       calories: Number(dailyNutrition.calories) || 0,
       protein: Number(dailyNutrition.protein) || 0,
       carbs: Number(dailyNutrition.carbs) || 0,
       fat: Number(dailyNutrition.fat) || 0
     };
-    
+
     console.log('Updating nutrition with:', nutritionData);
-    
+
     addMacros(
       nutritionData.protein,
       nutritionData.carbs,
       nutritionData.fat
     );
-    
+
     addCalories(nutritionData.calories);
   }, [dailyNutrition]); // Update whenever dailyNutrition changes
 
@@ -188,7 +188,7 @@ const HomeScreen = () => {
   useEffect(() => {
     if (route.params?.addMeal && route.params?.updateProgress) {
       const { addMeal, updateProgress } = route.params;
-      
+
       const handleNewMeal = async () => {
         try {
           setLoadingStates(prev => ({ ...prev, saving: true }));
@@ -204,13 +204,13 @@ const HomeScreen = () => {
           setLoadingStates(prev => ({ ...prev, saving: false }));
         }
       };
-      
+
       handleNewMeal();
     }
   }, [route.params, selectedDate, isGuest, fetchRecentMeals, fetchDailyNutrition, saveGuestMealData]);
 
   console.log('Current macro progress:', macros);
-  console.log('Daily nutrition data:', dailyNutrition);
+  console.log('Daily nutrition ', dailyNutrition);
 
   // Memoize FAB onPress handler
   const handleFABPress = useCallback(() => {

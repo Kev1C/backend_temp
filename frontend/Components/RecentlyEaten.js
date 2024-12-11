@@ -45,7 +45,7 @@ const RecentlyEaten = ({ meals = [], isLoading = false }) => {
 
   const getItem = (data, index) => data[index];
   const getItemCount = (data) => data.length;
-  const keyExtractor = (item) => item.id?.toString() || item._id?.toString();
+  const keyExtractor = (item, index) => item.id?.toString() || item._id?.toString() || index.toString();
 
   if (isLoading) {
     return (
@@ -64,7 +64,7 @@ const RecentlyEaten = ({ meals = [], isLoading = false }) => {
           size={24} 
           color={theme.colors.disabled} 
         />
-        <Text style={styles.emptyText}>No meals logged today</Text>
+        <Text style={styles.emptyText}>No meals logged for this day</Text>
       </View>
     );
   }

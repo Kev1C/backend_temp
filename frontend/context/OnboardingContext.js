@@ -6,7 +6,7 @@ import { api } from '../services/api';
 export const OnboardingContext = createContext();
 
 export const OnboardingProvider = ({ children, navigation }) => {
-  const { signIn } = useContext(AuthContext);
+  const { signIn, user } = useContext(AuthContext);
   const [onboardingData, setOnboardingData] = useState({
     gender: null,
     height: null,
@@ -16,29 +16,32 @@ export const OnboardingProvider = ({ children, navigation }) => {
   });
 
   const ONBOARDING_DATA_KEY = 'onboardingData';
+  const GUEST_ONBOARDING_DATA_KEY = 'guestOnboardingData';
 
   // Load onboarding data from storage on mount
   useEffect(() => {
     const loadOnboardingData = async () => {
       try {
-        const storedData = await SecureStore.getItemAsync(ONBOARDING_DATA_KEY);
+        const key = user?.isGuest ? GUEST_ONBOARDING_DATA_KEY : ONBOARDING_DATA_KEY;
+        const storedData = await SecureStore.getItemAsync(key);
         if (storedData) {
           setOnboardingData(JSON.parse(storedData));
         }
       } catch (error) {
-        console.error('Error loading onboarding data:', error);
+        console.error('Error loading onboarding ', error);
       }
     };
 
     loadOnboardingData();
-  }, []);
+  }, [user]);
 
   const updateOnboardingData = async (newData) => {
     return new Promise(async (resolve) => {
       setOnboardingData(prevData => {
         const updatedData = { ...prevData, ...newData };
+        const key = user?.isGuest ? GUEST_ONBOARDING_DATA_KEY : ONBOARDING_DATA_KEY;
         // Store updated data in SecureStore
-        SecureStore.setItemAsync(ONBOARDING_DATA_KEY, JSON.stringify(updatedData));
+        SecureStore.setItemAsync(key, JSON.stringify(updatedData));
         resolve(updatedData);
         return updatedData;
       });
@@ -61,38 +64,33 @@ export const OnboardingProvider = ({ children, navigation }) => {
       // Merge onboarding data with authData
       const profileData = {
         ...onboardingData,
-        id: authData?.id, // Use existing ID if available
-        email: authData?.email, // Use existing email if available
-        provider: authData?.provider || 'email', // Default to 'email' if not provided
         isOnboardingComplete: true,
       };
 
-      // Check if the user is already registered
       if (authData && authData.type !== 'guest') {
         // Update existing user's profile
+        profileData.id = authData.id;
+        profileData.email = authData.email;
+        profileData.provider = authData.provider || 'email';
+
         await api.put('/auth/profile', profileData, {
           headers: {
             Authorization: `Bearer ${authData.token}`,
           },
         });
       } else {
-        // Register the guest user
-        const response = await api.post('/auth/register', {
-          type: 'guest',
-          userData: profileData,
-        });
-
-        // Use the token from registration response
-        authData.token = response.data.token;
+        // For guest users, just update the onboarding data in SecureStore
+        const key = GUEST_ONBOARDING_DATA_KEY;
+        await SecureStore.setItemAsync(key, JSON.stringify(profileData));
       }
 
-      // Mark onboarding as complete before signing in
-      const updatedOnboardingData = { ...onboardingData, isOnboardingComplete: true };
-      await SecureStore.setItemAsync(ONBOARDING_DATA_KEY, JSON.stringify(updatedOnboardingData));
-      setOnboardingData(updatedOnboardingData);
+      // Mark onboarding as complete
+      setOnboardingData(profileData);
 
-      // Sign in and update user data
-      await signIn(authData.token, { ...authData, ...updatedOnboardingData });
+      // Sign in if not a guest
+      if (authData && authData.type !== 'guest') {
+        await signIn(authData.token, { ...authData, ...profileData });
+      }
 
       return profileData;
     } catch (error) {
@@ -110,7 +108,8 @@ export const OnboardingProvider = ({ children, navigation }) => {
       isOnboardingComplete: false,
     };
     setOnboardingData(initialData);
-    await SecureStore.deleteItemAsync(ONBOARDING_DATA_KEY);
+    const key = user?.isGuest ? GUEST_ONBOARDING_DATA_KEY : ONBOARDING_DATA_KEY;
+    await SecureStore.deleteItemAsync(key);
   };
 
   return (
