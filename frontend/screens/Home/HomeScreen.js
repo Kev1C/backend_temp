@@ -1,6 +1,6 @@
 // frontend/screens/Home/HomeScreen.js
 import React, { useContext, useMemo, useState, useEffect, useCallback } from 'react';
-import { Text, SafeAreaView, View, Image, FlatList, ScrollView, StyleSheet } from 'react-native';
+import { Text, SafeAreaView, View, Image, FlatList, ScrollView, StyleSheet, AsyncStorage } from 'react-native';
 import { AuthContext } from '../../context/AuthContext';
 import { useTheme, FAB } from 'react-native-paper';
 import { useNavigation, useRoute } from '@react-navigation/native';
@@ -20,6 +20,13 @@ const HomeScreen = () => {
   const navigation = useNavigation();
   const route = useRoute();
   const styles = useMemo(() => createStyles(theme), [theme]);
+
+  // Add loading state indicators
+  const [loadingStates, setLoadingStates] = useState({
+    meals: false,
+    nutrition: false,
+    saving: false
+  });
 
   // Redirect to onboarding if not complete
   useEffect(() => {
@@ -50,32 +57,48 @@ const HomeScreen = () => {
   // Memoize fetchRecentMeals to prevent recreation on every render
   const fetchRecentMeals = useCallback(async (date) => {
     try {
-      setIsLoadingMeals(true);
+      setLoadingStates(prev => ({ ...prev, meals: true }));
       
-      // Handle guest mode
-      if (isGuest) {
-        // Use local storage or temporary state for guest mode
-        setRecentMeals([]);
-        return;
-      }
-
       // Format date to YYYY-MM-DD in local timezone
       const formattedDate = new Date(date.getFullYear(), date.getMonth(), date.getDate()).toISOString();
       
+      if (isGuest) {
+        // Get meals from local storage for guest mode
+        const storedMeals = await AsyncStorage.getItem(`guest-meals-${formattedDate}`);
+        setRecentMeals(storedMeals ? JSON.parse(storedMeals) : []);
+        return;
+      }
+
       const response = await cachedGet('/meals/recent', { 
         params: { date: formattedDate },
-        // Add cache configuration
         cacheKey: `meals-${formattedDate}`,
-        cacheTime: 5 * 60 * 1000, // Cache for 5 minutes
+        cacheTime: 5 * 60 * 1000,
       });
       setRecentMeals(response.data);
     } catch (error) {
       console.error('Error fetching recent meals:', error);
       setRecentMeals([]);
     } finally {
-      setIsLoadingMeals(false);
+      setLoadingStates(prev => ({ ...prev, meals: false }));
     }
   }, [isGuest]); // Add isGuest to dependency array
+
+  // Add function to save guest meal data
+  const saveGuestMealData = useCallback(async (meal, date) => {
+    try {
+      setLoadingStates(prev => ({ ...prev, saving: true }));
+      const formattedDate = new Date(date.getFullYear(), date.getMonth(), date.getDate()).toISOString();
+      const storedMeals = await AsyncStorage.getItem(`guest-meals-${formattedDate}`);
+      const currentMeals = storedMeals ? JSON.parse(storedMeals) : [];
+      const updatedMeals = [...currentMeals, meal];
+      await AsyncStorage.setItem(`guest-meals-${formattedDate}`, JSON.stringify(updatedMeals));
+      setRecentMeals(updatedMeals);
+    } catch (error) {
+      console.error('Error saving guest meal:', error);
+    } finally {
+      setLoadingStates(prev => ({ ...prev, saving: false }));
+    }
+  }, []);
 
   // Handle date selection from calendar - memoized to prevent unnecessary re-renders
   const handleDateSelect = useCallback(async (date) => {
@@ -161,103 +184,30 @@ const HomeScreen = () => {
 
   console.log('HomeScreen nutrient goals:', calculatedNutrients);
 
-  // Handle updates from camera screen
+  // Handle updates from camera screen with loading states
   useEffect(() => {
     if (route.params?.addMeal && route.params?.updateProgress) {
       const { addMeal, updateProgress } = route.params;
-      console.log('New meal added:', addMeal);
-      console.log('Progress update:', updateProgress);
-  
-      // Check if addMeal and updateProgress are the same as the previous values
-      if (addMeal === prevAddMeal && updateProgress === prevUpdateProgress) {
-        return;
-      }
-  
-      // Update the previous values
-      setPrevAddMeal(addMeal);
-      setPrevUpdateProgress(updateProgress);
       
-      // Update UI immediately for better user experience
-      const newMeal = {
-        ...addMeal,
-        id: Date.now(), // Temporary ID that will be replaced with server ID
-        createdAt: new Date().toISOString(),
-        date: selectedDate
+      const handleNewMeal = async () => {
+        try {
+          setLoadingStates(prev => ({ ...prev, saving: true }));
+          if (isGuest) {
+            await saveGuestMealData(addMeal, selectedDate);
+          } else {
+            await fetchRecentMeals(selectedDate);
+          }
+          await fetchDailyNutrition(selectedDate);
+        } catch (error) {
+          console.error('Error handling new meal:', error);
+        } finally {
+          setLoadingStates(prev => ({ ...prev, saving: false }));
+        }
       };
       
-      // Update meals list immediately
-      setRecentMeals(prevMeals => [newMeal, ...prevMeals]);
-      
-      // Update nutrition totals immediately for responsive UI
-      setDailyNutrition(prevNutrition => {
-        const currentNutrition = prevNutrition || { calories: 0, protein: 0, carbs: 0, fat: 0, meals: [] };
-        const updatedNutrition = {
-          calories: Number(currentNutrition.calories || 0) + Number(addMeal.calories || 0),
-          protein: Number(currentNutrition.protein || 0) + Number(addMeal.protein || 0),
-          carbs: Number(currentNutrition.carbs || 0) + Number(addMeal.carbs || 0),
-          fat: Number(currentNutrition.fat || 0) + Number(addMeal.fats || 0),
-          meals: [newMeal, ...(currentNutrition.meals || [])]
-        };
-        
-        // Update calorie and macro trackers
-        resetMacros();
-        resetCalories();
-        addMacros(
-          updatedNutrition.protein,
-          updatedNutrition.carbs,
-          updatedNutrition.fat
-        );
-        addCalories(updatedNutrition.calories);
-        
-        return updatedNutrition;
-      });
-      
-      // Only save to backend if not in guest mode
-      if (!isGuest) {
-        api.post('/meals', addMeal)
-          .then(response => {
-            console.log('Meal saved successfully:', response.data);
-            
-            // Update the meal with the server response data
-            setRecentMeals(prevMeals => 
-              prevMeals.map(meal => 
-                meal.id === newMeal.id ? { ...response.data } : meal
-              )
-            );
-            
-            // Force refresh nutrition data to ensure consistency
-            fetchDailyNutrition(selectedDate, true);
-          })
-          .catch(error => {
-            console.error('Error saving meal:', error);
-            // Remove the meal if saving failed
-            setRecentMeals(prevMeals => 
-              prevMeals.filter(meal => meal.id !== newMeal.id)
-            );
-            // Revert nutrition data
-            setDailyNutrition(prevNutrition => {
-              const currentNutrition = prevNutrition || { calories: 0, protein: 0, carbs: 0, fat: 0, meals: [] };
-              return {
-                calories: Number(currentNutrition.calories || 0) - Number(addMeal.calories || 0),
-                protein: Number(currentNutrition.protein || 0) - Number(addMeal.protein || 0),
-                carbs: Number(currentNutrition.carbs || 0) - Number(addMeal.carbs || 0),
-                fat: Number(currentNutrition.fat || 0) - Number(addMeal.fats || 0),
-                meals: currentNutrition.meals.filter(m => m.id !== newMeal.id)
-              };
-            });
-          })
-          .finally(() => {
-            // Clear route params after handling the new meal
-            navigation.setParams({ addMeal: null, updateProgress: null });
-          });
-      } else {
-        // Handle guest mode - just clear params since we've already updated the UI
-        navigation.setParams({ addMeal: null, updateProgress: null });
-      }
+      handleNewMeal();
     }
-  }, [route.params, navigation, isGuest, selectedDate, fetchDailyNutrition, 
-     prevAddMeal, prevUpdateProgress, setDailyNutrition, 
-     resetMacros, resetCalories, addMacros, addCalories]);
+  }, [route.params, selectedDate, isGuest, fetchRecentMeals, fetchDailyNutrition, saveGuestMealData]);
 
   console.log('Current macro progress:', macros);
   console.log('Daily nutrition data:', dailyNutrition);
@@ -285,7 +235,7 @@ const HomeScreen = () => {
           <Text style={styles.sectionTitle}>Recently Eaten</Text>
           <MemoizedRecentlyEaten 
             meals={recentMeals} 
-            isLoading={isLoadingMeals}
+            isLoading={loadingStates.meals}
           />
         </View>
         <FAB

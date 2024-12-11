@@ -114,6 +114,29 @@ export const AuthProvider = ({ children }) => {
     }
   }, [authenticateWithBackend]);
 
+  const signIn = useCallback(async (token, userData) => {
+    try {
+      await Promise.all([
+        SecureStore.setItemAsync(SIGNIN_KEY, token),
+        SecureStore.setItemAsync(USER_DATA_KEY, JSON.stringify(userData))
+      ]);
+      
+      setAuthToken(token);
+      setUser(userData);
+      
+      // Set up token refresh
+      const decoded = jwtDecode(token);
+      const timeoutId = setTimeout(
+        () => refreshAccessToken(),
+        (decoded.exp * 1000) - Date.now() - 60000
+      );
+      setTokenRefreshTimeout(timeoutId);
+    } catch (error) {
+      console.error('Sign in error:', error);
+      throw error;
+    }
+  }, [refreshAccessToken]);
+
   const refreshAccessToken = useCallback(async () => {
     try {
       const refreshToken = await SecureStore.getItemAsync(REFRESH_TOKEN_KEY);
@@ -214,17 +237,18 @@ export const AuthProvider = ({ children }) => {
   return (
     <AuthContext.Provider
       value={{
+        signIn,
         signInWithGoogle,
         signInAnonymously,
         signOut,
+        updateUserData,
+        validateToken,
         authToken,
-        firebaseToken,
         user,
         loading,
-        updateUserData,
       }}
     >
-      {!loading && children}
+      {children}
     </AuthContext.Provider>
   );
 };
