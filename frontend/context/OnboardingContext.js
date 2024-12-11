@@ -50,16 +50,16 @@ export const OnboardingProvider = ({ children, navigation }) => {
     return Boolean(gender && height && weight && fitnessGoal);
   };
 
-  const completeOnboarding = async (authData) => {
+  const completeOnboarding = async (authData = {}) => {
     try {
       const { gender, height, weight, fitnessGoal } = onboardingData;
-      
+
       if (!gender || !height || !weight || !fitnessGoal) {
         throw new Error('Incomplete onboarding data');
       }
 
-      // For guest users, register first
-      if (authData.type === 'guest') {
+      // Check if authData exists and has a type property before accessing it
+      if (authData && authData.type === 'guest') {
         const response = await api.post('/auth/register', {
           type: 'guest',
           userData: {

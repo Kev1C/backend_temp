@@ -26,10 +26,20 @@ export const signInAsGuest = async () => {
   try {
     const userCredential = await signInAnonymously(auth);
     const user = userCredential.user;
-    // Return the user object directly
+    if (!user) {
+      throw new Error('User object is undefined');
+    }
+
+    const token = await user.getIdToken(true);
+
+    // Return a consistent object structure
     return {
       user,
-      token: await user.getIdToken(true)
+      token,
+      type: 'guest', // Add the type property for consistency
+      id: user.uid,
+      email: user.email || null, // Handle potential null email
+      provider: 'guest'
     };
   } catch (error) {
     console.error('Anonymous sign-in error:', error);
