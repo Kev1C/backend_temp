@@ -35,30 +35,31 @@ const useDailyNutrition = () => {
   const fetchDailyNutrition = useCallback(async (date, force = false) => {
     // Get user ID from any available field
     const userId = user?.userId || user?.id || user?._id;
-
-    // Prevent unnecessary API calls if no user ID or dailyNutrition is already null
+  
+    // Prevent unnecessary API calls if no user ID
     if (!userId) {
       console.log('No user ID available. User object:', user);
       return;
     }
-
+  
+    // Prevent fetching if dailyNutrition is already null and not forced
     if (dailyNutrition === null && !force) {
       console.log('dailyNutrition is already null, skipping fetch');
       return;
     }
-
+  
     const formattedDate = formatDate(date);
     console.log(`Fetching nutrition for date: ${formattedDate}, userId: ${userId}`);
-
+  
     const cacheKey = getCacheKey(date);
-
+  
     // Always fetch if force is true or after adding a meal
     if (force) {
       console.log('Force refresh requested, clearing cache');
       cache.current.delete(cacheKey);
       lastFetch.current.delete(cacheKey);
     }
-
+  
     // Return cached data if available and not forced refresh
     if (!force && !shouldFetch(cacheKey)) {
       const cachedData = cache.current.get(cacheKey);
@@ -72,29 +73,36 @@ const useDailyNutrition = () => {
         return;
       }
     }
-
+  
     setLoading(true);
     try {
       console.log('Making API request for nutrition data...');
       const response = await api.get(`/nutrition/daily/${formattedDate}`);
       console.log('Received nutrition ', response.data);
-
+  
       // Update dailyNutrition even if the response is empty
       const newDailyNutrition = response.data || { calories: 0, protein: 0, carbs: 0, fat: 0, meals: [] };
-
+  
       // Update local cache
       cache.current.set(cacheKey, newDailyNutrition);
       lastFetch.current.set(cacheKey, Date.now());
-
-      setDailyNutrition(newDailyNutrition);
+  
+      // Only update state if newDailyNutrition is different from current dailyNutrition
+      if (!isEqual(newDailyNutrition, dailyNutrition)) {
+        setDailyNutrition(newDailyNutrition);
+      }
     } catch (error) {
       console.error('Error fetching nutrition:', error);
       handleError(error.message || 'Failed to fetch nutrition data');
-      setDailyNutrition({ calories: 0, protein: 0, carbs: 0, fat: 0, meals: [] });
+      // Only set dailyNutrition to default if it's not already set
+      if (dailyNutrition === null) {
+        setDailyNutrition({ calories: 0, protein: 0, carbs: 0, fat: 0, meals: [] });
+      }
     } finally {
       setLoading(false);
     }
   }, [user, formatDate, getCacheKey, shouldFetch, handleError, dailyNutrition]);
+  
 
   const clearCache = useCallback(() => {
     cache.current.clear();

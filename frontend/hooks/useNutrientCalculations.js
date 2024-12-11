@@ -3,26 +3,24 @@ import { AuthContext } from '../context/AuthContext';
 
 const useNutrientCalculations = () => {
   const { user } = useContext(AuthContext);
-  
+
   const calculateNutrients = () => {
-    // If user is null or undefined, return default values
+    // If user is null or undefined, return default values based on an average adult
     if (!user) {
-      console.log('No user data available, returning default values');
+      console.log('No user data available, returning default values for an average adult');
       return {
-        calories: 2000, // Default daily calorie intake
-        protein: 150,   // Default protein in grams
-        fat: 65,        // Default fat in grams
-        carbs: 250      // Default carbs in grams
+        calories: 2000, // Average daily calorie intake
+        protein: 56,   // Average protein in grams for an adult male
+        fat: 70,        // Average fat in grams
+        carbs: 310      // Average carbs in grams
       };
     }
 
     const { gender, weight, height, goal } = user;
-    
-    console.log('Raw user ', { gender, weight, height, goal });
-    
+
     // Validate user data and provide default values if needed
     const validatedData = {
-      gender: gender?.toLowerCase() || 'male',
+      gender: gender?.toLowerCase() || 'male', // Default male
       weight: typeof weight === 'number' && weight > 0 ? weight : 70, // Default 70kg
       height: typeof height === 'number' && height > 0 ? height : 170, // Default 170cm
       goal: ['lose_weight', 'get_fitter', 'gain_muscle'].includes(goal) ? goal : 'get_fitter' // Default goal
@@ -35,8 +33,6 @@ const useNutrientCalculations = () => {
     } else {
       BMR = (10 * validatedData.weight) + (6.25 * validatedData.height) - 161;
     }
-
-    console.log('Calculated BMR:', BMR);
 
     // Calculate daily calories based on goal
     let calories;
@@ -53,8 +49,6 @@ const useNutrientCalculations = () => {
       default:
         calories = BMR; // Default to maintenance calories
     }
-
-    console.log('Calculated calories:', calories);
 
     // Calculate protein requirements (in grams)
     let protein;
