@@ -89,11 +89,8 @@ export const OnboardingProvider = ({ children, navigation }) => {
         return updatedData;
       }
 
-      // For social auth users, update their profile
-      const token = await SecureStore.getItemAsync('authToken');
-      if (!token) {
-        throw new Error('No authentication token found');
-      }
+      // Update AuthContext with profile data
+      await signIn(token, profileData);
 
       const profileData = {
         ...onboardingData,
@@ -111,12 +108,12 @@ export const OnboardingProvider = ({ children, navigation }) => {
       });
       
       // Mark onboarding as complete and store in SecureStore
-      const updatedData = {
+      const updatedOnboardingData = {
         ...onboardingData,
         isOnboardingComplete: true
       };
-      setOnboardingData(updatedData);
-      await SecureStore.setItemAsync(ONBOARDING_DATA_KEY, JSON.stringify(updatedData));
+      setOnboardingData(updatedOnboardingData);
+      await SecureStore.setItemAsync(ONBOARDING_DATA_KEY, JSON.stringify(updatedOnboardingData));
 
       return profileData;
     } catch (error) {
