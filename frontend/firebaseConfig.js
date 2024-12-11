@@ -22,24 +22,34 @@ const auth = initializeAuth(app, {
 });
 
 // Helper functions
-export const getFirebaseToken = async () => {
+export const signInAsGuest = async () => {
   try {
-    const currentUser = auth.currentUser;
-    if (currentUser) {
-      return await currentUser.getIdToken(true);
-    }
-    return null;
+    const userCredential = await signInAnonymously(auth);
+    const user = userCredential.user;
+    // Return the user object directly
+    return {
+      user,
+      token: await user.getIdToken(true)
+    };
   } catch (error) {
-    console.error('Error getting Firebase token:', error);
+    console.error('Anonymous sign-in error:', error);
     throw error;
   }
 };
 
-export const signInAsGuest = async () => {
+export const getFirebaseToken = async (user = null) => {
   try {
-    return await signInAnonymously(auth);
+    if (user) {
+      return await user.getIdToken(true);
+    } else {
+      const currentUser = auth.currentUser;
+      if (currentUser) {
+        return await currentUser.getIdToken(true);
+      }
+      return null;
+    }
   } catch (error) {
-    console.error('Anonymous sign-in error:', error);
+    console.error('Error getting Firebase token:', error);
     throw error;
   }
 };
