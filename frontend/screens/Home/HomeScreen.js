@@ -12,6 +12,7 @@ import useDailyNutrition from '../../hooks/useDailyNutrition';
 import { MemoizedWeekCalendar, MemoizedCalorieProgress, MemoizedRecentlyEaten } from './MemoizedComponents';
 import { api, cachedGet } from '../../services/api';
 import { OnboardingContext } from '../../context/OnboardingContext';
+import isEqual from 'lodash/isEqual';
 
 const HomeScreen = () => {
   const { user, authToken, isGuest } = useContext(AuthContext);
@@ -121,11 +122,13 @@ const HomeScreen = () => {
   // Fetch meals and nutrition data when date changes
   useEffect(() => {
     if (!authToken && !isGuest) return;
-
+  
     const fetchData = async () => {
       if (selectedDate) {
         console.log('Fetching data for date:', selectedDate);
         try {
+          // Reset daily nutrition before fetching new data
+          setDailyNutrition(null);
           await Promise.all([
             fetchRecentMeals(selectedDate),
             fetchDailyNutrition(selectedDate)
@@ -135,36 +138,40 @@ const HomeScreen = () => {
         }
       }
     };
-
+  
     fetchData();
-  }, [selectedDate, authToken, isGuest]); // Remove fetchRecentMeals and fetchDailyNutrition from deps
+  }, [selectedDate, authToken, isGuest, fetchDailyNutrition, fetchRecentMeals]);
+  
 
   // Update macros when daily nutrition data changes
   useEffect(() => {
     console.log('Daily nutrition update triggered:', dailyNutrition);
-
-    if (!dailyNutrition) return;
-
+  
+    // Skip if dailyNutrition is null or unchanged
+    if (!dailyNutrition || isEqual(dailyNutrition, { calories: 0, protein: 0, carbs: 0, fat: 0, meals: [] })) {
+      console.log('Skipping update due to null or unchanged dailyNutrition');
+      return;
+    }
+  
+    // Reset macros and calories before updating
     resetMacros();
     resetCalories();
-
+  
+    // Extract and update nutrition data
     const nutritionData = {
       calories: Number(dailyNutrition.calories) || 0,
       protein: Number(dailyNutrition.protein) || 0,
       carbs: Number(dailyNutrition.carbs) || 0,
       fat: Number(dailyNutrition.fat) || 0
     };
-
+  
     console.log('Updating nutrition with:', nutritionData);
-
-    addMacros(
-      nutritionData.protein,
-      nutritionData.carbs,
-      nutritionData.fat
-    );
-
+  
+    // Update macros and calories
+    addMacros(nutritionData.protein, nutritionData.carbs, nutritionData.fat);
     addCalories(nutritionData.calories);
-  }, [dailyNutrition]); // Update whenever dailyNutrition changes
+  }, [dailyNutrition, resetMacros, resetCalories, addMacros, addCalories]);
+  
 
   // Memoize nutrients data
   const nutrients = useMemo(() => ({
@@ -184,26 +191,53 @@ const HomeScreen = () => {
   useEffect(() => {
     if (route.params?.addMeal && route.params?.updateProgress) {
       const { addMeal, updateProgress } = route.params;
-
+  
       const handleNewMeal = async () => {
         try {
           setLoadingStates(prev => ({ ...prev, saving: true }));
+          
+          // Update dailyNutrition state here
+          setDailyNutrition(prevDailyNutrition => {
+            const updatedNutrition = {
+              ...prevDailyNutrition,
+              calories: (Number(prevDailyNutrition?.calories || 0) + Number(updateProgress.calories)).toString(),
+              carbs: (Number(prevDailyNutrition?.carbs || 0) + Number(updateProgress.carbs)).toString(),
+              protein: (Number(prevDailyNutrition?.protein || 0) + Number(updateProgress.protein)).toString(),
+              fat: (Number(prevDailyNutrition?.fat || 0) + Number(updateProgress.fats)).toString(),
+              meals: [...(prevDailyNutrition?.meals || []), addMeal],
+            };
+            console.log('Updated daily nutrition:', updatedNutrition);
+            return updatedNutrition;
+          });
+
+          // Update macros
+          addMacros(
+            Number(updateProgress.protein),
+            Number(updateProgress.carbs),
+            Number(updateProgress.fats)
+          );
+
+          // Update calories
+          addCalories(Number(updateProgress.calories));
+  
           if (isGuest) {
             await saveGuestMealData(addMeal, selectedDate);
           } else {
-            await fetchRecentMeals(selectedDate);
+            setRecentMeals(prevMeals => [...prevMeals, addMeal]);
           }
-          await fetchDailyNutrition(selectedDate);
+          
+          // No need to call fetchDailyNutrition here since we're updating it directly
         } catch (error) {
           console.error('Error handling new meal:', error);
         } finally {
           setLoadingStates(prev => ({ ...prev, saving: false }));
         }
       };
-
+  
       handleNewMeal();
     }
-  }, [route.params, selectedDate, isGuest, fetchRecentMeals, fetchDailyNutrition, saveGuestMealData]);
+  }, [route.params, selectedDate, isGuest, fetchRecentMeals, saveGuestMealData, setDailyNutrition]);
+  
 
   console.log('Current macro progress:', macros);
   console.log('Daily nutrition ', dailyNutrition);
