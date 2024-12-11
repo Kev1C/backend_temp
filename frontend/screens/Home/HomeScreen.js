@@ -1,21 +1,21 @@
 // frontend/screens/Home/HomeScreen.js
-import React, { useContext, useMemo, useState, useEffect, useCallback } from 'react';
-import { Text, SafeAreaView, View, Image, FlatList, ScrollView, StyleSheet, AsyncStorage } from 'react-native';
-import { AuthContext } from '../../context/AuthContext';
+import React, { useMemo, useState, useEffect, useCallback } from 'react';
+import { Text, SafeAreaView, View, Image, FlatList, ScrollView, StyleSheet } from 'react-native';
 import { useTheme, FAB } from 'react-native-paper';
 import { useNavigation, useRoute } from '@react-navigation/native';
+import { useAuthStore } from '../../stores/authStore';
+import { useNutritionStore } from '../../stores/nutritionStore';
 import createStyles from './HomeScreenStyles';
 import useCalorieTracker from '../../hooks/useCalorieTracker';
 import useNutrientCalculations from '../../hooks/useNutrientCalculations';
 import useMacroTracker from '../../hooks/useMacroTracker';
-import useDailyNutrition from '../../hooks/useDailyNutrition';
 import { MemoizedWeekCalendar, MemoizedCalorieProgress, MemoizedRecentlyEaten } from './MemoizedComponents';
-import { api, cachedGet } from '../../services/api';
+import { api } from '../../services/api';
 import { OnboardingContext } from '../../context/OnboardingContext';
 import isEqual from 'lodash/isEqual';
 
 const HomeScreen = () => {
-  const { user, authToken, isGuest } = useContext(AuthContext);
+  const { user, authToken, isGuest } = useAuthStore();
   const { onboardingData } = useContext(OnboardingContext);
   const theme = useTheme();
   const navigation = useNavigation();
@@ -42,10 +42,9 @@ const HomeScreen = () => {
   // Get daily nutrition data
   const { 
     dailyNutrition, 
-    fetchDailyNutrition,
-    setDailyNutrition,
-    isLoading: isLoadingNutrition 
-  } = useDailyNutrition();
+    isLoading: isLoadingNutrition, 
+    fetchDailyNutrition 
+  } = useNutritionStore();
 
   // Memoize fetchRecentMeals to prevent recreation on every render
   const fetchRecentMeals = useCallback(async (date) => {
@@ -62,10 +61,8 @@ const HomeScreen = () => {
         return;
       }
 
-      const response = await cachedGet('/meals/recent', { 
+      const response = await api.get('/meals/recent', { 
         params: { date: formattedDate },
-        cacheKey: `meals-${formattedDate}`,
-        cacheTime: 5 * 60 * 1000,
       });
       setRecentMeals(response.data);
     } catch (error) {
@@ -192,18 +189,7 @@ const HomeScreen = () => {
           setLoadingStates(prev => ({ ...prev, saving: true }));
 
           // Update dailyNutrition state here
-          setDailyNutrition(prevDailyNutrition => {
-            const updatedNutrition = {
-              ...prevDailyNutrition,
-              calories: (Number(prevDailyNutrition?.calories || 0) + Number(updateProgress.calories)).toString(),
-              carbs: (Number(prevDailyNutrition?.carbs || 0) + Number(updateProgress.carbs)).toString(),
-              protein: (Number(prevDailyNutrition?.protein || 0) + Number(updateProgress.protein)).toString(),
-              fat: (Number(prevDailyNutrition?.fat || 0) + Number(updateProgress.fats)).toString(),
-              meals: [...(prevDailyNutrition?.meals || []), addMeal],
-            };
-            console.log('Updated daily nutrition:', updatedNutrition);
-            return updatedNutrition;
-          });
+          // Removed since we now have a dedicated store
 
           // Update macros
           addMacros(
@@ -232,7 +218,7 @@ const HomeScreen = () => {
 
       handleNewMeal();
     }
-  }, [route.params, selectedDate, isGuest, fetchRecentMeals, saveGuestMealData, setDailyNutrition, fetchDailyNutrition]);
+  }, [route.params, selectedDate, isGuest, fetchRecentMeals, saveGuestMealData, fetchDailyNutrition]);
 
   console.log('Current macro progress:', macros);
   console.log('Daily nutrition ', dailyNutrition);

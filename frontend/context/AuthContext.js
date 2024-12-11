@@ -1,62 +1,23 @@
 // frontend/context/AuthContext.js
 
-import React, { createContext, useEffect, useCallback } from 'react';
-import { Alert } from 'react-native';
+// This file is deprecated and will be removed.
+// All authentication state management has been moved to stores/authStore.js
+// Please use useAuthStore() instead of AuthContext
+
+import React from 'react';
 import { useAuthStore } from '../stores/authStore';
 
-export const AuthContext = createContext();
+// Keep this temporarily for backward compatibility
+export const AuthContext = React.createContext(null);
 
 export const AuthProvider = ({ children }) => {
-  const {
-    initializeAuth,
-    signIn,
-    signInWithGoogle,
-    signInAnonymously,
-    signOut,
-    updateUserData,
-    validateToken,
-    authToken,
-    user,
-    loading
-  } = useAuthStore();
-
-  useEffect(() => {
-    initializeAuth();
-  }, [initializeAuth]);
-
-  useEffect(() => {
-    const handleSessionExpired = () => {
-      Alert.alert(
-        'Session Expired',
-        'Your session has expired. Please log in again.',
-        [{ text: 'OK', onPress: () => signOut() }]
-      );
-    };
-    eventEmitter.on('sessionExpired', handleSessionExpired);
-    return () => eventEmitter.off('sessionExpired', handleSessionExpired);
-  }, [signOut]);
-
-  useEffect(() => {
-    if (authToken && !user) {
-      updateUserData(true);
-    }
-  }, [authToken, user, updateUserData]);
-
+  const authStore = useAuthStore();
+  
   return (
-    <AuthContext.Provider
-      value={{
-        signIn,
-        signInWithGoogle,
-        signInAnonymously,
-        signOut,
-        updateUserData,
-        validateToken,
-        authToken,
-        user,
-        loading,
-      }}
-    >
+    <AuthContext.Provider value={authStore}>
       {children}
     </AuthContext.Provider>
   );
 };
+
+// TODO: Remove this file once all components have been migrated to use useAuthStore

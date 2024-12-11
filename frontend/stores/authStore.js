@@ -1,5 +1,4 @@
-// frontend/stores/authStore.js
-
+// frontend/stores/authStore.ts
 import { create } from 'zustand';
 import * as SecureStore from 'expo-secure-store';
 import { Alert } from 'react-native';
@@ -7,6 +6,7 @@ import jwtDecode from 'jwt-decode';
 import { api, eventEmitter } from '../services/api';
 import { auth, signInAsGuest } from '../firebaseConfig';
 import { GoogleAuthProvider, signInWithCredential } from '@firebase/auth';
+import { AuthState, User } from '../types/store';
 
 const SIGNIN_KEY = 'authToken';
 const REFRESH_TOKEN_KEY = 'refreshToken';
@@ -14,15 +14,17 @@ const FIREBASE_TOKEN_KEY = 'firebaseToken';
 const USER_DATA_KEY = 'userData';
 const USER_FETCH_INTERVAL = 300000; // 5 minutes
 
-export const useAuthStore = create((set, get) => ({
+export const useAuthStore = create<AuthState>((set, get) => ({
   authToken: null,
   firebaseToken: null,
   user: null,
-  loading: true,
+  loading: false,
+  error: null,
   lastUserFetch: null,
 
   initializeAuth: async () => {
     try {
+      set({ loading: true });
       const [storedToken, storedFirebaseToken, storedUser] = await Promise.all([
         SecureStore.getItemAsync(SIGNIN_KEY),
         SecureStore.getItemAsync(FIREBASE_TOKEN_KEY),
@@ -38,7 +40,7 @@ export const useAuthStore = create((set, get) => ({
             authToken: storedToken,
             firebaseToken: storedFirebaseToken,
             user: JSON.parse(storedUser),
-            loading: false
+            loading: false,
           });
 
           // Set up refresh timer
@@ -50,17 +52,16 @@ export const useAuthStore = create((set, get) => ({
           // Token expired, try refresh
           await get().refreshAccessToken();
         }
-      } else {
-        set({ loading: false });
       }
     } catch (error) {
-      console.warn('Auth initialization error:', error);
-      set({ loading: false });
+      set({ error: error.message, loading: false });
+      console.error('Error initializing auth:', error);
     }
   },
 
-  authenticateWithBackend: async (fbToken) => {
+  authenticateWithBackend: async (fbToken: string) => {
     try {
+      set({ loading: true, error: null });
       const response = await api.post('/auth/verify-token', {
         firebaseToken: fbToken
       });
@@ -82,72 +83,52 @@ export const useAuthStore = create((set, get) => ({
       set({
         authToken: backendToken,
         firebaseToken: fbToken,
-        user: userData
+        user: userData,
+        loading: false,
       });
+
+      // Set up token refresh
+      const decoded = jwtDecode(backendToken);
+      setTimeout(
+        get().refreshAccessToken,
+        (decoded.exp * 1000) - Date.now() - 60000
+      );
 
       return backendToken;
     } catch (error) {
-      console.error('Backend authentication error:', error);
+      set({ error: error.message, loading: false });
       throw new Error('Authentication failed: ' + error.message);
     }
   },
 
-  signInWithGoogle: async (idToken) => {
+  signInWithGoogle: async (idToken: string) => {
     try {
+      set({ loading: true, error: null });
       const credential = GoogleAuthProvider.credential(idToken);
-      const userCredential = await signInWithCredential(auth, credential);
-      const fbToken = await userCredential.user.getIdToken();
-      return await get().authenticateWithBackend(fbToken);
+      const result = await signInWithCredential(auth, credential);
+      const fbToken = await result.user.getIdToken();
+      await get().authenticateWithBackend(fbToken);
     } catch (error) {
-      console.error('Google sign in error:', error);
+      set({ error: error.message, loading: false });
       throw new Error('Google sign in failed: ' + error.message);
     }
   },
 
   signInAnonymously: async () => {
     try {
-      const userCredential = await signInAsGuest();
-      const fbToken = await userCredential.user.getIdToken();
-      const backendToken = await get().authenticateWithBackend(fbToken);
-
-      set(state => ({
-        user: { ...state.user, isGuest: true }
-      }));
-
-      return backendToken;
+      set({ loading: true, error: null });
+      const result = await signInAsGuest();
+      const fbToken = await result.user.getIdToken();
+      await get().authenticateWithBackend(fbToken);
     } catch (error) {
-      console.error('Anonymous sign in error:', error);
+      set({ error: error.message, loading: false });
       throw new Error('Guest sign in failed: ' + error.message);
-    }
-  },
-
-  signIn: async (token, userData) => {
-    try {
-      // Ensure all values stored in SecureStore are strings
-      await Promise.all([
-        SecureStore.setItemAsync(SIGNIN_KEY, token),
-        SecureStore.setItemAsync(USER_DATA_KEY, JSON.stringify(userData))
-      ]);
-
-      set({
-        authToken: token,
-        user: userData
-      });
-
-      // Set up token refresh
-      const decoded = jwtDecode(token);
-      setTimeout(
-        get().refreshAccessToken,
-        (decoded.exp * 1000) - Date.now() - 60000
-      );
-    } catch (error) {
-      console.error('Sign in error:', error);
-      throw new Error('Sign in failed: ' + error.message);
     }
   },
 
   refreshAccessToken: async () => {
     try {
+      set({ loading: true, error: null });
       const refreshToken = await SecureStore.getItemAsync(REFRESH_TOKEN_KEY);
       if (!refreshToken) {
         throw new Error('No refresh token available');
@@ -169,73 +150,57 @@ export const useAuthStore = create((set, get) => ({
         SecureStore.setItemAsync(REFRESH_TOKEN_KEY, newRefreshToken)
       ]);
 
-      set({ authToken: newToken });
+      set({
+        authToken: newToken,
+        loading: false,
+      });
     } catch (error) {
+      set({ error: error.message, loading: false });
       console.error('Error refreshing token:', error);
-      await get().signOut();
     }
   },
 
   signOut: async () => {
     try {
-      // Sign out from Firebase
-      await auth.signOut();
-
-      set({
-        authToken: null,
-        firebaseToken: null,
-        user: null
-      });
-
-      // Clear all auth-related data
+      set({ loading: true, error: null });
       await Promise.all([
         SecureStore.deleteItemAsync(SIGNIN_KEY),
         SecureStore.deleteItemAsync(REFRESH_TOKEN_KEY),
         SecureStore.deleteItemAsync(FIREBASE_TOKEN_KEY),
         SecureStore.deleteItemAsync(USER_DATA_KEY),
       ]);
+      set({
+        authToken: null,
+        firebaseToken: null,
+        user: null,
+        loading: false,
+      });
     } catch (error) {
-      console.error('Error during sign-out:', error);
-      Alert.alert('Error', 'Failed to log out.');
+      set({ error: error.message, loading: false });
+      throw error;
     }
   },
 
-  updateUserData: async (force = false) => {
+  updateUserData: async (force: boolean = false) => {
+    const { lastUserFetch } = get();
+    if (!force && lastUserFetch && Date.now() - lastUserFetch < USER_FETCH_INTERVAL) {
+      return;
+    }
+
     try {
-      const now = Date.now();
-      if (!force && get().lastUserFetch && (now - get().lastUserFetch < USER_FETCH_INTERVAL)) {
-        return;
-      }
+      set({ loading: true, error: null });
+      const response = await api.get('/user/profile');
+      const userData: User = response.data;
 
-      const cachedUser = await SecureStore.getItemAsync(USER_DATA_KEY);
-      if (!force && cachedUser) {
-        set({ user: JSON.parse(cachedUser) });
-      }
-
-      const response = await api.get('/auth/me');
-      const userData = response.data;
-
+      await SecureStore.setItemAsync(USER_DATA_KEY, JSON.stringify(userData));
       set({
         user: userData,
-        lastUserFetch: now
+        lastUserFetch: Date.now(),
+        loading: false,
       });
-
-      // Ensure all values stored in SecureStore are strings
-      await SecureStore.setItemAsync(USER_DATA_KEY, JSON.stringify(userData));
     } catch (error) {
-      console.error('Error updating user ', error);
-      // Don't throw error to prevent app crashes
+      set({ error: error.message, loading: false });
+      throw error;
     }
   },
-
-  validateToken: (token) => {
-    try {
-      if (!token || token.split('.').length !== 3) return false;
-      const decoded = jwtDecode(token);
-      return decoded.exp * 1000 > Date.now();
-    } catch (error) {
-      console.error('Token validation error:', error);
-      return false;
-    }
-  }
 }));
