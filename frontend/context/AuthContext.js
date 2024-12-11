@@ -117,7 +117,7 @@ export const AuthProvider = ({ children }) => {
   const refreshAccessToken = useCallback(async () => {
     try {
       const refreshToken = await SecureStore.getItemAsync(REFRESH_TOKEN_KEY);
-      const response = await api.post('/refresh', { refreshToken });
+      const response = await api.post('/auth/refresh', { refreshToken });
       const { token: newToken, refreshToken: newRefreshToken } = response.data;
       await Promise.all([
         SecureStore.setItemAsync(SIGNIN_KEY, newToken),
