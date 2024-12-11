@@ -28,14 +28,6 @@ const HomeScreen = () => {
     saving: false
   });
 
-  // Redirect to onboarding if not complete
-  useEffect(() => {
-    if (user && !onboardingData.isOnboardingComplete) {
-      navigation.navigate('Onboarding');
-      return;
-    }
-  }, [user, onboardingData, navigation]);
-
   // Get calculated nutrients (these are the daily goals)
   const calculatedNutrients = useNutrientCalculations();
 
@@ -110,17 +102,21 @@ const HomeScreen = () => {
     macros,
     addMacros,
     resetMacros,
-  } = useMacroTracker(
-    calculatedNutrients.protein,
-    calculatedNutrients.carbs,
-    calculatedNutrients.fat
-  );
+  } = useMacroTracker();
 
   const {
     calories,
     addCalories,
     resetCalories,
-  } = useCalorieTracker(0, calculatedNutrients.calories);
+  } = useCalorieTracker();
+
+  // Redirect to onboarding if not complete
+  useEffect(() => {
+    if (user && !onboardingData.isOnboardingComplete) {
+      navigation.navigate('Onboarding');
+      return;
+    }
+  }, [user, onboardingData, navigation]);
 
   // Fetch meals and nutrition data when date changes
   useEffect(() => {
@@ -173,13 +169,13 @@ const HomeScreen = () => {
   // Memoize nutrients data
   const nutrients = useMemo(() => ({
     calories: dailyNutrition?.calories || 0,
-    caloriesGoal: calculatedNutrients.calories,
+    caloriesGoal: calculatedNutrients?.calories || 0,
     carbs: dailyNutrition?.carbs || 0,
-    carbsGoal: calculatedNutrients.carbs,
+    carbsGoal: calculatedNutrients?.carbs || 0,
     fat: dailyNutrition?.fat || 0,
-    fatGoal: calculatedNutrients.fat,
+    fatGoal: calculatedNutrients?.fat || 0,
     protein: dailyNutrition?.protein || 0,
-    proteinGoal: calculatedNutrients.protein,
+    proteinGoal: calculatedNutrients?.protein || 0,
   }), [dailyNutrition, calculatedNutrients]);
 
   console.log('HomeScreen nutrient goals:', calculatedNutrients);

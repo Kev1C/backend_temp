@@ -18,14 +18,14 @@ const useNutrientCalculations = () => {
 
     const { gender, weight, height, goal } = user;
     
-    console.log('Raw user data:', { gender, weight, height, goal });
+    console.log('Raw user ', { gender, weight, height, goal });
     
     // Validate user data and provide default values if needed
     const validatedData = {
       gender: gender?.toLowerCase() || 'male',
       weight: typeof weight === 'number' && weight > 0 ? weight : 70, // Default 70kg
       height: typeof height === 'number' && height > 0 ? height : 170, // Default 170cm
-      goal: ['lose_weight', 'get_fitter', 'gain_muscle'].includes(goal) ? goal : 'get_fitter'
+      goal: ['lose_weight', 'get_fitter', 'gain_muscle'].includes(goal) ? goal : 'get_fitter' // Default goal
     };
 
     // Calculate BMR using validated data

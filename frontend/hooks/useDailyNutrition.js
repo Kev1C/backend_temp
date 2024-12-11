@@ -57,7 +57,7 @@ const useDailyNutrition = () => {
     if (!force && !shouldFetch(cacheKey)) {
       const cachedData = cache.current.get(cacheKey);
       if (cachedData) {
-        console.log('Using cached nutrition data:', cachedData);
+        console.log('Using cached nutrition ', cachedData);
         setDailyNutrition(cachedData);
         return;
       }
@@ -67,7 +67,7 @@ const useDailyNutrition = () => {
     try {
       console.log('Making API request for nutrition data...');
       const response = await api.get(`/nutrition/daily/${formattedDate}`);
-      console.log('Received nutrition data:', response.data);
+      console.log('Received nutrition ', response.data);
 
       if (!response.data) {
         console.log('No nutrition data received from API');
