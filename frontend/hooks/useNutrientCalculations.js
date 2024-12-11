@@ -74,7 +74,6 @@ const useNutrientCalculations = () => {
 
     // Calculate fat requirements (in grams)
     let fat = (calories * 0.25) / 9; // 25% of calories from fat
-
     // Calculate carbs requirements (in grams)
     let carbs = (calories - (protein * 4 + fat * 9)) / 4;
 

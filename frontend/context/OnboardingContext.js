@@ -58,62 +58,52 @@ export const OnboardingProvider = ({ children, navigation }) => {
         throw new Error('Incomplete onboarding data');
       }
 
-      // Check if authData exists and has a type property before accessing it
+      // Merge onboarding data with authData
+      const profileData = {
+        ...onboardingData,
+        id: authData?.id, // Use existing ID if available
+        email: authData?.email, // Use existing email if available
+        provider: authData?.provider || 'email', // Default to 'email' if not provided
+        isOnboardingComplete: true,
+      };
+
+      // If user is a guest, register them first
       if (authData && authData.type === 'guest') {
         const response = await api.post('/auth/register', {
           type: 'guest',
-          userData: {
-            ...onboardingData,
-            id: authData?.id,
-            email: authData?.email,
-            provider: 'guest',
-            isOnboardingComplete: true
-          }
+          userData: profileData,
         });
 
         // Get the token from registration response
         const { token } = response.data;
-        
+
         // Sign in with the new token
         await signIn(token);
-
-        // Update local onboarding state
-        const updatedData = {
-          ...onboardingData,
-          isOnboardingComplete: true
-        };
-        setOnboardingData(updatedData);
-        await SecureStore.setItemAsync(ONBOARDING_DATA_KEY, JSON.stringify(updatedData));
-
-        // Return the profile data
-        return updatedData;
+      } else {
+        // Update AuthContext with profile data
+        await signIn(authData.token, profileData);
       }
-
-      // Update AuthContext with profile data
-      await signIn(token, profileData);
-
-      const profileData = {
-        ...onboardingData,
-        id: authData?.id,
-        email: authData?.email,
-        provider: authData?.provider,
-        isOnboardingComplete: true
-      };
 
       // Update profile with onboarding data
       await api.put('/auth/profile', profileData, {
         headers: {
-          'Authorization': `Bearer ${token}`
-        }
+          Authorization: `Bearer ${authData.token}`,
+        },
       });
-      
+
+        // Get the token from registration response
+        const { token } = response.data;
+        
       // Mark onboarding as complete and store in SecureStore
       const updatedOnboardingData = {
         ...onboardingData,
-        isOnboardingComplete: true
+        isOnboardingComplete: true,
       };
       setOnboardingData(updatedOnboardingData);
-      await SecureStore.setItemAsync(ONBOARDING_DATA_KEY, JSON.stringify(updatedOnboardingData));
+      await SecureStore.setItemAsync(
+        ONBOARDING_DATA_KEY,
+        JSON.stringify(updatedOnboardingData)
+      );
 
       return profileData;
     } catch (error) {

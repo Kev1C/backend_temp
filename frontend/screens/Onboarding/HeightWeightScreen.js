@@ -61,23 +61,21 @@ const HeightWeightScreen = ({ navigation, route }) => {
     setWeight(value);
   };
 
-  const handleContinue = async () => {
-    try {
-      const measurements = {
-        height: Number(heightCm),
-        weight: Number(weight)
-      };
-      await updateOnboardingData(measurements);
-      navigation.navigate('GoalSelection');
-    } catch (error) {
-      console.error('Error saving measurements:', error);
-      Alert.alert(
-        'Error',
-        'Failed to save your measurements. Please try again.',
-        [{ text: 'OK' }]
-      );
-    }
-  };
+    const handleContinue = async () => {
+        try {
+            const measurements = {
+                height: Number(heightCm),
+                weight: Number(weight),
+            };
+            await updateOnboardingData(measurements);
+            navigation.navigate('GoalSelection');
+        } catch (error) {
+            console.error('Error saving measurements:', error);
+            Alert.alert('Error', 'Failed to save your measurements. Please try again.', [
+                { text: 'OK' },
+            ]);
+        }
+    };
 
   return (
     <SafeAreaView edges={['top']} style={styles.container}>
