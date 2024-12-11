@@ -45,7 +45,7 @@ const HomeScreen = () => {
     fetchDailyNutrition,
     setDailyNutrition,
     isLoading: isLoadingNutrition 
-  } = useDailyNutrition(selectedDate);
+  } = useDailyNutrition();
 
   // Memoize fetchRecentMeals to prevent recreation on every render
   const fetchRecentMeals = useCallback(async (date) => {
@@ -127,8 +127,6 @@ const HomeScreen = () => {
       if (selectedDate) {
         console.log('Fetching data for date:', selectedDate);
         try {
-          // Reset daily nutrition before fetching new data
-          setDailyNutrition(null);
           await Promise.all([
             fetchRecentMeals(selectedDate),
             fetchDailyNutrition(selectedDate)
@@ -140,28 +138,17 @@ const HomeScreen = () => {
     };
   
     fetchData();
-  }, [selectedDate, authToken, isGuest, fetchDailyNutrition, fetchRecentMeals, setDailyNutrition]);
-  
+  }, [selectedDate, authToken, isGuest, fetchDailyNutrition, fetchRecentMeals]);
 
   // Update macros when daily nutrition data changes
   useEffect(() => {
     console.log('Daily nutrition update triggered:', dailyNutrition);
   
-    // Skip if dailyNutrition is null
-    if (!dailyNutrition) {
-      console.log('Skipping update due to null dailyNutrition');
+    // Skip if dailyNutrition is null or empty
+    if (!dailyNutrition || Object.values(dailyNutrition).every(v => !v || (Array.isArray(v) && !v.length))) {
+      console.log('Skipping update due to null or empty dailyNutrition');
       return;
     }
-  
-    // Skip if dailyNutrition is unchanged
-    if (isEqual(dailyNutrition, { calories: 0, protein: 0, carbs: 0, fat: 0, meals: [] })) {
-      console.log('Skipping update due to unchanged dailyNutrition');
-      return;
-    }
-  
-    // Reset macros and calories before updating
-    resetMacros();
-    resetCalories();
   
     // Extract and update nutrition data
     const nutritionData = {
@@ -174,6 +161,8 @@ const HomeScreen = () => {
     console.log('Updating nutrition with:', nutritionData);
   
     // Update macros and calories
+    resetMacros();
+    resetCalories();
     addMacros(nutritionData.protein, nutritionData.carbs, nutritionData.fat);
     addCalories(nutritionData.calories);
   }, [dailyNutrition, resetMacros, resetCalories, addMacros, addCalories]);
