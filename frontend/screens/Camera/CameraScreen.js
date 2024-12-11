@@ -2,7 +2,7 @@ import React, { useState, useRef, useCallback, useMemo, useEffect, lazy, Suspens
 import { View, TouchableOpacity, StyleSheet, Text, Dimensions, Image, TextInput, Alert, ActivityIndicator, ScrollView } from 'react-native';
 import { CameraView, CameraType, useCameraPermissions } from 'expo-camera';
 import { useTheme, IconButton, FAB, Chip } from 'react-native-paper';
-import { useIsFocused } from '@react-navigation/native';
+import { useIsFocused, useNavigation } from '@react-navigation/native';
 import BottomSheet, { BottomSheetScrollView, BottomSheetBackdrop } from '@gorhom/bottom-sheet';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { useContext } from 'react';
@@ -16,6 +16,7 @@ const CameraScreen = ({ navigation }) => {
   const camera = useRef(null);
   const isFocused = useIsFocused();
   const theme = useTheme();
+  const navigation = useNavigation();
 
   // Defer non-essential state initialization
   const [flashMode, setFlashMode] = useState(() => 'off');
@@ -46,11 +47,11 @@ const CameraScreen = ({ navigation }) => {
   const getHealthScoreColor = useCallback((score) => {
     // Convert score to number and clamp between 0-100
     const numScore = Math.min(Math.max(parseFloat(score) || 0, 0), 100);
-    
+
     // Calculate RGB values
     const red = numScore <= 50 ? 255 : Math.round(255 * (100 - numScore) / 50);
     const green = numScore >= 50 ? 255 : Math.round(255 * numScore / 50);
-    
+
     return `rgb(${red}, ${green}, 0)`;
   }, []);
 
@@ -151,12 +152,12 @@ const CameraScreen = ({ navigation }) => {
         exif: false,
         skipProcessing: true,
       });
-      
+
       if (!photo) return;
-      
+
       setCapturedImage(photo.uri);
       setIsModalVisible(true);
-      
+
       const imageData = {
         imageBase64: photo.base64,
         timestamp: Date.now(),
@@ -175,10 +176,10 @@ const CameraScreen = ({ navigation }) => {
         });
 
         clearTimeout(timeoutId);
-        
+
         // Axios response data is already parsed JSON
         const nutritionData = response.data;
-        
+
         setFoodTitle(nutritionData.foodTitle || '');
         setNutritionState({
           calories: nutritionData.calories,
@@ -217,7 +218,7 @@ const CameraScreen = ({ navigation }) => {
     }
   }, [navigation, authToken, user]);
 
-  const handleConfirm = useCallback(() => {
+  const handleConfirm = useCallback(async () => {
     const meal = {
       name: foodTitle,
       image: capturedImage,
@@ -228,18 +229,48 @@ const CameraScreen = ({ navigation }) => {
       time: getMealType(),
     };
 
-    navigation.navigate('Home', { 
-      addMeal: meal,
-      updateProgress: {
-        calories: parseInt(nutritionState.calories),
-        carbs: parseInt(nutritionState.carbs),
-        protein: parseInt(nutritionState.protein),
-        fats: parseInt(nutritionState.fats),
+    // Check if user is a guest
+    if (user?.isGuest) {
+      // Handle guest user data (e.g., save to local storage)
+      navigation.navigate('Home', { 
+        addMeal: meal,
+        updateProgress: {
+          calories: parseInt(nutritionState.calories),
+          carbs: parseInt(nutritionState.carbs),
+          protein: parseInt(nutritionState.protein),
+          fats: parseInt(nutritionState.fats),
+        }
+      });
+    } else {
+      // Handle authenticated user data (send to backend)
+      try {
+        const response = await api.post('/meals', meal, {
+          headers: {
+            Authorization: `Bearer ${authToken}`,
+          },
+        });
+
+        if (response.status === 201) {
+          navigation.navigate('Home', { 
+            addMeal: meal,
+            updateProgress: {
+              calories: parseInt(nutritionState.calories),
+              carbs: parseInt(nutritionState.carbs),
+              protein: parseInt(nutritionState.protein),
+              fats: parseInt(nutritionState.fats),
+            }
+          });
+        } else {
+          Alert.alert('Error', 'Failed to save meal. Please try again.');
+        }
+      } catch (error) {
+        console.error('Error saving meal:', error);
+        Alert.alert('Error', 'Failed to save meal. Please try again.');
       }
-    });
+    }
 
     setIsModalVisible(false);
-  }, [foodTitle, capturedImage, nutritionState, getMealType, navigation]);
+  }, [foodTitle, capturedImage, nutritionState, getMealType, navigation, user, authToken]);
 
   const snapPoints = useMemo(() =>  ['60%']);
   const bottomSheetRef = useRef(null);

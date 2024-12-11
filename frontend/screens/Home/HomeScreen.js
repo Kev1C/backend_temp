@@ -122,7 +122,7 @@ const HomeScreen = () => {
   // Fetch meals and nutrition data when date changes
   useEffect(() => {
     if (!authToken && !isGuest) return;
-  
+
     const fetchData = async () => {
       if (selectedDate) {
         console.log('Fetching data for date:', selectedDate);
@@ -138,25 +138,25 @@ const HomeScreen = () => {
         }
       }
     };
-  
+
     fetchData();
   }, [selectedDate, authToken, isGuest, fetchDailyNutrition, fetchRecentMeals]);
-  
+
 
   // Update macros when daily nutrition data changes
   useEffect(() => {
     console.log('Daily nutrition update triggered:', dailyNutrition);
-  
+
     // Skip if dailyNutrition is null or unchanged
     if (!dailyNutrition || isEqual(dailyNutrition, { calories: 0, protein: 0, carbs: 0, fat: 0, meals: [] })) {
       console.log('Skipping update due to null or unchanged dailyNutrition');
       return;
     }
-  
+
     // Reset macros and calories before updating
     resetMacros();
     resetCalories();
-  
+
     // Extract and update nutrition data
     const nutritionData = {
       calories: Number(dailyNutrition.calories) || 0,
@@ -164,14 +164,14 @@ const HomeScreen = () => {
       carbs: Number(dailyNutrition.carbs) || 0,
       fat: Number(dailyNutrition.fat) || 0
     };
-  
+
     console.log('Updating nutrition with:', nutritionData);
-  
+
     // Update macros and calories
     addMacros(nutritionData.protein, nutritionData.carbs, nutritionData.fat);
     addCalories(nutritionData.calories);
   }, [dailyNutrition, resetMacros, resetCalories, addMacros, addCalories]);
-  
+
 
   // Memoize nutrients data
   const nutrients = useMemo(() => ({
@@ -191,11 +191,11 @@ const HomeScreen = () => {
   useEffect(() => {
     if (route.params?.addMeal && route.params?.updateProgress) {
       const { addMeal, updateProgress } = route.params;
-  
+
       const handleNewMeal = async () => {
         try {
           setLoadingStates(prev => ({ ...prev, saving: true }));
-          
+
           // Update dailyNutrition state here
           setDailyNutrition(prevDailyNutrition => {
             const updatedNutrition = {
@@ -219,25 +219,26 @@ const HomeScreen = () => {
 
           // Update calories
           addCalories(Number(updateProgress.calories));
-  
+
           if (isGuest) {
             await saveGuestMealData(addMeal, selectedDate);
           } else {
             setRecentMeals(prevMeals => [...prevMeals, addMeal]);
           }
-          
-          // No need to call fetchDailyNutrition here since we're updating it directly
+
+          // Fetch daily nutrition after adding a new meal
+          await fetchDailyNutrition(selectedDate);
         } catch (error) {
           console.error('Error handling new meal:', error);
         } finally {
           setLoadingStates(prev => ({ ...prev, saving: false }));
         }
       };
-  
+
       handleNewMeal();
     }
-  }, [route.params, selectedDate, isGuest, fetchRecentMeals, saveGuestMealData, setDailyNutrition]);
-  
+  }, [route.params, selectedDate, isGuest, fetchRecentMeals, saveGuestMealData, setDailyNutrition, fetchDailyNutrition]);
+
 
   console.log('Current macro progress:', macros);
   console.log('Daily nutrition ', dailyNutrition);

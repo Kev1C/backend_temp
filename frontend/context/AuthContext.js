@@ -37,12 +37,12 @@ export const AuthProvider = ({ children }) => {
         if (storedToken && storedFirebaseToken && storedUser) {
           const decoded = jwtDecode(storedToken);
           const now = Date.now() / 1000;
-          
+
           if (decoded.exp && decoded.exp > now) {
             setAuthToken(storedToken);
             setFirebaseToken(storedFirebaseToken);
             setUser(JSON.parse(storedUser));
-            
+
             // Set up refresh timer
             const timeoutId = setTimeout(
               () => refreshAccessToken(),
@@ -70,9 +70,13 @@ export const AuthProvider = ({ children }) => {
       const response = await api.post('/auth/verify-token', {
         firebaseToken: fbToken
       });
-      
+
+      if (response.status !== 200) {
+        throw new Error('Failed to authenticate with backend.');
+      }
+
       const { token: backendToken, refreshToken, user: userData } = response.data;
-      
+
       // Ensure all values stored in SecureStore are strings
       await Promise.all([
         SecureStore.setItemAsync(SIGNIN_KEY, backendToken),
@@ -80,15 +84,15 @@ export const AuthProvider = ({ children }) => {
         SecureStore.setItemAsync(FIREBASE_TOKEN_KEY, fbToken),
         SecureStore.setItemAsync(USER_DATA_KEY, JSON.stringify(userData))
       ]);
-      
+
       setAuthToken(backendToken);
       setFirebaseToken(fbToken);
       setUser(userData);
-      
+
       return backendToken;
     } catch (error) {
       console.error('Backend authentication error:', error);
-      throw error;
+      throw new Error('Authentication failed: ' + error.message);
     }
   }, []);
 
@@ -100,7 +104,7 @@ export const AuthProvider = ({ children }) => {
       return await authenticateWithBackend(fbToken);
     } catch (error) {
       console.error('Google sign in error:', error);
-      throw error;
+      throw new Error('Google sign in failed: ' + error.message);
     }
   }, [authenticateWithBackend]);
 
@@ -108,10 +112,15 @@ export const AuthProvider = ({ children }) => {
     try {
       const userCredential = await signInAsGuest();
       const fbToken = await userCredential.user.getIdToken();
-      return await authenticateWithBackend(fbToken);
+      const backendToken = await authenticateWithBackend(fbToken);
+
+      // Set isGuest flag for guest users
+      setUser(prevUser => ({ ...prevUser, isGuest: true }));
+
+      return backendToken;
     } catch (error) {
       console.error('Anonymous sign in error:', error);
-      throw error;
+      throw new Error('Guest sign in failed: ' + error.message);
     }
   }, [authenticateWithBackend]);
 
@@ -122,10 +131,10 @@ export const AuthProvider = ({ children }) => {
         SecureStore.setItemAsync(SIGNIN_KEY, token),
         SecureStore.setItemAsync(USER_DATA_KEY, JSON.stringify(userData))
       ]);
-      
+
       setAuthToken(token);
       setUser(userData);
-      
+
       // Set up token refresh
       const decoded = jwtDecode(token);
       const timeoutId = setTimeout(
@@ -135,7 +144,7 @@ export const AuthProvider = ({ children }) => {
       setTokenRefreshTimeout(timeoutId);
     } catch (error) {
       console.error('Sign in error:', error);
-      throw error;
+      throw new Error('Sign in failed: ' + error.message);
     }
   }, [refreshAccessToken]);
 
@@ -145,23 +154,23 @@ export const AuthProvider = ({ children }) => {
       if (!refreshToken) {
         throw new Error('No refresh token available');
       }
-  
+
       const response = await api.post('/auth/refresh', { refreshToken });
       if (!response.data || !response.data.token || !response.data.refreshToken) {
         throw new Error('Invalid response from refresh endpoint');
       }
-  
+
       const { token: newToken, refreshToken: newRefreshToken } = response.data;
       if (typeof newToken !== 'string' || typeof newRefreshToken !== 'string') {
         throw new Error('Token received is not a string');
       }
-  
+
       // Ensure all values stored in SecureStore are strings
       await Promise.all([
         SecureStore.setItemAsync(SIGNIN_KEY, newToken),
         SecureStore.setItemAsync(REFRESH_TOKEN_KEY, newRefreshToken)
       ]);
-  
+
       setAuthToken(newToken);
     } catch (error) {
       console.error('Error refreshing token:', error);
@@ -174,10 +183,10 @@ export const AuthProvider = ({ children }) => {
       if (tokenRefreshTimeout) {
         clearTimeout(tokenRefreshTimeout);
       }
-      
+
       // Sign out from Firebase
       await auth.signOut();
-      
+
       setAuthToken(null);
       setFirebaseToken(null);
       setUser(null);
@@ -210,7 +219,7 @@ export const AuthProvider = ({ children }) => {
 
       const response = await api.get('/auth/me');
       const userData = response.data;
-      
+
       setUser(userData);
       setLastUserFetch(now);
       // Ensure all values stored in SecureStore are strings

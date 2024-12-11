@@ -36,15 +36,18 @@ export const OnboardingProvider = ({ children, navigation }) => {
   }, [user]);
 
   const updateOnboardingData = async (newData) => {
-    return new Promise(async (resolve) => {
-      setOnboardingData(prevData => {
-        const updatedData = { ...prevData, ...newData };
+    return new Promise(async (resolve, reject) => {
+      try {
+        const updatedData = { ...onboardingData, ...newData };
         const key = user?.isGuest ? GUEST_ONBOARDING_DATA_KEY : ONBOARDING_DATA_KEY;
         // Ensure all values stored in SecureStore are strings
-        SecureStore.setItemAsync(key, JSON.stringify(updatedData));
+        await SecureStore.setItemAsync(key, JSON.stringify(updatedData));
+        setOnboardingData(updatedData);
         resolve(updatedData);
-        return updatedData;
-      });
+      } catch (error) {
+        console.error('Error updating onboarding ', error);
+        reject(error);
+      }
     });
   };
 
@@ -58,7 +61,7 @@ export const OnboardingProvider = ({ children, navigation }) => {
       const { gender, height, weight, fitnessGoal } = onboardingData;
 
       if (!gender || !height || !weight || !fitnessGoal) {
-        throw new Error('Incomplete onboarding data');
+        throw new Error('Incomplete onboarding data. Please fill in all fields.');
       }
 
       // Merge onboarding data with authData
@@ -73,11 +76,15 @@ export const OnboardingProvider = ({ children, navigation }) => {
         profileData.email = authData.email;
         profileData.provider = authData.provider || 'email';
 
-        await api.put('/auth/profile', profileData, {
+        const response = await api.put('/auth/profile', profileData, {
           headers: {
             Authorization: `Bearer ${authData.token}`,
           },
         });
+
+        if (response.status !== 200) {
+          throw new Error('Failed to update user profile.');
+        }
       } else {
         // For guest users, just update the onboarding data in SecureStore
         const key = GUEST_ONBOARDING_DATA_KEY;
@@ -95,8 +102,8 @@ export const OnboardingProvider = ({ children, navigation }) => {
 
       return profileData;
     } catch (error) {
-      console.error('Onboarding error:', error);
-      throw error;
+      console.error('Error during onboarding:', error);
+      throw new Error('Onboarding failed: ' + error.message);
     }
   };
 
