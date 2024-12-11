@@ -67,43 +67,32 @@ export const OnboardingProvider = ({ children, navigation }) => {
         isOnboardingComplete: true,
       };
 
-      // If user is a guest, register them first
-      if (authData && authData.type === 'guest') {
+      // Check if the user is already registered
+      if (authData && authData.type !== 'guest') {
+        // Update existing user's profile
+        await api.put('/auth/profile', profileData, {
+          headers: {
+            Authorization: `Bearer ${authData.token}`,
+          },
+        });
+      } else {
+        // Register the guest user
         const response = await api.post('/auth/register', {
           type: 'guest',
           userData: profileData,
         });
 
-        // Get the token from registration response
-        const { token } = response.data;
-
-        // Sign in with the new token
-        await signIn(token);
-      } else {
-        // Update AuthContext with profile data
-        await signIn(authData.token, profileData);
+        // Use the token from registration response
+        authData.token = response.data.token;
       }
 
-      // Update profile with onboarding data
-      await api.put('/auth/profile', profileData, {
-        headers: {
-          Authorization: `Bearer ${authData.token}`,
-        },
-      });
-
-        // Get the token from registration response
-        const { token } = response.data;
-        
-      // Mark onboarding as complete and store in SecureStore
-      const updatedOnboardingData = {
-        ...onboardingData,
-        isOnboardingComplete: true,
-      };
+      // Mark onboarding as complete before signing in
+      const updatedOnboardingData = { ...onboardingData, isOnboardingComplete: true };
+      await SecureStore.setItemAsync(ONBOARDING_DATA_KEY, JSON.stringify(updatedOnboardingData));
       setOnboardingData(updatedOnboardingData);
-      await SecureStore.setItemAsync(
-        ONBOARDING_DATA_KEY,
-        JSON.stringify(updatedOnboardingData)
-      );
+
+      // Sign in and update user data
+      await signIn(authData.token, { ...authData, ...updatedOnboardingData });
 
       return profileData;
     } catch (error) {

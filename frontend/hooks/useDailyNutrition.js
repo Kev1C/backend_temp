@@ -20,8 +20,8 @@ const useDailyNutrition = () => {
   }, []);
 
   const getCacheKey = useCallback((date) => {
-    // Get user ID from any available field
-    const userId = user?.userId || user?.id || user?._id;
+    // Use a default ID if user object is not available
+    const userId = user?.userId || user?.id || user?._id || 'default';
     console.log('Getting cache key with userId:', userId);
     return `${userId}_${formatDate(date)}`;
   }, [user, formatDate]);

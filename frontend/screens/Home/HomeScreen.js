@@ -11,21 +11,23 @@ import useMacroTracker from '../../hooks/useMacroTracker';
 import useDailyNutrition from '../../hooks/useDailyNutrition';
 import { MemoizedWeekCalendar, MemoizedCalorieProgress, MemoizedRecentlyEaten } from './MemoizedComponents';
 import { api, cachedGet } from '../../services/api';
+import { OnboardingContext } from '../../context/OnboardingContext';
 
 const HomeScreen = () => {
   const { user, authToken, isGuest } = useContext(AuthContext);
+  const { onboardingData } = useContext(OnboardingContext);
   const theme = useTheme();
   const navigation = useNavigation();
   const route = useRoute();
   const styles = useMemo(() => createStyles(theme), [theme]);
 
-  // Check for authentication and handle guest mode
+  // Redirect to onboarding if not complete
   useEffect(() => {
-    if (!authToken && !isGuest) {
-      navigation.replace('Profile');
+    if (user && !onboardingData.isOnboardingComplete) {
+      navigation.navigate('Onboarding');
       return;
     }
-  }, [authToken, isGuest, navigation]);
+  }, [user, onboardingData, navigation]);
 
   // Get calculated nutrients (these are the daily goals)
   const calculatedNutrients = useNutrientCalculations();
