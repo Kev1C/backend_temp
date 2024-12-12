@@ -1,24 +1,26 @@
-import React, { useState, useEffect, useRef, useContext } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { View, StyleSheet, Alert } from 'react-native';
-import { Camera } from 'expo-camera';
+import { Camera, CameraType, FlashMode } from 'expo-camera';
 import { useNavigation, useIsFocused } from '@react-navigation/native';
 import { Text, Button, IconButton, MD3Colors } from 'react-native-paper';
 import BottomSheet, { BottomSheetScrollView } from '@gorhom/bottom-sheet';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
-import { AuthContext } from '../../context/AuthContext';
-import api from '../../services/api';
+import { useAuthStore } from '../../stores/authStore';
+import { api } from '../../services/api';
 
 const CameraScreen = () => {
   const [hasPermission, setHasPermission] = useState(null);
-  const [type, setType] = useState(Camera.Constants.Type.back);
-  const [flashMode, setFlashMode] = useState(Camera.Constants.FlashMode.off);
+  const [type, setType] = useState(CameraType.back);
+  const [flashMode, setFlashMode] = useState(FlashMode.off);
   const [capturedImage, setCapturedImage] = useState(null);
   const [isCameraReady, setIsCameraReady] = useState(false);
+  const [isAnalyzing, setIsAnalyzing] = useState(false);
+
   const cameraRef = useRef(null);
   const bottomSheetRef = useRef(null);
   const navigation = useNavigation();
   const isFocused = useIsFocused();
-  const { authToken } = useContext(AuthContext);
+  const { authToken } = useAuthStore();
 
   useEffect(() => {
     (async () => {
@@ -32,140 +34,153 @@ const CameraScreen = () => {
   };
 
   const takePicture = async () => {
-    if (cameraRef.current && isCameraReady) {
-      try {
-        const photo = await cameraRef.current.takePictureAsync({
-          quality: 0.5,
-          base64: true,
-        });
-        setCapturedImage(photo.base64);
-        bottomSheetRef.current?.expand();
-      } catch (error) {
-        console.error('Error taking picture:', error);
-        Alert.alert('Error', 'Failed to take picture.');
-      }
-    } else {
-      Alert.alert('Error', 'Camera is not ready.');
-    }
-  };
-
-  const handleRetake = () => {
-    setCapturedImage(null);
-    bottomSheetRef.current?.close();
-  };
-
-  const handleUsePhoto = async () => {
-    if (!authToken) {
-      Alert.alert('Authentication Error', 'Please log in to use this feature.');
-      return;
-    }
+    if (!cameraRef.current || !isCameraReady) return;
 
     try {
-      const response = await api.post('/api/food-recognition', {
-        image: capturedImage,
-      }, {
-        headers: {
-          Authorization: `Bearer ${authToken}`,
-        },
+      const photo = await cameraRef.current.takePictureAsync({
+        quality: 0.8,
+        base64: true,
+        exif: true,
       });
 
-      if (response.data && response.data.foodItems) {
-        navigation.navigate('FoodSelectScreen', { foodItems: response.data.foodItems });
-      } else {
-        Alert.alert('Error', 'Failed to recognize food items.');
+      setCapturedImage({
+        uri: photo.uri,
+        base64: photo.base64,
+        width: photo.width,
+        height: photo.height,
+      });
+
+      bottomSheetRef.current?.snapToIndex(0);
+    } catch (error) {
+      Alert.alert('Error', 'Failed to take picture');
+      console.error(error);
+    }
+  };
+
+  const analyzeImage = async () => {
+    if (!capturedImage || !authToken) return;
+
+    setIsAnalyzing(true);
+    try {
+      const response = await api.post('/analyze/food', {
+        image: capturedImage.base64,
+        width: capturedImage.width,
+        height: capturedImage.height,
+      });
+
+      if (response.data) {
+        navigation.navigate('FoodAnalysis', { 
+          analysis: response.data,
+          imageUri: capturedImage.uri 
+        });
       }
     } catch (error) {
-      console.error('Error sending image to server:', error);
-      Alert.alert('Error', 'Failed to process image.');
+      Alert.alert(
+        'Error',
+        'Failed to analyze image. Please try again.'
+      );
+      console.error(error);
     } finally {
-      bottomSheetRef.current?.close();
+      setIsAnalyzing(false);
     }
   };
 
   const toggleCameraType = () => {
-    setType(
-      type === Camera.Constants.Type.back
-        ? Camera.Constants.Type.front
-        : Camera.Constants.Type.back
+    setType(current => 
+      current === CameraType.back ? CameraType.front : CameraType.back
     );
   };
 
-  const toggleFlashMode = () => {
-    setFlashMode(
-      flashMode === Camera.Constants.FlashMode.off
-        ? Camera.Constants.FlashMode.on
-        : Camera.Constants.FlashMode.off
+  const toggleFlash = () => {
+    setFlashMode(current =>
+      current === FlashMode.off ? FlashMode.on : FlashMode.off
     );
   };
 
   if (hasPermission === null) {
-    return <View />;
+    return <View style={styles.container} />;
   }
 
   if (hasPermission === false) {
-    return <Text>No access to camera</Text>;
+    return (
+      <View style={[styles.container, styles.centered]}>
+        <Text>No access to camera</Text>
+        <Button 
+          mode="contained" 
+          onPress={() => Camera.requestCameraPermissionsAsync()}
+          style={styles.button}
+        >
+          Request Permission
+        </Button>
+      </View>
+    );
   }
 
   return (
-    <View style={styles.container}>
-      {isFocused && (
-        <Camera
-          style={styles.camera}
-          type={type}
-          flashMode={flashMode}
-          ref={cameraRef}
-          onCameraReady={handleCameraReady}
-        >
-          <View style={styles.topButtons}>
-            <IconButton
-              icon="camera-switch"
-              iconColor={MD3Colors.neutral100}
-              size={30}
-              onPress={toggleCameraType}
-            />
-            <IconButton
-              icon={flashMode === Camera.Constants.FlashMode.off ? 'flash-off' : 'flash'}
-              iconColor={MD3Colors.neutral100}
-              size={30}
-              onPress={toggleFlashMode}
-            />
-          </View>
-        </Camera>
-      )}
-
-      <View style={styles.bottomContainer}>
-        <View style={styles.buttonContainer}>
-          <Button icon="camera" mode="contained" onPress={takePicture} style={styles.captureButton}>
-            Take Picture
-          </Button>
-        </View>
-      </View>
-
-      <GestureHandlerRootView style={{ flex: 1 }}>
+    <GestureHandlerRootView style={styles.container}>
+      <View style={styles.container}>
+        {isFocused && (
+          <Camera
+            ref={cameraRef}
+            style={styles.camera}
+            type={type}
+            flashMode={flashMode}
+            onCameraReady={handleCameraReady}
+          >
+            <View style={styles.controlsContainer}>
+              <View style={styles.controls}>
+                <IconButton
+                  icon="camera-flip"
+                  size={30}
+                  iconColor={MD3Colors.neutral100}
+                  onPress={toggleCameraType}
+                />
+                <IconButton
+                  icon={flashMode === FlashMode.off ? 'flash-off' : 'flash'}
+                  size={30}
+                  iconColor={MD3Colors.neutral100}
+                  onPress={toggleFlash}
+                />
+              </View>
+              <IconButton
+                icon="camera"
+                size={50}
+                iconColor={MD3Colors.neutral100}
+                onPress={takePicture}
+                disabled={!isCameraReady}
+                style={styles.captureButton}
+              />
+            </View>
+          </Camera>
+        )}
         <BottomSheet
           ref={bottomSheetRef}
           index={-1}
           snapPoints={['50%']}
-          enablePanDownToClose={true}
+          enablePanDownToClose
         >
-          <BottomSheetScrollView contentContainerStyle={styles.bottomSheetContent}>
+          <BottomSheetScrollView contentContainerStyle={styles.bottomSheet}>
             {capturedImage && (
               <>
-                <Text style={styles.bottomSheetText}>Use this photo?</Text>
-                <View style={styles.bottomSheetButtons}>
-                  <Button mode="outlined" onPress={handleRetake} style={styles.bottomSheetButton}>
-                    Retake
-                  </Button>
-                  <Button mode="contained" onPress={handleUsePhoto} style={styles.bottomSheetButton}>
-                    Use Photo
-                  </Button>
+                <Text style={styles.previewText}>Preview</Text>
+                <View style={styles.imagePreview}>
+                  {/* Add Image preview component here */}
                 </View>
+                <Button
+                  mode="contained"
+                  onPress={analyzeImage}
+                  loading={isAnalyzing}
+                  disabled={isAnalyzing}
+                  style={styles.analyzeButton}
+                >
+                  Analyze Food
+                </Button>
               </>
             )}
           </BottomSheetScrollView>
         </BottomSheet>
-      </GestureHandlerRootView>
-    </View>
+      </View>
+    </GestureHandlerRootView>
   );
 };
 
@@ -173,46 +188,50 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
   },
+  centered: {
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
   camera: {
     flex: 1,
   },
-  topButtons: {
+  controlsContainer: {
+    flex: 1,
+    backgroundColor: 'transparent',
     flexDirection: 'row',
     justifyContent: 'space-between',
-    padding: 20,
+    margin: 20,
   },
-  bottomContainer: {
-    position: 'absolute',
-    bottom: 0,
-    left: 0,
-    right: 0,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
-    padding: 10,
-  },
-  buttonContainer: {
+  controls: {
+    flex: 1,
     flexDirection: 'row',
-    justifyContent: 'center',
+    justifyContent: 'space-between',
+    marginTop: 20,
   },
   captureButton: {
-    width: '50%',
+    alignSelf: 'flex-end',
+    marginBottom: 20,
   },
-  bottomSheetContent: {
-    backgroundColor: 'white',
+  button: {
+    marginTop: 16,
+  },
+  bottomSheet: {
     padding: 16,
-    height: '100%',
   },
-  bottomSheetText: {
-    fontSize: 20,
+  previewText: {
+    fontSize: 18,
     fontWeight: 'bold',
     marginBottom: 16,
   },
-  bottomSheetButtons: {
-    flexDirection: 'row',
-    justifyContent: 'space-around',
+  imagePreview: {
+    width: '100%',
+    height: 200,
+    backgroundColor: '#f0f0f0',
+    borderRadius: 8,
+    marginBottom: 16,
   },
-  bottomSheetButton: {
-    flex: 1,
-    marginHorizontal: 8,
+  analyzeButton: {
+    marginTop: 16,
   },
 });
 
