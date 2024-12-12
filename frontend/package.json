@@ -64,13 +64,14 @@
     "react-native-paper": "^5.12.5",
     "react-native-paper-dropdown": "^2.3.1",
     "react-native-picker-select": "^9.3.1",
-    "react-native-reanimated": "^3.10.1",
+    "react-native-reanimated": "^3.16.5",
     "react-native-reanimated-carousel": "^3.5.1",
     "react-native-safe-area-context": "4.10.5",
     "react-native-screens": "3.31.1",
     "react-native-svg": "^15.2.0",
     "react-native-wheel-scrollview-picker": "^2.0.6",
-    "victory-native": "^36.9.1"
+    "victory-native": "^36.9.1",
+    "zustand": "^5.0.2"
   },
   "devDependencies": {
     "@babel/core": "^7.20.0",
