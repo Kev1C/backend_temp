@@ -28,7 +28,7 @@ const GOALS = [
 
 const GoalSelectionScreen = ({ navigation }) => {
   const [selectedGoal, setSelectedGoal] = React.useState(null);
-  const { updateOnboardingData, completeOnboarding, onboardingData } = useContext(OnboardingContext);
+  const { saveOnboardingData, completeOnboarding, onboardingData } = useContext(OnboardingContext);
 
   const handleGoalSelection = (goalId) => {
     setSelectedGoal(goalId);
@@ -38,7 +38,7 @@ const GoalSelectionScreen = ({ navigation }) => {
     if (selectedGoal) {
       try {
         // Update onboarding data with selected goal and wait for it to complete
-        await updateOnboardingData({ fitnessGoal: selectedGoal });
+        await saveOnboardingData({ fitnessGoal: selectedGoal });
         
         // Navigate to social auth screen
         navigation.navigate('SocialAuth');

@@ -6,12 +6,12 @@ import GenderSelection from '../../Components/GenderSelection';
 import { OnboardingContext } from '../../context/OnboardingContext';
 
 const GenderSelectionScreen = ({ navigation }) => {
-  const { updateOnboardingData } = useContext(OnboardingContext);
+  const { saveOnboardingData } = useContext(OnboardingContext);
 
   const handleNext = async (gender) => {
     try {
       // Update onboarding context with gender
-      await updateOnboardingData({ gender });
+      await saveOnboardingData({ gender });
       // Navigate to next screen
       navigation.navigate('HeightWeight');
     } catch (error) {

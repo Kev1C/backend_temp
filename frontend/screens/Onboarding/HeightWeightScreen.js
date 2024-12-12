@@ -7,7 +7,7 @@ import { api } from '../../services/api';
 import { OnboardingContext } from '../../context/OnboardingContext';
 
 const HeightWeightScreen = ({ navigation, route }) => {
-  const { updateOnboardingData } = useContext(OnboardingContext);
+  const { saveOnboardingData } = useContext(OnboardingContext);
   const [isMetric, setIsMetric] = useState(true);
   const [heightCm, setHeightCm] = useState(175);
   const [heightFt, setHeightFt] = useState(5);
@@ -61,21 +61,21 @@ const HeightWeightScreen = ({ navigation, route }) => {
     setWeight(value);
   };
 
-    const handleContinue = async () => {
-        try {
-            const measurements = {
-                height: Number(heightCm),
-                weight: Number(weight),
-            };
-            await updateOnboardingData(measurements);
-            navigation.navigate('GoalSelection');
-        } catch (error) {
-            console.error('Error saving measurements:', error);
-            Alert.alert('Error', 'Failed to save your measurements. Please try again.', [
-                { text: 'OK' },
-            ]);
-        }
-    };
+  const handleContinue = async () => {
+    try {
+      const measurements = {
+        height: Number(heightCm),
+        weight: Number(weight),
+      };
+      await saveOnboardingData(measurements);
+      navigation.navigate('GoalSelection');
+    } catch (error) {
+      console.error('Error saving measurements:', error);
+      Alert.alert('Error', 'Failed to save your measurements. Please try again.', [
+        { text: 'OK' },
+      ]);
+    }
+  };
 
   return (
     <SafeAreaView edges={['top']} style={styles.container}>

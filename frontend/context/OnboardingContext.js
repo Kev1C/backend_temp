@@ -1,12 +1,12 @@
-import React, { createContext, useState, useContext, useEffect } from 'react';
+import React, { createContext, useState, useEffect } from 'react';
 import * as SecureStore from 'expo-secure-store';
-import { AuthContext } from './AuthContext';
+import { useAuthStore } from '../stores/authStore';
 import { api } from '../services/api';
 
 export const OnboardingContext = createContext();
 
 export const OnboardingProvider = ({ children, navigation }) => {
-  const { signIn, user } = useContext(AuthContext);
+  const { user, signInAnonymously } = useAuthStore();
   const [onboardingData, setOnboardingData] = useState({
     gender: null,
     height: null,
@@ -32,105 +32,82 @@ export const OnboardingProvider = ({ children, navigation }) => {
       }
     };
 
-    loadOnboardingData();
+    if (user) {
+      loadOnboardingData();
+    }
   }, [user]);
 
-  const updateOnboardingData = async (newData) => {
-    return new Promise(async (resolve, reject) => {
-      try {
-        const updatedData = { ...onboardingData, ...newData };
-        const key = user?.isGuest ? GUEST_ONBOARDING_DATA_KEY : ONBOARDING_DATA_KEY;
-        // Ensure all values stored in SecureStore are strings
-        await SecureStore.setItemAsync(key, JSON.stringify(updatedData));
-        setOnboardingData(updatedData);
-        resolve(updatedData);
-      } catch (error) {
-        console.error('Error updating onboarding ', error);
-        reject(error);
-      }
-    });
-  };
-
-  const validateOnboardingData = () => {
-    const { gender, height, weight, fitnessGoal } = onboardingData;
-    return Boolean(gender && height && weight && fitnessGoal);
-  };
-
-  const completeOnboarding = async (authData = {}) => {
+  const saveOnboardingData = async (data) => {
     try {
-      const { gender, height, weight, fitnessGoal } = onboardingData;
+      const key = user?.isGuest ? GUEST_ONBOARDING_DATA_KEY : ONBOARDING_DATA_KEY;
+      await SecureStore.setItemAsync(key, JSON.stringify(data));
+      setOnboardingData(data);
 
-      if (!gender || !height || !weight || !fitnessGoal) {
-        throw new Error('Incomplete onboarding data. Please fill in all fields.');
-      }
-
-      // Merge onboarding data with authData
-      const profileData = {
-        ...onboardingData,
-        isOnboardingComplete: true,
-      };
-
-      if (authData && authData.type !== 'guest') {
-        // Update existing user's profile
-        profileData.id = authData.id;
-        profileData.email = authData.email;
-        profileData.provider = authData.provider || 'email';
-
-        const response = await api.put('/auth/profile', profileData, {
-          headers: {
-            Authorization: `Bearer ${authData.token}`,
-          },
+      // If user exists, update their profile
+      if (user) {
+        await api.post('/user/profile', {
+          ...data,
+          userId: user.id
         });
-
-        if (response.status !== 200) {
-          throw new Error('Failed to update user profile.');
-        }
-      } else {
-        // For guest users, just update the onboarding data in SecureStore
-        const key = GUEST_ONBOARDING_DATA_KEY;
-        // Ensure all values stored in SecureStore are strings
-        await SecureStore.setItemAsync(key, JSON.stringify(profileData));
       }
-
-      // Mark onboarding as complete
-      setOnboardingData(profileData);
-
-      // Sign in if not a guest
-      if (authData && authData.type !== 'guest') {
-        await signIn(authData.token, { ...authData, ...profileData });
-      }
-
-      return profileData;
     } catch (error) {
-      console.error('Error during onboarding:', error);
-      throw new Error('Onboarding failed: ' + error.message);
+      console.error('Error saving onboarding data:', error);
+      throw error;
     }
   };
 
-  const resetOnboardingData = async () => {
-    const initialData = {
-      gender: null,
-      height: null,
-      weight: null,
-      fitnessGoal: null,
-      isOnboardingComplete: false,
-    };
-    setOnboardingData(initialData);
-    const key = user?.isGuest ? GUEST_ONBOARDING_DATA_KEY : ONBOARDING_DATA_KEY;
-    await SecureStore.deleteItemAsync(key);
+  const completeOnboarding = async (data) => {
+    try {
+      const updatedData = {
+        ...data,
+        isOnboardingComplete: true
+      };
+      await saveOnboardingData(updatedData);
+    } catch (error) {
+      console.error('Error completing onboarding:', error);
+      throw error;
+    }
+  };
+
+  const startGuestOnboarding = async () => {
+    try {
+      await signInAnonymously();
+      return true;
+    } catch (error) {
+      console.error('Error during onboarding:', error);
+      throw error;
+    }
+  };
+
+  const clearOnboardingData = async () => {
+    try {
+      await SecureStore.deleteItemAsync(ONBOARDING_DATA_KEY);
+      await SecureStore.deleteItemAsync(GUEST_ONBOARDING_DATA_KEY);
+      setOnboardingData({
+        gender: null,
+        height: null,
+        weight: null,
+        fitnessGoal: null,
+        isOnboardingComplete: false,
+      });
+    } catch (error) {
+      console.error('Error clearing onboarding data:', error);
+    }
   };
 
   return (
     <OnboardingContext.Provider
       value={{
         onboardingData,
-        updateOnboardingData,
+        saveOnboardingData,
         completeOnboarding,
-        resetOnboardingData,
-        validateOnboardingData,
+        startGuestOnboarding,
+        clearOnboardingData,
       }}
     >
       {children}
     </OnboardingContext.Provider>
   );
 };
+
+export const useOnboarding = () => useContext(OnboardingContext);

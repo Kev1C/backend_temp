@@ -2,7 +2,7 @@ import { create } from 'zustand';
 
 const DEFAULT_TTL = 5 * 60 * 1000; // 5 minutes
 
-const cacheStore = create((set, get) => ({
+export const cacheStore = create((set, get) => ({
   data: new Map(),
   lastFetch: new Map(),
 
@@ -27,41 +27,33 @@ const cacheStore = create((set, get) => ({
 
   set: (key, value, ttl = DEFAULT_TTL) => {
     const { data, lastFetch } = get();
-    
     data.set(key, { value, ttl });
     lastFetch.set(key, Date.now());
-
-    set({
-      data: new Map(data),
-      lastFetch: new Map(lastFetch),
-    });
+    set({ data, lastFetch });
   },
 
   invalidate: (key) => {
     const { data, lastFetch } = get();
-    
     data.delete(key);
     lastFetch.delete(key);
-
-    set({
-      data: new Map(data),
-      lastFetch: new Map(lastFetch),
-    });
+    set({ data, lastFetch });
   },
 
   clearAll: () => {
     set({
       data: new Map(),
-      lastFetch: new Map(),
+      lastFetch: new Map()
     });
-  },
+  }
 }));
 
-export const useCacheStore = () => cacheStore();
+// Export the hook for component usage
+export const useCacheStore = cacheStore;
 
 // Export individual actions and state for direct access
 export const {
   getState,
   setState,
-  subscribe
+  subscribe,
+  destroy
 } = cacheStore;

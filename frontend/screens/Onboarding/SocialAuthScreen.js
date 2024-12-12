@@ -5,15 +5,15 @@ import * as Google from 'expo-auth-session/providers/google';
 import { AntDesign } from '@expo/vector-icons';
 import { styles } from './SocialAuthScreen.styles';
 import { OnboardingContext } from '../../context/OnboardingContext';
-import { AuthContext } from '../../context/AuthContext';
 import { auth, signInAsGuest } from '../../firebaseConfig';
 import { GoogleAuthProvider, signInWithCredential } from '@firebase/auth';
+import { useAuthStore } from '../../stores/authStore';
 
 WebBrowser.maybeCompleteAuthSession();
 
 export default function SocialAuthScreen({ navigation }) {
   const { completeOnboarding, onboardingData } = useContext(OnboardingContext);
-  const { signInAnonymously } = useContext(AuthContext);
+  const { signInAnonymously } = useAuthStore();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
 
@@ -43,7 +43,7 @@ export default function SocialAuthScreen({ navigation }) {
           await completeOnboarding();
         }
         
-        navigation.replace('Home');
+        navigation.replace('Tabs');
       }
     } catch (error) {
       console.error('Google sign in error:', error);
@@ -60,7 +60,6 @@ export default function SocialAuthScreen({ navigation }) {
       setError(null);
       
       // Sign in as guest using Firebase
-      const userCredential = await signInAsGuest();
       await signInAnonymously();
       
       // Complete onboarding if necessary
@@ -68,7 +67,7 @@ export default function SocialAuthScreen({ navigation }) {
         await completeOnboarding();
       }
       
-      navigation.replace('Home');
+      navigation.replace('Tabs');
     } catch (error) {
       console.error('Guest sign in error:', error);
       setError('Failed to sign in as guest. Please try again.');
@@ -76,14 +75,6 @@ export default function SocialAuthScreen({ navigation }) {
     } finally {
       setLoading(false);
     }
-  };
-
-  const validateOnboardingData = () => {
-    const { gender, height, weight, fitnessGoal } = onboardingData;
-    if (!gender || !height || !weight || !fitnessGoal) {
-      return false;
-    }
-    return true;
   };
 
   return (
