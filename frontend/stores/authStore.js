@@ -1,4 +1,4 @@
-// frontend/stores/authStore.ts
+// frontend/stores/authStore.js
 import { create } from 'zustand';
 import * as SecureStore from 'expo-secure-store';
 import { Alert } from 'react-native';
@@ -6,7 +6,6 @@ import jwtDecode from 'jwt-decode';
 import { api, eventEmitter } from '../services/api';
 import { auth, signInAsGuest } from '../firebaseConfig';
 import { GoogleAuthProvider, signInWithCredential } from '@firebase/auth';
-import { AuthState, User } from '../types/store';
 
 const SIGNIN_KEY = 'authToken';
 const REFRESH_TOKEN_KEY = 'refreshToken';
@@ -14,7 +13,7 @@ const FIREBASE_TOKEN_KEY = 'firebaseToken';
 const USER_DATA_KEY = 'userData';
 const USER_FETCH_INTERVAL = 300000; // 5 minutes
 
-export const useAuthStore = create<AuthState>((set, get) => ({
+const authStore = create((set, get) => ({
   authToken: null,
   firebaseToken: null,
   user: null,
@@ -59,7 +58,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     }
   },
 
-  authenticateWithBackend: async (fbToken: string) => {
+  authenticateWithBackend: async (fbToken) => {
     try {
       set({ loading: true, error: null });
       const response = await api.post('/auth/verify-token', {
@@ -101,7 +100,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     }
   },
 
-  signInWithGoogle: async (idToken: string) => {
+  signInWithGoogle: async (idToken) => {
     try {
       set({ loading: true, error: null });
       const credential = GoogleAuthProvider.credential(idToken);
@@ -181,7 +180,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     }
   },
 
-  updateUserData: async (force: boolean = false) => {
+  updateUserData: async (force = false) => {
     const { lastUserFetch } = get();
     if (!force && lastUserFetch && Date.now() - lastUserFetch < USER_FETCH_INTERVAL) {
       return;
@@ -190,7 +189,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     try {
       set({ loading: true, error: null });
       const response = await api.get('/user/profile');
-      const userData: User = response.data;
+      const userData = response.data;
 
       await SecureStore.setItemAsync(USER_DATA_KEY, JSON.stringify(userData));
       set({
@@ -204,3 +203,12 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     }
   },
 }));
+
+export const useAuthStore = () => authStore();
+
+// Export individual actions and state for direct access
+export const {
+  getState,
+  setState,
+  subscribe
+} = authStore;

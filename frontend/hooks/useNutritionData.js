@@ -1,119 +1,131 @@
-import { useState, useEffect, useContext, useCallback, useMemo } from 'react';
-import { AuthContext } from '../context/AuthContext';
-import { api, cachedGet } from '../services/api';
-import moment from 'moment';
+import { useState, useCallback, useEffect } from 'react';
+import { useAuthStore } from '../stores/authStore';
+import { useNutritionStore } from '../stores/nutritionStore';
+import { useCacheStore } from '../stores/cacheStore';
+import { api } from '../services/api';
 
-const useNutritionData = () => {
-  const { authToken, user } = useContext(AuthContext);
-  const [loading, setLoading] = useState(true);
+const MEALS_CACHE_KEY = 'recentMeals';
+const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
+
+export const useNutritionData = () => {
+  const [recentMeals, setRecentMeals] = useState([]);
+  const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
-  const [macroData, setMacroData] = useState(null);
-  const [calendarData, setCalendarData] = useState(null);
-  const [lastFetch, setLastFetch] = useState(null);
 
-  // Cache time window in milliseconds (5 minutes)
-  const CACHE_WINDOW = 5 * 60 * 1000;
+  const { user } = useAuthStore();
+  const { dailyNutrition, fetchDailyNutrition, updateDailyNutrition } = useNutritionStore();
+  const cache = useCacheStore();
 
-  // Memoize date ranges
-  const dateRanges = useMemo(() => {
-    const now = moment();
-    return {
-      macros: Array.from({ length: 7 }, (_, i) => 
-        now.clone().subtract(i, 'days').format('YYYY-MM-DD')
-      ),
-      calendar: Array.from({ length: 30 }, (_, i) => 
-        now.clone().subtract(i, 'days').format('YYYY-MM-DD')
-      )
-    };
-  }, []);
-
-  const fetchNutritionData = useCallback(async (force = false) => {
-    if (!authToken || (!force && lastFetch && Date.now() - lastFetch < CACHE_WINDOW)) {
-      return;
-    }
+  const fetchRecentMeals = useCallback(async () => {
+    if (!user) return;
 
     try {
-      setLoading(true);
-      setError(null);
-
-      // Batch fetch data with optimized caching
-      const [macroResponses, calendarResponses] = await Promise.all([
-        Promise.all(
-          dateRanges.macros.map(date => 
-            cachedGet(`/nutrition/daily/${date}`, {
-              cacheKey: `nutrition-${date}-${user?.id}`,
-              cacheTime: CACHE_WINDOW
-            })
-          )
-        ),
-        Promise.all(
-          dateRanges.calendar.map(date => 
-            cachedGet(`/nutrition/daily/${date}`, {
-              cacheKey: `nutrition-${date}-${user?.id}`,
-              cacheTime: CACHE_WINDOW
-            })
-          )
-        )
-      ]);
-      
-      // Process macro data
-      const formattedMacroData = {
-        labels: dateRanges.macros.map(date => moment(date).format('MMM D')),
-        datasets: [
-          {
-            data: macroResponses.map(response => response.data.protein || 0),
-            color: '#4285F4',
-            strokeWidth: 2,
-            name: 'Protein'
-          },
-          {
-            data: macroResponses.map(response => response.data.carbs || 0),
-            color: '#34A853',
-            strokeWidth: 2,
-            name: 'Carbs'
-          },
-          {
-            data: macroResponses.map(response => response.data.fat || 0),
-            color: '#FBBC04',
-            strokeWidth: 2,
-            name: 'Fat'
-          }
-        ],
-        legend: ['Protein', 'Carbs', 'Fat']
-      };
-      
-      // Process calendar data
-      const formattedCalendarData = calendarResponses.reduce((acc, response, i) => {
-        const calories = response.data.calories || 0;
-        if (calories > 0) {
-          acc[dateRanges.calendar[i]] = { value: calories };
-        }
-        return acc;
-      }, {});
-
-      setMacroData(formattedMacroData);
-      setCalendarData(formattedCalendarData);
-      setLastFetch(Date.now());
-
+      const response = await api.get('/nutrition/meals/recent');
+      if (response.data) {
+        setRecentMeals(response.data);
+        cache.set(MEALS_CACHE_KEY, response.data, CACHE_DURATION);
+      }
     } catch (err) {
-      console.error('Error fetching nutrition data:', err);
-      setError(err.message || 'Failed to load nutrition data');
+      console.error('Error fetching recent meals:', err);
+      const cachedMeals = cache.get(MEALS_CACHE_KEY);
+      if (cachedMeals) {
+        setRecentMeals(cachedMeals);
+      }
+    }
+  }, [user, cache]);
+
+  const addMeal = useCallback(async (meal) => {
+    if (!user) return;
+
+    setLoading(true);
+    setError(null);
+
+    try {
+      const response = await api.post('/nutrition/meals', {
+        ...meal,
+        userId: user.id
+      });
+
+      if (response.data) {
+        setRecentMeals(prev => [response.data, ...prev]);
+        await updateDailyNutrition();
+      }
+    } catch (err) {
+      setError(err.message || 'Failed to add meal');
     } finally {
       setLoading(false);
     }
-  }, [authToken, user?.id, dateRanges]);
+  }, [user, updateDailyNutrition]);
 
-  // Fetch data on mount and when auth changes
+  const removeMeal = useCallback(async (mealId) => {
+    if (!user) return;
+
+    setLoading(true);
+    setError(null);
+
+    try {
+      await api.delete(`/nutrition/meals/${mealId}`);
+      setRecentMeals(prev => prev.filter(meal => meal.id !== mealId));
+      await updateDailyNutrition();
+    } catch (err) {
+      setError(err.message || 'Failed to remove meal');
+    } finally {
+      setLoading(false);
+    }
+  }, [user, updateDailyNutrition]);
+
+  const updateMeal = useCallback(async (mealId, updates) => {
+    if (!user) return;
+
+    setLoading(true);
+    setError(null);
+
+    try {
+      const response = await api.patch(`/nutrition/meals/${mealId}`, updates);
+      if (response.data) {
+        setRecentMeals(prev => 
+          prev.map(meal => meal.id === mealId ? { ...meal, ...response.data } : meal)
+        );
+        await updateDailyNutrition();
+      }
+    } catch (err) {
+      setError(err.message || 'Failed to update meal');
+    } finally {
+      setLoading(false);
+    }
+  }, [user, updateDailyNutrition]);
+
+  const refreshData = useCallback(async () => {
+    if (!user) return;
+
+    setLoading(true);
+    setError(null);
+
+    try {
+      await Promise.all([
+        fetchDailyNutrition(),
+        fetchRecentMeals()
+      ]);
+    } catch (err) {
+      setError(err.message || 'Failed to refresh nutrition data');
+    } finally {
+      setLoading(false);
+    }
+  }, [user, fetchDailyNutrition, fetchRecentMeals]);
+
   useEffect(() => {
-    fetchNutritionData();
-  }, [fetchNutritionData]);
+    refreshData();
+  }, [refreshData]);
 
-  return { 
-    macroData, 
-    calendarData, 
-    loading, 
-    error, 
-    refreshData: () => fetchNutritionData(true) 
+  return {
+    dailyNutrition,
+    recentMeals,
+    loading,
+    error,
+    addMeal,
+    removeMeal,
+    updateMeal,
+    refreshData
   };
 };
 

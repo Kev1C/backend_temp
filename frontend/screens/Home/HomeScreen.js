@@ -1,5 +1,5 @@
 // frontend/screens/Home/HomeScreen.js
-import React, { useMemo, useState, useEffect, useCallback } from 'react';
+import React, { useMemo, useState, useEffect, useCallback, useContext } from 'react';
 import { Text, SafeAreaView, View, Image, FlatList, ScrollView, StyleSheet } from 'react-native';
 import { useTheme, FAB } from 'react-native-paper';
 import { useNavigation, useRoute } from '@react-navigation/native';

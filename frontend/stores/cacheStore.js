@@ -1,14 +1,12 @@
-// frontend/stores/cacheStore.ts
 import { create } from 'zustand';
-import { CacheState } from '../types/store';
 
 const DEFAULT_TTL = 5 * 60 * 1000; // 5 minutes
 
-export const useCacheStore = create<CacheState>((set, get) => ({
+const cacheStore = create((set, get) => ({
   data: new Map(),
   lastFetch: new Map(),
 
-  get: <T>(key: string): T | null => {
+  get: (key) => {
     const { data, lastFetch } = get();
     const lastFetchTime = lastFetch.get(key);
     const cachedData = data.get(key);
@@ -24,10 +22,10 @@ export const useCacheStore = create<CacheState>((set, get) => ({
       return null;
     }
 
-    return cachedData.value as T;
+    return cachedData.value;
   },
 
-  set: <T>(key: string, value: T, ttl: number = DEFAULT_TTL): void => {
+  set: (key, value, ttl = DEFAULT_TTL) => {
     const { data, lastFetch } = get();
     
     data.set(key, { value, ttl });
@@ -39,7 +37,7 @@ export const useCacheStore = create<CacheState>((set, get) => ({
     });
   },
 
-  invalidate: (key: string): void => {
+  invalidate: (key) => {
     const { data, lastFetch } = get();
     
     data.delete(key);
@@ -51,10 +49,19 @@ export const useCacheStore = create<CacheState>((set, get) => ({
     });
   },
 
-  clearAll: (): void => {
+  clearAll: () => {
     set({
       data: new Map(),
       lastFetch: new Map(),
     });
   },
 }));
+
+export const useCacheStore = () => cacheStore();
+
+// Export individual actions and state for direct access
+export const {
+  getState,
+  setState,
+  subscribe
+} = cacheStore;

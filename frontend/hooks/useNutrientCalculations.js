@@ -1,86 +1,60 @@
-import { useContext } from 'react';
-import { AuthContext } from '../context/AuthContext';
+import { useState, useEffect } from 'react';
+import { useAuthStore } from '../stores/authStore';
+import { useCacheStore } from '../stores/cacheStore';
+import { api } from '../services/api';
 
-const useNutrientCalculations = () => {
-  const { user } = useContext(AuthContext);
+const CACHE_KEY = 'nutrientCalculations';
+const CACHE_DURATION = 24 * 60 * 60 * 1000; // 24 hours
 
-  const calculateNutrients = () => {
-    // If user is null or undefined, return default values based on an average adult
-    if (!user) {
-      console.log('No user data available, returning default values for an average adult');
-      return {
-        calories: 2000, // Average daily calorie intake
-        protein: 56,   // Average protein in grams for an adult male
-        fat: 70,        // Average fat in grams
-        carbs: 310      // Average carbs in grams
-      };
-    }
+export const useNutrientCalculations = () => {
+  const [calculatedNutrients, setCalculatedNutrients] = useState({
+    calories: 0,
+    protein: 0,
+    carbs: 0,
+    fat: 0,
+  });
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
-    const { gender, weight, height, goal } = user;
+  const { user } = useAuthStore();
+  const cache = useCacheStore();
 
-    // Validate user data and provide default values if needed
-    const validatedData = {
-      gender: gender?.toLowerCase() || 'male', // Default male
-      weight: typeof weight === 'number' && weight > 0 ? weight : 70, // Default 70kg
-      height: typeof height === 'number' && height > 0 ? height : 170, // Default 170cm
-      goal: ['lose_weight', 'get_fitter', 'gain_muscle'].includes(goal) ? goal : 'get_fitter' // Default goal
+  useEffect(() => {
+    const fetchNutrientCalculations = async () => {
+      if (!user) {
+        setLoading(false);
+        return;
+      }
+
+      try {
+        // Check cache first
+        const cachedData = cache.get(CACHE_KEY);
+        if (cachedData) {
+          setCalculatedNutrients(cachedData);
+          setLoading(false);
+          return;
+        }
+
+        const response = await api.get('/nutrition/calculations');
+        const data = response.data;
+
+        setCalculatedNutrients(data);
+        cache.set(CACHE_KEY, data, CACHE_DURATION);
+      } catch (err) {
+        setError(err.message || 'Failed to fetch nutrient calculations');
+      } finally {
+        setLoading(false);
+      }
     };
 
-    // Calculate BMR using validated data
-    let BMR;
-    if (validatedData.gender === "male") {
-      BMR = (10 * validatedData.weight) + (6.25 * validatedData.height) + 5;
-    } else {
-      BMR = (10 * validatedData.weight) + (6.25 * validatedData.height) - 161;
-    }
+    fetchNutrientCalculations();
+  }, [user, cache]);
 
-    // Calculate daily calories based on goal
-    let calories;
-    switch(validatedData.goal) {
-      case "lose_weight":
-        calories = BMR - 500;
-        break;
-      case "get_fitter":
-        calories = BMR;
-        break;
-      case "gain_muscle":
-        calories = BMR + 300;
-        break;
-      default:
-        calories = BMR; // Default to maintenance calories
-    }
-
-    // Calculate protein requirements (in grams)
-    let protein;
-    switch(validatedData.goal) {
-      case "lose_weight":
-        protein = validatedData.weight * 2.0;
-        break;
-      case "get_fitter":
-        protein = validatedData.weight * 1.8;
-        break;
-      case "gain_muscle":
-        protein = validatedData.weight * 2.2;
-        break;
-      default:
-        protein = validatedData.weight * 1.8; // Default to moderate protein intake
-    }
-
-    // Calculate fat requirements (in grams)
-    let fat = (calories * 0.25) / 9; // 25% of calories from fat
-    // Calculate carbs requirements (in grams)
-    let carbs = (calories - (protein * 4 + fat * 9)) / 4;
-
-    // Round all values to whole numbers
-    return {
-      calories: Math.round(calories),
-      protein: Math.round(protein),
-      fat: Math.round(fat),
-      carbs: Math.round(carbs)
-    };
+  return {
+    calculatedNutrients,
+    loading,
+    error
   };
-
-  return calculateNutrients();
 };
 
 export default useNutrientCalculations;
