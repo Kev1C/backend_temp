@@ -138,18 +138,20 @@ const HomeScreen = () => {
       if (selectedDate) {
         console.log('Fetching data for date:', selectedDate);
         try {
+          // Use Promise.all for parallel fetching
           await Promise.all([
             fetchRecentMeals(selectedDate),
-            fetchDailyNutrition(selectedDate)
+            // Pass false as second argument to use cache if available
+            fetchDailyNutrition(selectedDate, false)
           ]);
         } catch (error) {
-          console.error('Error fetching nutrition ', error);
+          console.error('Error fetching nutrition data:', error);
         }
       }
     };
   
     fetchData();
-  }, [selectedDate, authToken, isGuest, fetchDailyNutrition, fetchRecentMeals]);
+  }, [selectedDate, authToken, isGuest, fetchRecentMeals, fetchDailyNutrition]); // Add proper dependencies
 
   // Update macros when daily nutrition data changes
   useEffect(() => {

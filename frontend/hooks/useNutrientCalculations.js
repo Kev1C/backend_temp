@@ -14,8 +14,8 @@ const useNutrientStore = create((set, get) => ({
   error: null,
   lastFetch: null,
 
-  fetchCalculations: async (user, force = false) => {
-    if (!user) {
+  fetchCalculations: async (userData, force = false) => {
+    if (!userData) {
       set({ loading: false });
       return;
     }
@@ -24,7 +24,7 @@ const useNutrientStore = create((set, get) => ({
     if (!force && get().lastFetch) {
       const timeSinceLastFetch = Date.now() - get().lastFetch;
       if (timeSinceLastFetch < CACHE_DURATION) {
-        return;
+        return get().calculatedNutrients;
       }
     }
 
@@ -34,41 +34,43 @@ const useNutrientStore = create((set, get) => ({
       // Include user's data in the request
       const response = await api.get('/nutrition/calculations', {
         params: {
-          gender: user.gender,
-          weight: user.weight,
-          height: user.height,
-          fitnessGoal: user.fitnessGoal
+          gender: userData.gender,
+          weight: userData.weight,
+          height: userData.height,
+          fitnessGoal: userData.fitnessGoal || userData.goal // Support both field names
         }
       });
       
-      const data = response.data;
-      
-      // Ensure we have all required nutrient values
       const nutrients = {
-        calories: data.calories || 0,
-        protein: data.protein || 0,
-        carbs: data.carbs || 0,
-        fat: data.fat || 0
+        calories: response.data.calories || 0,
+        protein: response.data.protein || 0,
+        carbs: response.data.carbs || 0,
+        fat: response.data.fat || 0
       };
 
-      set({
+      set({ 
         calculatedNutrients: nutrients,
         loading: false,
-        lastFetch: Date.now()
+        lastFetch: Date.now(),
+        error: null
       });
-    } catch (err) {
-      console.error('Failed to fetch nutrient calculations:', err);
-      set({
-        error: err.message || 'Failed to fetch nutrient calculations',
-        loading: false
+
+      return nutrients;
+    } catch (error) {
+      console.error('Failed to fetch nutrient calculations:', error);
+      set({ 
+        loading: false,
+        error: error.message || 'Failed to fetch calculations'
       });
+      return get().calculatedNutrients;
     }
   },
 
   setCalculations: (nutrients) => {
-    set({
+    set({ 
       calculatedNutrients: nutrients,
-      lastFetch: Date.now()
+      lastFetch: Date.now(),
+      error: null
     });
   }
 }));

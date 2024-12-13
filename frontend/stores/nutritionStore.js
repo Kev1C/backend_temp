@@ -71,9 +71,39 @@ export const nutritionStore = create((set, get) => ({
     }
   },
 
-  updateDailyNutrition: async () => {
-    const today = new Date();
-    return get().fetchDailyNutrition(today, true);
+  updateDailyNutrition: async (date, newMeal) => {
+    const formattedDate = formatDate(date);
+    const cacheKey = `nutrition_${formattedDate}`;
+    const currentData = get().dailyNutrition || {
+      calories: 0,
+      protein: 0,
+      carbs: 0,
+      fat: 0,
+      meals: []
+    };
+
+    // Update totals
+    const updatedData = {
+      ...currentData,
+      calories: currentData.calories + (newMeal.calories || 0),
+      protein: currentData.protein + (newMeal.protein || 0),
+      carbs: currentData.carbs + (newMeal.carbs || 0),
+      fat: currentData.fat + (newMeal.fat || 0),
+      meals: [...currentData.meals, newMeal]
+    };
+
+    // Update state
+    set({ dailyNutrition: updatedData });
+
+    // Update cache
+    cacheStore.getState().set(cacheKey, updatedData);
+
+    // Save to server
+    try {
+      await api.post(`/nutrition/daily/${formattedDate}`, updatedData);
+    } catch (error) {
+      console.error('Failed to save nutrition data:', error);
+    }
   },
 
   clearCache: () => {

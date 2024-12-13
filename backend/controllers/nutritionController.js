@@ -88,6 +88,102 @@ const getDailyNutrition = asyncHandler(async (req, res) => {
   }
 });
 
+// @desc    Get nutrition calculations based on user data
+// @route   GET /api/nutrition/calculations
+// @access  Private
+const getNutritionCalculations = asyncHandler(async (req, res) => {
+  const { gender, weight, height, fitnessGoal } = req.query;
+
+  // Basic validation
+  if (!gender || !weight || !height || !fitnessGoal) {
+    return res.status(400).json({ 
+      message: 'Missing required parameters: gender, weight, height, fitnessGoal' 
+    });
+  }
+
+  // Calculate BMR using Harris-Benedict equation
+  let bmr;
+  const weightInKg = parseFloat(weight);
+  const heightInCm = parseFloat(height);
+
+  if (gender === 'male') {
+    bmr = 88.362 + (13.397 * weightInKg) + (4.799 * heightInCm) - (5.677 * 25);
+  } else {
+    bmr = 447.593 + (9.247 * weightInKg) + (3.098 * heightInCm) - (4.330 * 25);
+  }
+
+  // Adjust calories based on fitness goal
+  let targetCalories = bmr;
+  switch (fitnessGoal) {
+    case 'lose_weight':
+      targetCalories *= 0.85; // 15% deficit
+      break;
+    case 'gain_muscle':
+      targetCalories *= 1.15; // 15% surplus
+      break;
+    default:
+      // maintain weight
+      break;
+  }
+
+  // Calculate macros
+  const protein = weightInKg * (fitnessGoal === 'gain_muscle' ? 2.2 : 2.0); // g/kg
+  const fat = weightInKg * 0.8; // g/kg
+  const remainingCalories = targetCalories - (protein * 4) - (fat * 9);
+  const carbs = Math.max(0, remainingCalories / 4);
+
+  // Match frontend expected structure
+  const calculations = {
+    calories: Math.round(targetCalories),
+    protein: Math.round(protein),
+    carbs: Math.round(carbs),
+    fat: Math.round(fat)
+  };
+
+  res.json(calculations);
+});
+
+// @desc    Update daily macros
+// @route   POST /api/nutrition/macros
+// @access  Private
+const updateMacros = asyncHandler(async (req, res) => {
+  const { calories, protein, carbs, fat } = req.body;
+  const userId = req.user.userId || req.user._id;
+
+  // Store in cache with user-specific key
+  const cacheKey = `macros-${userId}`;
+  const macroData = { calories, protein, carbs, fat, lastUpdated: new Date() };
+  nutritionCache.set(cacheKey, macroData);
+  clearCacheEntry(cacheKey);
+
+  res.json(macroData);
+});
+
+// @desc    Reset daily macros
+// @route   POST /api/nutrition/macros/reset
+// @access  Private
+const resetMacros = asyncHandler(async (req, res) => {
+  const userId = req.user.userId || req.user._id;
+  const cacheKey = `macros-${userId}`;
+  
+  // Reset to zero
+  const resetData = {
+    calories: 0,
+    protein: 0,
+    carbs: 0,
+    fat: 0,
+    lastUpdated: new Date()
+  };
+  
+  nutritionCache.set(cacheKey, resetData);
+  clearCacheEntry(cacheKey);
+
+  res.json(resetData);
+});
+
 module.exports = {
-  getDailyNutrition
+  getDailyNutrition,
+  getNutritionCalculations,
+  updateMacros,
+  resetMacros
 };
