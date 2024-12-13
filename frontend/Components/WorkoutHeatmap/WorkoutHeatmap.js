@@ -1,12 +1,12 @@
 // WorkoutHeatmap.js
 
-import React, { useState, useEffect, useContext, useMemo, useCallback } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { View, ActivityIndicator, Dimensions, Text } from 'react-native';
 import { useTheme } from 'react-native-paper';
 import moment from 'moment';
 import PropTypes from 'prop-types';
 
-import { AuthContext } from '../../context/AuthContext';
+import { useAuthStore } from '../../stores/authStore';
 import { useWorkoutData } from './useWorkoutData';
 import { getCategoryColor } from './colorUtils';
 import styles from './WorkoutHeatmap.styles';
@@ -34,7 +34,7 @@ const MUSCLE_GROUPS = [
 
 const WorkoutHeatmap = () => {
   const theme = useTheme();
-  const { user } = useContext(AuthContext);
+  const { user } = useAuthStore();
   const [selectedCategories, setSelectedCategories] = useState(
     WORKOUT_CATEGORIES.map(category => category.key)
   );

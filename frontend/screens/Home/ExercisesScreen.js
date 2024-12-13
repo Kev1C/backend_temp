@@ -1,6 +1,6 @@
 // frontend/screens/Home/ExercisesScreen.js
 
-import React, { useContext, useState, useCallback, useMemo } from 'react';
+import React, { useState, useCallback, useMemo } from 'react';
 import {
     View,
     Text,
@@ -11,7 +11,7 @@ import {
     Alert,
 } from 'react-native';
 import { useTheme, Button } from 'react-native-paper';
-import { AuthContext } from '../../context/AuthContext';
+import { useAuthStore } from '../../stores/authStore';
 import useExercises from '../../hooks/useExercises';
 import useFilters from '../../hooks/useFilters';
 import ExerciseItem from '../../Components/ExerciseItem';
@@ -23,7 +23,7 @@ import createStyles from './ExercisesScreenStyles';
 import globalStyles from './globalStyles';
 
 const ExercisesScreen = () => {
-    const { authToken } = useContext(AuthContext);
+    const { authToken } = useAuthStore();
     const theme = useTheme();
     const styles = useMemo(() => ({
         ...globalStyles,

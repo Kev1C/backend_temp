@@ -1,7 +1,7 @@
-import React, { useEffect, useState, useContext, useCallback, useRef, useMemo, useImperativeHandle } from 'react';
+import React, { useEffect, useState, useCallback, useRef, useMemo, useImperativeHandle } from 'react';
 import { View, StyleSheet, Platform, useWindowDimensions, ActivityIndicator, Text } from 'react-native';
 import { VictoryChart, VictoryArea, VictoryAxis, VictoryTooltip, VictoryVoronoiContainer } from 'victory-native';
-import { ThemeContext } from '../context/ThemeContext';
+import { useTheme } from 'react-native-paper';
 import { H3 } from './Typography';
 import { api } from '../services/api';
 import debounce from 'lodash/debounce';
@@ -76,7 +76,7 @@ const styles = StyleSheet.create({
 });
 
 const ProgressChart = React.forwardRef(({ token, selectedCategories }, ref) => {
-  const { theme } = useContext(ThemeContext);
+  const theme = useTheme();
   const { width: screenWidth } = useWindowDimensions();
   const [progressData, setProgressData] = useState([]);
   const [loading, setLoading] = useState(true);

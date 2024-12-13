@@ -1,5 +1,5 @@
 //frontend/Components/ProgressInput.js
-import React, { useState, useContext, useCallback, useMemo } from 'react';
+import React, { useState, useCallback, useMemo } from 'react';
 import { 
   View, 
   TextInput, 
@@ -12,13 +12,13 @@ import {
   ActivityIndicator
 } from 'react-native';
 import { api } from '../services/api';
-import { ThemeContext } from '../context/ThemeContext';
-import { AuthContext } from '../context/AuthContext';
+import { useTheme } from 'react-native-paper';
+import { useAuthStore } from '../stores/authStore';
 import { calculateLeanBodyMass, calculateBodyFat, calculateMuscleMass } from '../utils/bodyComposition';
 
 const ProgressInput = React.memo(({ token, onSubmit, disabled }) => {
-  const { theme } = useContext(ThemeContext);
-  const { user } = useContext(AuthContext);
+  const theme = useTheme();
+  const { user } = useAuthStore();
   const [formData, setFormData] = useState({
     weight: '',
     muscleMass: '',
