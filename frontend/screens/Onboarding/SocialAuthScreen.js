@@ -1,18 +1,18 @@
-import React, { useContext, useState } from 'react';
+import React, { useState } from 'react';
 import { View, Text, TouchableOpacity, Alert } from 'react-native';
 import * as WebBrowser from 'expo-web-browser';
 import * as Google from 'expo-auth-session/providers/google';
 import { AntDesign } from '@expo/vector-icons';
 import { styles } from './SocialAuthScreen.styles';
-import { OnboardingContext } from '../../context/OnboardingContext';
 import { auth, signInAsGuest } from '../../firebaseConfig';
 import { GoogleAuthProvider, signInWithCredential } from '@firebase/auth';
 import { useAuthStore } from '../../stores/authStore';
+import { useOnboardingStore } from '../../stores/onboardingStore';
 
 WebBrowser.maybeCompleteAuthSession();
 
 export default function SocialAuthScreen({ navigation }) {
-  const { completeOnboarding, onboardingData } = useContext(OnboardingContext);
+  const { onboardingData, isOnboardingComplete, completeOnboarding } = useOnboardingStore();
   const { signInAnonymously } = useAuthStore();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
@@ -38,12 +38,19 @@ export default function SocialAuthScreen({ navigation }) {
         // Get backend JWT using Firebase token
         await signInAnonymously(userCredential);
         
-        // Complete onboarding if necessary
-        if (onboardingData) {
-          await completeOnboarding();
-        }
+        // Check if all required onboarding data is present
+        const hasAllData = onboardingData?.gender && 
+                         onboardingData?.height && 
+                         onboardingData?.weight && 
+                         (onboardingData?.goal || onboardingData?.fitnessGoal);
         
-        navigation.replace('Tabs');
+        if (hasAllData && !isOnboardingComplete) {
+          await completeOnboarding();
+          navigation.replace('Tabs');
+        } else {
+          // If onboarding data is incomplete, start from the beginning
+          navigation.replace('GenderSelection');
+        }
       }
     } catch (error) {
       console.error('Google sign in error:', error);
@@ -59,15 +66,48 @@ export default function SocialAuthScreen({ navigation }) {
       setLoading(true);
       setError(null);
       
+      // Load the latest onboarding data
+      await useOnboardingStore.getState().loadOnboardingData();
+      
+      // Get the fresh data after loading
+      const { onboardingData, isOnboardingComplete } = useOnboardingStore.getState();
+      
+      console.log('Current onboarding data:', onboardingData);
+      console.log('Is onboarding complete?', isOnboardingComplete);
+      
       // Sign in as guest using Firebase
       await signInAnonymously();
       
-      // Complete onboarding if necessary
-      if (onboardingData) {
-        await completeOnboarding();
-      }
+      // Check if all required onboarding data is present
+      const hasAllData = Boolean(
+        onboardingData?.gender &&
+        onboardingData?.height &&
+        onboardingData?.weight &&
+        (onboardingData?.goal || onboardingData?.fitnessGoal)
+      );
       
-      navigation.replace('Tabs');
+      console.log('Has all required data?', hasAllData);
+      console.log('Required fields:', {
+        gender: Boolean(onboardingData?.gender),
+        height: Boolean(onboardingData?.height),
+        weight: Boolean(onboardingData?.weight),
+        goal: Boolean(onboardingData?.goal || onboardingData?.fitnessGoal)
+      });
+      
+      if (hasAllData && !isOnboardingComplete) {
+        console.log('Attempting to complete onboarding...');
+        await completeOnboarding();
+        console.log('Onboarding completed, navigating to Tabs');
+        navigation.replace('Tabs');
+      } else if (!hasAllData) {
+        console.log('Missing onboarding data, redirecting to GenderSelection');
+        // Reset onboarding data before starting over
+        await useOnboardingStore.getState().resetOnboarding();
+        navigation.replace('GenderSelection');
+      } else {
+        console.log('Onboarding already complete, navigating to Tabs');
+        navigation.replace('Tabs');
+      }
     } catch (error) {
       console.error('Guest sign in error:', error);
       setError('Failed to sign in as guest. Please try again.');

@@ -1,9 +1,9 @@
-import React, { useContext } from 'react';
+import React from 'react';
 import { View, Text, TouchableOpacity, SafeAreaView, Alert } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import styles from './GoalSelection.styles';
 import Button from '../../Components/Button';
-import { OnboardingContext } from '../../context/OnboardingContext';
+import { useOnboardingStore } from '../../stores/onboardingStore';
 
 const GOALS = [
   {
@@ -28,7 +28,7 @@ const GOALS = [
 
 const GoalSelectionScreen = ({ navigation }) => {
   const [selectedGoal, setSelectedGoal] = React.useState(null);
-  const { saveOnboardingData, completeOnboarding, onboardingData } = useContext(OnboardingContext);
+  const { saveOnboardingData, onboardingData } = useOnboardingStore();
 
   const handleGoalSelection = (goalId) => {
     setSelectedGoal(goalId);

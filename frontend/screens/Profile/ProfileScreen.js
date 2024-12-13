@@ -1,9 +1,9 @@
 // frontend/screens/Profile/ProfileScreen.js
 
-import React, { useContext, useCallback, useMemo } from 'react';
+import React, { useCallback, useMemo } from 'react';
 import { View, StyleSheet, ActivityIndicator, TouchableOpacity, FlatList } from 'react-native';
 import { Title, Caption, Text } from 'react-native-paper';
-import { AuthContext } from '../../context/AuthContext';
+import { useAuthStore } from '../../stores/authStore';
 import { useTheme } from 'react-native-paper';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import MacroNutrientsChart from '../../Components/MacroNutrientsChart';
@@ -11,7 +11,7 @@ import NutritionHeatmap from '../../Components/NutritionHeatmap';
 import useNutritionData from '../../hooks/useNutritionData';
 
 const ProfileScreen = ({ navigation }) => {
-  const { user, loading: userLoading } = useContext(AuthContext);
+  const { user, loading: userLoading } = useAuthStore();
   const theme = useTheme(); // Access the current theme
   const { macroData, calendarData, loading: nutritionLoading, error, refreshData } = useNutritionData();
 

@@ -1,16 +1,16 @@
 // frontend/navigation/AppNavigator.js
-import React, { useContext } from 'react';
-import { AuthContext } from '../context/AuthContext';
-import { OnboardingContext } from '../context/OnboardingContext';
+import React from 'react';
+import { useAuthStore } from '../stores/authStore';
+import { useOnboardingStore } from '../stores/onboardingStore';
 import OnboardingNavigator from './OnboardingNavigator';
 import MainNavigator from './MainNavigator';
 
 const AppNavigator = () => {
-    const { authToken } = useContext(AuthContext);
-    const { onboardingData } = useContext(OnboardingContext);
+    const { authToken } = useAuthStore();
+    const { isOnboardingComplete } = useOnboardingStore();
 
     // If user is not authenticated or onboarding is not complete, show onboarding
-    if (!authToken || !onboardingData.isOnboardingComplete) {
+    if (!authToken || !isOnboardingComplete) {
         return <OnboardingNavigator />;
     }
 

@@ -1,22 +1,22 @@
 // frontend/screens/Home/HomeScreen.js
-import React, { useMemo, useState, useEffect, useCallback, useContext } from 'react';
+import React, { useMemo, useState, useEffect, useCallback } from 'react';
 import { Text, SafeAreaView, View, Image, FlatList, ScrollView, StyleSheet } from 'react-native';
 import { useTheme, FAB } from 'react-native-paper';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { useAuthStore } from '../../stores/authStore';
 import { useNutritionStore } from '../../stores/nutritionStore';
+import { useOnboardingStore } from '../../stores/onboardingStore';
 import createStyles from './HomeScreenStyles';
-import useCalorieTracker from '../../hooks/useCalorieTracker';
+import { useCalorieStore } from '../../hooks/useCalorieTracker';
+import useMacroStore from '../../hooks/useMacroTracker';
 import useNutrientCalculations from '../../hooks/useNutrientCalculations';
-import useMacroTracker from '../../hooks/useMacroTracker';
 import { MemoizedWeekCalendar, MemoizedCalorieProgress, MemoizedRecentlyEaten } from './MemoizedComponents';
 import { api } from '../../services/api';
-import { OnboardingContext } from '../../context/OnboardingContext';
 import isEqual from 'lodash/isEqual';
 
 const HomeScreen = () => {
   const { user, authToken, isGuest } = useAuthStore();
-  const { onboardingData } = useContext(OnboardingContext);
+  const { onboardingData, isOnboardingComplete } = useOnboardingStore();
   const theme = useTheme();
   const navigation = useNavigation();
   const route = useRoute();
@@ -29,8 +29,22 @@ const HomeScreen = () => {
     saving: false
   });
 
-  // Get calculated nutrients (these are the daily goals)
-  const calculatedNutrients = useNutrientCalculations();
+  // Get daily nutrition data
+  const { 
+    dailyNutrition, 
+    isLoading: isLoadingNutrition, 
+    fetchDailyNutrition 
+  } = useNutritionStore();
+
+  // Get calorie data
+  const { calories, addCalories, resetCalories } = useCalorieStore();
+
+  // Get macro data
+  const macroStore = useMacroStore();
+  const { macros, addMacros, resetMacros, checkDailyReset, hydrated } = macroStore;
+
+  // Get nutrient calculations (daily goals)
+  const { calculatedNutrients, loading: loadingNutrients, fetchCalculations } = useNutrientCalculations();
 
   // State for recently eaten meals
   const [recentMeals, setRecentMeals] = useState([]);
@@ -39,12 +53,17 @@ const HomeScreen = () => {
   const [prevAddMeal, setPrevAddMeal] = useState(null);
   const [prevUpdateProgress, setPrevUpdateProgress] = useState(null);
 
-  // Get daily nutrition data
-  const { 
-    dailyNutrition, 
-    isLoading: isLoadingNutrition, 
-    fetchDailyNutrition 
-  } = useNutritionStore();
+  // Fetch nutrient calculations on mount
+  useEffect(() => {
+    fetchCalculations();
+  }, []);
+
+  // Check for daily macro reset
+  useEffect(() => {
+    if (hydrated) {
+      checkDailyReset();
+    }
+  }, [hydrated, checkDailyReset]);
 
   // Memoize fetchRecentMeals to prevent recreation on every render
   const fetchRecentMeals = useCallback(async (date) => {
@@ -95,26 +114,16 @@ const HomeScreen = () => {
     setSelectedDate(date);
   }, []);
 
-  // Custom Hooks for trackers
-  const {
-    macros,
-    addMacros,
-    resetMacros,
-  } = useMacroTracker();
-
-  const {
-    calories,
-    addCalories,
-    resetCalories,
-  } = useCalorieTracker();
-
   // Redirect to onboarding if not complete
   useEffect(() => {
-    if (user && !onboardingData.isOnboardingComplete) {
-      navigation.navigate('Onboarding');
-      return;
-    }
-  }, [user, onboardingData, navigation]);
+    // Only check once when component mounts
+    const checkOnboarding = async () => {
+      if (user && !isOnboardingComplete) {
+        await useOnboardingStore.getState().resetOnboarding();
+      }
+    };
+    checkOnboarding();
+  }, []); // Empty dependency array - only run on mount
 
   // Fetch meals and nutrition data when date changes
   useEffect(() => {
@@ -141,13 +150,13 @@ const HomeScreen = () => {
   useEffect(() => {
     console.log('Daily nutrition update triggered:', dailyNutrition);
   
-    // Skip if dailyNutrition is null or empty
-    if (!dailyNutrition || Object.values(dailyNutrition).every(v => !v || (Array.isArray(v) && !v.length))) {
-      console.log('Skipping update due to null or empty dailyNutrition');
+    // Skip if dailyNutrition is completely null
+    if (!dailyNutrition) {
+      console.log('Skipping update due to null dailyNutrition');
       return;
     }
-  
-    // Extract and update nutrition data
+
+    // Extract and update nutrition data, defaulting to 0 if values are missing
     const nutritionData = {
       calories: Number(dailyNutrition.calories) || 0,
       protein: Number(dailyNutrition.protein) || 0,
@@ -158,26 +167,21 @@ const HomeScreen = () => {
     console.log('Updating nutrition with:', nutritionData);
   
     // Update macros and calories
-    resetMacros();
     resetCalories();
+    resetMacros();
     addMacros(nutritionData.protein, nutritionData.carbs, nutritionData.fat);
     addCalories(nutritionData.calories);
-  }, [dailyNutrition, resetMacros, resetCalories, addMacros, addCalories]);
-  
+  }, [dailyNutrition]);
 
-  // Memoize nutrients data
+  // Memoize nutrients data for display
   const nutrients = useMemo(() => ({
-    calories: dailyNutrition?.calories || 0,
-    caloriesGoal: calculatedNutrients?.calories || 0,
-    carbs: dailyNutrition?.carbs || 0,
-    carbsGoal: calculatedNutrients?.carbs || 0,
-    fat: dailyNutrition?.fat || 0,
-    fatGoal: calculatedNutrients?.fat || 0,
-    protein: dailyNutrition?.protein || 0,
-    proteinGoal: calculatedNutrients?.protein || 0,
-  }), [dailyNutrition, calculatedNutrients]);
-
-  console.log('HomeScreen nutrient goals:', calculatedNutrients);
+    current: {
+      calories,
+      ...macros
+    },
+    goals: calculatedNutrients,
+    loading: loadingNutrients || isLoadingNutrition
+  }), [calories, macros, calculatedNutrients, loadingNutrients, isLoadingNutrition]);
 
   // Handle updates from camera screen with loading states
   useEffect(() => {
@@ -199,7 +203,7 @@ const HomeScreen = () => {
           );
 
           // Update calories
-          addCalories(Number(updateProgress.calories));
+          if (addCalories) addCalories(Number(updateProgress.calories));
 
           if (isGuest) {
             await saveGuestMealData(addMeal, selectedDate);
@@ -219,9 +223,6 @@ const HomeScreen = () => {
       handleNewMeal();
     }
   }, [route.params, selectedDate, isGuest, fetchRecentMeals, saveGuestMealData, fetchDailyNutrition]);
-
-  console.log('Current macro progress:', macros);
-  console.log('Daily nutrition ', dailyNutrition);
 
   // Memoize FAB onPress handler
   const handleFABPress = useCallback(() => {

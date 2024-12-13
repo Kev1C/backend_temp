@@ -32,8 +32,24 @@ export const nutritionStore = create((set, get) => ({
 
     try {
       console.log('Fetching nutrition data for:', formattedDate);
-      const response = await api.get(`/nutrition/daily/${formattedDate}`);
-      const data = response.data;
+      
+      // Initialize empty nutrition data
+      const emptyData = {
+        calories: 0,
+        protein: 0,
+        carbs: 0,
+        fat: 0,
+        meals: []
+      };
+
+      let data;
+      try {
+        const response = await api.get(`/nutrition/daily/${formattedDate}`);
+        data = response.data;
+      } catch (apiError) {
+        console.log('API request failed, using empty data:', apiError.message);
+        data = emptyData;
+      }
 
       // Store in cache
       cacheStore.getState().set(cacheKey, data, CACHE_DURATION);
@@ -41,10 +57,17 @@ export const nutritionStore = create((set, get) => ({
       set({ dailyNutrition: data, isLoading: false });
       return data;
     } catch (err) {
-      console.error('Error fetching nutrition:', err);
-      const error = err.message || 'Failed to fetch daily nutrition';
-      set({ error, isLoading: false });
-      throw new Error(error);
+      console.error('Error in nutrition store:', err);
+      // Instead of throwing error, return empty data
+      const emptyData = {
+        calories: 0,
+        protein: 0,
+        carbs: 0,
+        fat: 0,
+        meals: []
+      };
+      set({ dailyNutrition: emptyData, error: err.message, isLoading: false });
+      return emptyData;
     }
   },
 

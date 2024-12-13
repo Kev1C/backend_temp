@@ -1,72 +1,72 @@
-import { useState, useCallback } from 'react';
-import { useAuthStore } from '../stores/authStore';
-import { useCacheStore } from '../stores/cacheStore';
+import { create } from 'zustand';
+import { persist, createJSONStorage } from 'zustand/middleware';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { api } from '../services/api';
+import { useAuthStore } from '../stores/authStore';
 
-const CACHE_KEY = 'calorieTracker';
+export const useCalorieStore = create(
+  persist(
+    (set, get) => ({
+      calories: 0,
+      loading: false,
+      error: null,
 
-export const useCalorieTracker = () => {
-  const [calories, setCalories] = useState(0);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState(null);
-  const { user } = useAuthStore();
-  const cache = useCacheStore();
+      addCalories: async (amount) => {
+        const user = useAuthStore.getState().user;
+        if (!user) return;
 
-  const addCalories = useCallback(async (amount) => {
-    if (!user) return;
+        set({ loading: true, error: null });
 
-    setLoading(true);
-    setError(null);
+        try {
+          const newTotal = get().calories + amount;
+          set({ calories: newTotal });
 
-    try {
-      const newTotal = calories + amount;
-      setCalories(newTotal);
+          await api.post('/nutrition/calories', {
+            userId: user.id,
+            calories: amount,
+          });
+        } catch (err) {
+          set({ error: err.message || 'Failed to add calories' });
+          set({ calories: get().calories - amount }); // Revert on error
+        } finally {
+          set({ loading: false });
+        }
+      },
 
-      const response = await api.post('/nutrition/calories', {
-        userId: user.id,
-        calories: amount,
-      });
+      subtractCalories: async (amount) => {
+        const user = useAuthStore.getState().user;
+        if (!user) return;
 
-      cache.set(CACHE_KEY, newTotal);
-    } catch (err) {
-      setError(err.message || 'Failed to add calories');
-      setCalories(calories); // Revert on error
-    } finally {
-      setLoading(false);
+        set({ loading: true, error: null });
+
+        try {
+          const newTotal = Math.max(0, get().calories - amount);
+          set({ calories: newTotal });
+
+          await api.post('/nutrition/calories', {
+            userId: user.id,
+            calories: -amount,
+          });
+        } catch (err) {
+          set({ error: err.message || 'Failed to subtract calories' });
+          set({ calories: get().calories + amount }); // Revert on error
+        } finally {
+          set({ loading: false });
+        }
+      },
+
+      resetCalories: () => {
+        set({ calories: 0 });
+      },
+
+      setCalories: (amount) => {
+        set({ calories: amount });
+      }
+    }),
+    {
+      name: 'calorie-storage',
+      storage: createJSONStorage(() => AsyncStorage),
+      partialize: (state) => ({ calories: state.calories })
     }
-  }, [calories, user, cache]);
-
-  const subtractCalories = useCallback(async (amount) => {
-    if (!user) return;
-
-    setLoading(true);
-    setError(null);
-
-    try {
-      const newTotal = Math.max(0, calories - amount);
-      setCalories(newTotal);
-
-      const response = await api.post('/nutrition/calories', {
-        userId: user.id,
-        calories: -amount,
-      });
-
-      cache.set(CACHE_KEY, newTotal);
-    } catch (err) {
-      setError(err.message || 'Failed to subtract calories');
-      setCalories(calories); // Revert on error
-    } finally {
-      setLoading(false);
-    }
-  }, [calories, user, cache]);
-
-  return {
-    calories,
-    loading,
-    error,
-    addCalories,
-    subtractCalories,
-  };
-};
-
-export default useCalorieTracker;
+  )
+);

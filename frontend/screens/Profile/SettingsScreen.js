@@ -4,14 +4,14 @@ import React, { useContext } from 'react';
 import { View, Alert, ScrollView, TouchableOpacity, SafeAreaView, Platform, StatusBar } from 'react-native';
 import { Text, Button, Divider, Card } from 'react-native-paper';
 import { ThemeContext } from '../../context/ThemeContext';
-import { AuthContext } from '../../context/AuthContext';
+import { useAuthStore } from '../../stores/authStore';
 import getStyles from './SettingsScreen.styles';
 import { useNavigation } from '@react-navigation/native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 
 const SettingsScreen = () => {
   const { theme } = useContext(ThemeContext);
-  const { signOut, user } = useContext(AuthContext);
+  const { signOut, user } = useAuthStore();
   const navigation = useNavigation();
   const styles = getStyles(theme);
 
@@ -24,7 +24,14 @@ const SettingsScreen = () => {
         {
           text: 'Logout',
           style: 'destructive',
-          onPress: () => signOut(),
+          onPress: async () => {
+            await signOut();
+            // Reset navigation to the root
+            navigation.reset({
+              index: 0,
+              routes: [{ name: 'GenderSelection' }],
+            });
+          },
         },
       ],
       { cancelable: true }

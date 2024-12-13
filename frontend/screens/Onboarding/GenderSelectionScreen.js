@@ -1,16 +1,16 @@
 // screens/onboarding/GenderSelectionScreen.js
-import React, { useContext } from 'react';
+import React from 'react';
 import { SafeAreaView, Alert } from 'react-native';
 import styles from './GenderSelection.styles';
 import GenderSelection from '../../Components/GenderSelection';
-import { OnboardingContext } from '../../context/OnboardingContext';
+import { useOnboardingStore } from '../../stores/onboardingStore';
 
 const GenderSelectionScreen = ({ navigation }) => {
-  const { saveOnboardingData } = useContext(OnboardingContext);
+  const { saveOnboardingData } = useOnboardingStore();
 
   const handleNext = async (gender) => {
     try {
-      // Update onboarding context with gender
+      // Update onboarding store with gender
       await saveOnboardingData({ gender });
       // Navigate to next screen
       navigation.navigate('HeightWeight');

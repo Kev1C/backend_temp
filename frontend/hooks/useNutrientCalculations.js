@@ -1,60 +1,60 @@
-import { useState, useEffect } from 'react';
-import { useAuthStore } from '../stores/authStore';
-import { useCacheStore } from '../stores/cacheStore';
+import { create } from 'zustand';
 import { api } from '../services/api';
+import { useAuthStore } from '../stores/authStore';
 
-const CACHE_KEY = 'nutrientCalculations';
 const CACHE_DURATION = 24 * 60 * 60 * 1000; // 24 hours
 
-export const useNutrientCalculations = () => {
-  const [calculatedNutrients, setCalculatedNutrients] = useState({
+const useNutrientStore = create((set, get) => ({
+  calculatedNutrients: {
     calories: 0,
     protein: 0,
     carbs: 0,
     fat: 0,
-  });
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
+  },
+  loading: false,
+  error: null,
+  lastFetch: null,
 
-  const { user } = useAuthStore();
-  const cache = useCacheStore();
+  fetchCalculations: async (force = false) => {
+    const user = useAuthStore.getState().user;
+    if (!user) {
+      set({ loading: false });
+      return;
+    }
 
-  useEffect(() => {
-    const fetchNutrientCalculations = async () => {
-      if (!user) {
-        setLoading(false);
+    // Check if we need to fetch again
+    if (!force && get().lastFetch) {
+      const timeSinceLastFetch = Date.now() - get().lastFetch;
+      if (timeSinceLastFetch < CACHE_DURATION) {
         return;
       }
+    }
 
-      try {
-        // Check cache first
-        const cachedData = cache.get(CACHE_KEY);
-        if (cachedData) {
-          setCalculatedNutrients(cachedData);
-          setLoading(false);
-          return;
-        }
+    set({ loading: true, error: null });
 
-        const response = await api.get('/nutrition/calculations');
-        const data = response.data;
+    try {
+      const response = await api.get('/nutrition/calculations');
+      const data = response.data;
 
-        setCalculatedNutrients(data);
-        cache.set(CACHE_KEY, data, CACHE_DURATION);
-      } catch (err) {
-        setError(err.message || 'Failed to fetch nutrient calculations');
-      } finally {
-        setLoading(false);
-      }
-    };
+      set({
+        calculatedNutrients: data,
+        loading: false,
+        lastFetch: Date.now()
+      });
+    } catch (err) {
+      set({
+        error: err.message || 'Failed to fetch nutrient calculations',
+        loading: false
+      });
+    }
+  },
 
-    fetchNutrientCalculations();
-  }, [user, cache]);
+  setCalculations: (nutrients) => {
+    set({
+      calculatedNutrients: nutrients,
+      lastFetch: Date.now()
+    });
+  }
+}));
 
-  return {
-    calculatedNutrients,
-    loading,
-    error
-  };
-};
-
-export default useNutrientCalculations;
+export default useNutrientStore;

@@ -1,13 +1,13 @@
-import React, { useState, useEffect, useContext } from 'react';
+import React, { useState, useEffect } from 'react';
 import { View, Text, TouchableOpacity, Alert, StyleSheet } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import ScrollPicker from 'react-native-wheel-scrollview-picker';
 import Button from '../../Components/Button';
 import { api } from '../../services/api';
-import { OnboardingContext } from '../../context/OnboardingContext';
+import { useOnboardingStore } from '../../stores/onboardingStore';
 
 const HeightWeightScreen = ({ navigation, route }) => {
-  const { saveOnboardingData } = useContext(OnboardingContext);
+  const { saveOnboardingData } = useOnboardingStore();
   const [isMetric, setIsMetric] = useState(true);
   const [heightCm, setHeightCm] = useState(175);
   const [heightFt, setHeightFt] = useState(5);
