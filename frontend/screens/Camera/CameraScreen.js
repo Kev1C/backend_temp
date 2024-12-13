@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { View, StyleSheet, Alert } from 'react-native';
-import { Camera } from 'expo-camera';
+import { Camera, CameraType } from 'expo-camera';
 import { useNavigation, useIsFocused } from '@react-navigation/native';
 import { Text, Button, IconButton, MD3Colors } from 'react-native-paper';
 import BottomSheet, { BottomSheetScrollView } from '@gorhom/bottom-sheet';
@@ -8,10 +8,17 @@ import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { useAuthStore } from '../../stores/authStore';
 import { api } from '../../services/api';
 
+// Log available camera properties
+console.log('Camera API:', {
+  Camera: Camera,
+  Type: CameraType
+});
+
 const CameraScreen = () => {
+  // Initialize with safe default values
   const [hasPermission, setHasPermission] = useState(null);
-  const [type, setType] = useState(Camera.Constants.Type.back);
-  const [flashMode, setFlashMode] = useState(Camera.Constants.FlashMode.off);
+  const [type, setType] = useState(CameraType.back);
+  const [flash, setFlash] = useState('off');
   const [capturedImage, setCapturedImage] = useState(null);
   const [isCameraReady, setIsCameraReady] = useState(false);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
@@ -86,19 +93,13 @@ const CameraScreen = () => {
   };
 
   const toggleCameraType = () => {
-    setType(current => 
-      current === Camera.Constants.Type.back 
-        ? Camera.Constants.Type.front 
-        : Camera.Constants.Type.back
-    );
+    setType(current => (
+      current === CameraType.back ? CameraType.front : CameraType.back
+    ));
   };
 
   const toggleFlash = () => {
-    setFlashMode(current =>
-      current === Camera.Constants.FlashMode.off
-        ? Camera.Constants.FlashMode.on
-        : Camera.Constants.FlashMode.off
-    );
+    setFlash(current => current === 'off' ? 'on' : 'off');
   };
 
   if (hasPermission === null) {
@@ -128,7 +129,7 @@ const CameraScreen = () => {
             ref={cameraRef}
             style={styles.camera}
             type={type}
-            flashMode={flashMode}
+            flash={flash}
             onCameraReady={handleCameraReady}
           >
             <View style={styles.buttonContainer}>
@@ -140,7 +141,7 @@ const CameraScreen = () => {
                   onPress={toggleCameraType}
                 />
                 <IconButton
-                  icon={flashMode === Camera.Constants.FlashMode.off ? 'flash-off' : 'flash'}
+                  icon={flash === 'off' ? 'flash-off' : 'flash'}
                   size={30}
                   iconColor={MD3Colors.neutral100}
                   onPress={toggleFlash}
