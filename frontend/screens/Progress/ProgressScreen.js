@@ -1,9 +1,9 @@
 // frontend/screens/Progress/ProgressScreen.js
 
-import React, { useContext, useEffect, useRef, useState, Suspense, useMemo } from 'react';
+import React, { useEffect, useRef, useState, Suspense, useMemo } from 'react';
 import { ScrollView, Alert, TouchableOpacity, RefreshControl, View, ActivityIndicator } from 'react-native';
 import { Button, Text, useTheme } from 'react-native-paper';
-import { AuthContext } from '../../context/AuthContext';
+import { useAuthStore } from '../../stores/authStore';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import ProgressInput from '../../Components/ProgressInput';
 import ProgressChart from '../../Components/ProgressChart';
@@ -51,7 +51,7 @@ const LoadingFallback = () => (
 );
 
 const ProgressScreen = ({ navigation }) => {
-  const { authToken, signOut, user } = useContext(AuthContext);
+  const { authToken, user } = useAuthStore();
   const theme = useTheme();
   const styles = getStyles(theme);
   const chartRef = useRef(null);
