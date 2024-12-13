@@ -35,12 +35,25 @@ const HomeScreen = () => {
     if (user && onboardingData && isOnboardingComplete) {
       const userData = {
         ...onboardingData,
-        // Ensure we have the correct property name
         fitnessGoal: onboardingData.goal || onboardingData.fitnessGoal
       };
       fetchCalculations(userData);
     }
   }, [user, onboardingData, isOnboardingComplete, fetchCalculations]);
+
+  // Memoize date selection handler
+  const handleDateSelect = useCallback(async (date) => {
+    setSelectedDate(date);
+    await fetchDailyNutrition(date);
+    await fetchRecentMeals(date);
+  }, [fetchDailyNutrition, fetchRecentMeals]);
+
+  // Load initial data
+  useEffect(() => {
+    if (selectedDate) {
+      handleDateSelect(selectedDate);
+    }
+  }, []); // Only run on mount
 
   // Get daily nutrition data
   const { 
@@ -63,23 +76,13 @@ const HomeScreen = () => {
   const [prevAddMeal, setPrevAddMeal] = useState(null);
   const [prevUpdateProgress, setPrevUpdateProgress] = useState(null);
 
-  // Check for daily macro reset
-  useEffect(() => {
-    if (hydrated) {
-      checkDailyReset();
-    }
-  }, [hydrated, checkDailyReset]);
-
   // Memoize fetchRecentMeals to prevent recreation on every render
   const fetchRecentMeals = useCallback(async (date) => {
     try {
       setLoadingStates(prev => ({ ...prev, meals: true }));
-
-      // Format date to YYYY-MM-DD in local timezone
       const formattedDate = new Date(date.getFullYear(), date.getMonth(), date.getDate()).toISOString();
 
       if (isGuest) {
-        // Get meals from local storage for guest mode
         const storedMeals = await AsyncStorage.getItem(`guest-meals-${formattedDate}`);
         setRecentMeals(storedMeals ? JSON.parse(storedMeals) : []);
         return;
@@ -95,7 +98,14 @@ const HomeScreen = () => {
     } finally {
       setLoadingStates(prev => ({ ...prev, meals: false }));
     }
-  }, [isGuest]); // Add isGuest to dependency array
+  }, [isGuest]);
+
+  // Check for daily macro reset
+  useEffect(() => {
+    if (hydrated) {
+      checkDailyReset();
+    }
+  }, [hydrated, checkDailyReset]);
 
   // Add function to save guest meal data
   const saveGuestMealData = useCallback(async (meal, date) => {
@@ -113,82 +123,6 @@ const HomeScreen = () => {
       setLoadingStates(prev => ({ ...prev, saving: false }));
     }
   }, []);
-
-  // Handle date selection from calendar - memoized to prevent unnecessary re-renders
-  const handleDateSelect = useCallback(async (date) => {
-    setSelectedDate(date);
-  }, []);
-
-  // Redirect to onboarding if not complete
-  useEffect(() => {
-    // Only check once when component mounts
-    const checkOnboarding = async () => {
-      if (user && !isOnboardingComplete) {
-        await useOnboardingStore.getState().resetOnboarding();
-      }
-    };
-    checkOnboarding();
-  }, []); // Empty dependency array - only run on mount
-
-  // Fetch meals and nutrition data when date changes
-  useEffect(() => {
-    if (!authToken && !isGuest) return;
-  
-    const fetchData = async () => {
-      if (selectedDate) {
-        console.log('Fetching data for date:', selectedDate);
-        try {
-          // Use Promise.all for parallel fetching
-          await Promise.all([
-            fetchRecentMeals(selectedDate),
-            // Pass false as second argument to use cache if available
-            fetchDailyNutrition(selectedDate, false)
-          ]);
-        } catch (error) {
-          console.error('Error fetching nutrition data:', error);
-        }
-      }
-    };
-  
-    fetchData();
-  }, [selectedDate, authToken, isGuest, fetchRecentMeals, fetchDailyNutrition]); // Add proper dependencies
-
-  // Update macros when daily nutrition data changes
-  useEffect(() => {
-    console.log('Daily nutrition update triggered:', dailyNutrition);
-  
-    // Skip if dailyNutrition is completely null
-    if (!dailyNutrition) {
-      console.log('Skipping update due to null dailyNutrition');
-      return;
-    }
-
-    // Extract and update nutrition data, defaulting to 0 if values are missing
-    const nutritionData = {
-      calories: Number(dailyNutrition.calories) || 0,
-      protein: Number(dailyNutrition.protein) || 0,
-      carbs: Number(dailyNutrition.carbs) || 0,
-      fat: Number(dailyNutrition.fat) || 0
-    };
-  
-    console.log('Updating nutrition with:', nutritionData);
-  
-    // Update macros and calories
-    resetCalories();
-    resetMacros();
-    addMacros(nutritionData.protein, nutritionData.carbs, nutritionData.fat);
-    addCalories(nutritionData.calories);
-  }, [dailyNutrition]);
-
-  // Memoize nutrients data for display
-  const nutrients = useMemo(() => ({
-    current: {
-      calories,
-      ...macros
-    },
-    goals: calculatedNutrients,
-    loading: loadingNutrients || isLoadingNutrition
-  }), [calories, macros, calculatedNutrients, loadingNutrients, isLoadingNutrition]);
 
   // Handle updates from camera screen with loading states
   useEffect(() => {
@@ -235,6 +169,16 @@ const HomeScreen = () => {
   const handleFABPress = useCallback(() => {
     navigation.navigate('Camera');
   }, [navigation]);
+
+  // Memoize nutrients data for display
+  const nutrients = useMemo(() => ({
+    current: {
+      calories,
+      ...macros
+    },
+    goals: calculatedNutrients,
+    loading: loadingNutrients || isLoadingNutrition
+  }), [calories, macros, calculatedNutrients, loadingNutrients, isLoadingNutrition]);
 
   return (
     <SafeAreaView style={styles.safeArea}>

@@ -12,18 +12,27 @@ const formatDate = (date) => {
 
 export const nutritionStore = create((set, get) => ({
   dailyNutrition: null,
+  currentDate: null,
   isLoading: false,
   error: null,
 
   fetchDailyNutrition: async (date, force = false) => {
     const formattedDate = formatDate(date);
     const cacheKey = `nutrition_${formattedDate}`;
+    const state = get();
 
+    // Check if we already have this date's data in state
+    if (!force && state.dailyNutrition && state.currentDate === formattedDate) {
+      console.log('Using in-memory nutrition data for:', formattedDate);
+      return state.dailyNutrition;
+    }
+
+    // Check cache
     if (!force) {
       const cachedData = cacheStore.getState().get(cacheKey);
       if (cachedData) {
         console.log('Using cached nutrition data for:', formattedDate);
-        set({ dailyNutrition: cachedData, isLoading: false });
+        set({ dailyNutrition: cachedData, currentDate: formattedDate, isLoading: false });
         return cachedData;
       }
     }
@@ -33,32 +42,16 @@ export const nutritionStore = create((set, get) => ({
     try {
       console.log('Fetching nutrition data for:', formattedDate);
       
-      // Initialize empty nutrition data
-      const emptyData = {
-        calories: 0,
-        protein: 0,
-        carbs: 0,
-        fat: 0,
-        meals: []
-      };
+      const response = await api.get(`/nutrition/daily/${formattedDate}`);
+      const data = response.data;
 
-      let data;
-      try {
-        const response = await api.get(`/nutrition/daily/${formattedDate}`);
-        data = response.data;
-      } catch (apiError) {
-        console.log('API request failed, using empty data:', apiError.message);
-        data = emptyData;
-      }
-
-      // Store in cache
+      // Store in cache and state
       cacheStore.getState().set(cacheKey, data, CACHE_DURATION);
+      set({ dailyNutrition: data, currentDate: formattedDate, isLoading: false });
       
-      set({ dailyNutrition: data, isLoading: false });
       return data;
     } catch (err) {
       console.error('Error in nutrition store:', err);
-      // Instead of throwing error, return empty data
       const emptyData = {
         calories: 0,
         protein: 0,
@@ -66,7 +59,7 @@ export const nutritionStore = create((set, get) => ({
         fat: 0,
         meals: []
       };
-      set({ dailyNutrition: emptyData, error: err.message, isLoading: false });
+      set({ dailyNutrition: emptyData, currentDate: formattedDate, error: err.message, isLoading: false });
       return emptyData;
     }
   },
@@ -82,7 +75,7 @@ export const nutritionStore = create((set, get) => ({
       meals: []
     };
 
-    // Update totals
+    // Calculate new totals
     const updatedData = {
       ...currentData,
       calories: currentData.calories + (newMeal.calories || 0),
@@ -92,18 +85,21 @@ export const nutritionStore = create((set, get) => ({
       meals: [...currentData.meals, newMeal]
     };
 
-    // Update state
-    set({ dailyNutrition: updatedData });
+    // Update state immediately
+    set({ dailyNutrition: updatedData, currentDate: formattedDate });
 
-    // Update cache
-    cacheStore.getState().set(cacheKey, updatedData);
+    // Update cache before server call
+    cacheStore.getState().set(cacheKey, updatedData, CACHE_DURATION);
 
-    // Save to server
     try {
+      // Save to server
       await api.post(`/nutrition/daily/${formattedDate}`, updatedData);
     } catch (error) {
       console.error('Failed to save nutrition data:', error);
+      // Keep the optimistic update even if server fails
     }
+
+    return updatedData;
   },
 
   clearCache: () => {

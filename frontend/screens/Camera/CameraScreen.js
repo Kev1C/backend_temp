@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { View, StyleSheet, Alert } from 'react-native';
-import { Camera, CameraType, FlashMode } from 'expo-camera';
+import { Camera } from 'expo-camera';
 import { useNavigation, useIsFocused } from '@react-navigation/native';
 import { Text, Button, IconButton, MD3Colors } from 'react-native-paper';
 import BottomSheet, { BottomSheetScrollView } from '@gorhom/bottom-sheet';
@@ -10,8 +10,8 @@ import { api } from '../../services/api';
 
 const CameraScreen = () => {
   const [hasPermission, setHasPermission] = useState(null);
-  const [type, setType] = useState(CameraType.back);
-  const [flashMode, setFlashMode] = useState(FlashMode.off);
+  const [type, setType] = useState(Camera.Constants.Type.back);
+  const [flashMode, setFlashMode] = useState(Camera.Constants.FlashMode.off);
   const [capturedImage, setCapturedImage] = useState(null);
   const [isCameraReady, setIsCameraReady] = useState(false);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
@@ -87,13 +87,17 @@ const CameraScreen = () => {
 
   const toggleCameraType = () => {
     setType(current => 
-      current === CameraType.back ? CameraType.front : CameraType.back
+      current === Camera.Constants.Type.back 
+        ? Camera.Constants.Type.front 
+        : Camera.Constants.Type.back
     );
   };
 
   const toggleFlash = () => {
     setFlashMode(current =>
-      current === FlashMode.off ? FlashMode.on : FlashMode.off
+      current === Camera.Constants.FlashMode.off
+        ? Camera.Constants.FlashMode.on
+        : Camera.Constants.FlashMode.off
     );
   };
 
@@ -119,7 +123,7 @@ const CameraScreen = () => {
   return (
     <GestureHandlerRootView style={styles.container}>
       <View style={styles.container}>
-        {isFocused && (
+        {hasPermission && isFocused && (
           <Camera
             ref={cameraRef}
             style={styles.camera}
@@ -127,8 +131,8 @@ const CameraScreen = () => {
             flashMode={flashMode}
             onCameraReady={handleCameraReady}
           >
-            <View style={styles.controlsContainer}>
-              <View style={styles.controls}>
+            <View style={styles.buttonContainer}>
+              <View style={styles.buttonRow}>
                 <IconButton
                   icon="camera-flip"
                   size={30}
@@ -136,20 +140,21 @@ const CameraScreen = () => {
                   onPress={toggleCameraType}
                 />
                 <IconButton
-                  icon={flashMode === FlashMode.off ? 'flash-off' : 'flash'}
+                  icon={flashMode === Camera.Constants.FlashMode.off ? 'flash-off' : 'flash'}
                   size={30}
                   iconColor={MD3Colors.neutral100}
                   onPress={toggleFlash}
                 />
               </View>
-              <IconButton
-                icon="camera"
-                size={50}
-                iconColor={MD3Colors.neutral100}
-                onPress={takePicture}
-                disabled={!isCameraReady}
-                style={styles.captureButton}
-              />
+              <View style={styles.captureButtonContainer}>
+                <IconButton
+                  icon="camera"
+                  size={50}
+                  iconColor={MD3Colors.neutral100}
+                  onPress={takePicture}
+                  disabled={!isCameraReady || isAnalyzing}
+                />
+              </View>
             </View>
           </Camera>
         )}
@@ -161,7 +166,7 @@ const CameraScreen = () => {
         >
           <BottomSheetScrollView contentContainerStyle={styles.bottomSheet}>
             {capturedImage && (
-              <>
+              <React.Fragment>
                 <Text style={styles.previewText}>Preview</Text>
                 <View style={styles.imagePreview}>
                   {/* Add Image preview component here */}
@@ -175,7 +180,7 @@ const CameraScreen = () => {
                 >
                   Analyze Food
                 </Button>
-              </>
+              </React.Fragment>
             )}
           </BottomSheetScrollView>
         </BottomSheet>
@@ -195,20 +200,19 @@ const styles = StyleSheet.create({
   camera: {
     flex: 1,
   },
-  controlsContainer: {
+  buttonContainer: {
     flex: 1,
     backgroundColor: 'transparent',
-    flexDirection: 'row',
-    justifyContent: 'space-between',
+    flexDirection: 'column',
+    justifyContent: 'flex-end',
     margin: 20,
   },
-  controls: {
-    flex: 1,
+  buttonRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    marginTop: 20,
+    marginBottom: 20,
   },
-  captureButton: {
+  captureButtonContainer: {
     alignSelf: 'flex-end',
     marginBottom: 20,
   },
