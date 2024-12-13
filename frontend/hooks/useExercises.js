@@ -3,13 +3,13 @@ import debounce from 'lodash.debounce';
 import * as SecureStore from 'expo-secure-store';
 import { api, cachedGet } from '../services/api';
 import { useErrorHandler } from './useErrorHandler';
-import { AuthContext } from '../context/AuthContext';
+import { useAuthStore } from '../stores/authStore';
 
 const CACHE_DURATION = 24 * 60 * 60 * 1000; // 24 hours
 const EXERCISES_PER_PAGE = 20;
 
 const useExercises = (searchQuery = '', filters = {}) => {
-  const { user } = useContext(AuthContext);
+  const { user } = useAuthStore();
   const [exercises, setExercises] = useState([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
