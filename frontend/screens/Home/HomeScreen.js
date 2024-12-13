@@ -17,6 +17,7 @@ import isEqual from 'lodash/isEqual';
 const HomeScreen = () => {
   const { user, authToken, isGuest } = useAuthStore();
   const { onboardingData, isOnboardingComplete } = useOnboardingStore();
+  const { calculatedNutrients, loading: loadingNutrients, fetchCalculations } = useNutrientCalculations();
   const theme = useTheme();
   const navigation = useNavigation();
   const route = useRoute();
@@ -28,6 +29,18 @@ const HomeScreen = () => {
     nutrition: false,
     saving: false
   });
+
+  // Fetch nutrient calculations when user and onboarding data are available
+  useEffect(() => {
+    if (user && onboardingData && isOnboardingComplete) {
+      const userData = {
+        ...onboardingData,
+        // Ensure we have the correct property name
+        fitnessGoal: onboardingData.goal || onboardingData.fitnessGoal
+      };
+      fetchCalculations(userData);
+    }
+  }, [user, onboardingData, isOnboardingComplete, fetchCalculations]);
 
   // Get daily nutrition data
   const { 
@@ -43,20 +56,12 @@ const HomeScreen = () => {
   const macroStore = useMacroStore();
   const { macros, addMacros, resetMacros, checkDailyReset, hydrated } = macroStore;
 
-  // Get nutrient calculations (daily goals)
-  const { calculatedNutrients, loading: loadingNutrients, fetchCalculations } = useNutrientCalculations();
-
   // State for recently eaten meals
   const [recentMeals, setRecentMeals] = useState([]);
   const [isLoadingMeals, setIsLoadingMeals] = useState(false);
   const [selectedDate, setSelectedDate] = useState(new Date());  // Initialize with current date
   const [prevAddMeal, setPrevAddMeal] = useState(null);
   const [prevUpdateProgress, setPrevUpdateProgress] = useState(null);
-
-  // Fetch nutrient calculations on mount
-  useEffect(() => {
-    fetchCalculations();
-  }, []);
 
   // Check for daily macro reset
   useEffect(() => {

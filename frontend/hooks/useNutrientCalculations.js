@@ -1,6 +1,5 @@
 import { create } from 'zustand';
 import { api } from '../services/api';
-import { useAuthStore } from '../stores/authStore';
 
 const CACHE_DURATION = 24 * 60 * 60 * 1000; // 24 hours
 
@@ -15,8 +14,7 @@ const useNutrientStore = create((set, get) => ({
   error: null,
   lastFetch: null,
 
-  fetchCalculations: async (force = false) => {
-    const user = useAuthStore.getState().user;
+  fetchCalculations: async (user, force = false) => {
     if (!user) {
       set({ loading: false });
       return;
@@ -33,15 +31,33 @@ const useNutrientStore = create((set, get) => ({
     set({ loading: true, error: null });
 
     try {
-      const response = await api.get('/nutrition/calculations');
+      // Include user's data in the request
+      const response = await api.get('/nutrition/calculations', {
+        params: {
+          gender: user.gender,
+          weight: user.weight,
+          height: user.height,
+          fitnessGoal: user.fitnessGoal
+        }
+      });
+      
       const data = response.data;
+      
+      // Ensure we have all required nutrient values
+      const nutrients = {
+        calories: data.calories || 0,
+        protein: data.protein || 0,
+        carbs: data.carbs || 0,
+        fat: data.fat || 0
+      };
 
       set({
-        calculatedNutrients: data,
+        calculatedNutrients: nutrients,
         loading: false,
         lastFetch: Date.now()
       });
     } catch (err) {
+      console.error('Failed to fetch nutrient calculations:', err);
       set({
         error: err.message || 'Failed to fetch nutrient calculations',
         loading: false
@@ -57,4 +73,16 @@ const useNutrientStore = create((set, get) => ({
   }
 }));
 
-export default useNutrientStore;
+// Create a custom hook that returns the store's state and actions
+const useNutrientCalculations = () => {
+  const store = useNutrientStore();
+  return {
+    calculatedNutrients: store.calculatedNutrients,
+    loading: store.loading,
+    error: store.error,
+    fetchCalculations: store.fetchCalculations,
+    setCalculations: store.setCalculations
+  };
+};
+
+export default useNutrientCalculations;
