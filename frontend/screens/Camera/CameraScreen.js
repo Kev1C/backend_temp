@@ -1,39 +1,27 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { View, StyleSheet, Alert } from 'react-native';
-import { Camera, CameraType } from 'expo-camera';
-import { useNavigation, useIsFocused } from '@react-navigation/native';
+import { CameraView, CameraType, useCameraPermissions } from 'expo-camera';
+import { useIsFocused } from '@react-navigation/native';
 import { Text, Button, IconButton, MD3Colors } from 'react-native-paper';
 import BottomSheet, { BottomSheetScrollView } from '@gorhom/bottom-sheet';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { useAuthStore } from '../../stores/authStore';
 import { api } from '../../services/api';
 
-// Log available camera properties
-console.log('Camera API:', {
-  Camera: Camera,
-  Type: CameraType
-});
-
-const CameraScreen = () => {
-  // Initialize with safe default values
-  const [hasPermission, setHasPermission] = useState(null);
-  const [type, setType] = useState(CameraType.back);
-  const [flash, setFlash] = useState('off');
+const CameraScreen = ({ navigation }) => {
+  const [facing, setFacing] = useState(CameraType.back);
+  const [permission, requestPermission] = useCameraPermissions();
   const [capturedImage, setCapturedImage] = useState(null);
   const [isCameraReady, setIsCameraReady] = useState(false);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
 
   const cameraRef = useRef(null);
   const bottomSheetRef = useRef(null);
-  const navigation = useNavigation();
   const isFocused = useIsFocused();
   const { authToken } = useAuthStore();
 
   useEffect(() => {
-    (async () => {
-      const { status } = await Camera.requestCameraPermissionsAsync();
-      setHasPermission(status === 'granted');
-    })();
+    requestPermission();
   }, []);
 
   const handleCameraReady = () => {
@@ -92,100 +80,75 @@ const CameraScreen = () => {
     }
   };
 
-  const toggleCameraType = () => {
-    setType(current => (
-      current === CameraType.back ? CameraType.front : CameraType.back
-    ));
+  const toggleCameraFacing = () => {
+    setFacing(current => (current === CameraType.back ? CameraType.front : CameraType.back));
   };
 
-  const toggleFlash = () => {
-    setFlash(current => current === 'off' ? 'on' : 'off');
-  };
-
-  if (hasPermission === null) {
+  if (!permission) {
     return <View style={styles.container} />;
   }
 
-  if (hasPermission === false) {
+  if (!permission.granted) {
     return (
-      <View style={[styles.container, styles.centered]}>
-        <Text>No access to camera</Text>
-        <Button 
-          mode="contained" 
-          onPress={() => Camera.requestCameraPermissionsAsync()}
-          style={styles.button}
-        >
-          Request Permission
-        </Button>
+      <View style={styles.container}>
+        <Text style={styles.message}>We need your permission to show the camera</Text>
+        <Button onPress={requestPermission}>Grant Permission</Button>
       </View>
     );
   }
 
   return (
     <GestureHandlerRootView style={styles.container}>
-      <View style={styles.container}>
-        {hasPermission && isFocused && (
-          <Camera
-            ref={cameraRef}
-            style={styles.camera}
-            type={type}
-            flash={flash}
-            onCameraReady={handleCameraReady}
-          >
-            <View style={styles.buttonContainer}>
-              <View style={styles.buttonRow}>
-                <IconButton
-                  icon="camera-flip"
-                  size={30}
-                  iconColor={MD3Colors.neutral100}
-                  onPress={toggleCameraType}
-                />
-                <IconButton
-                  icon={flash === 'off' ? 'flash-off' : 'flash'}
-                  size={30}
-                  iconColor={MD3Colors.neutral100}
-                  onPress={toggleFlash}
-                />
-              </View>
-              <View style={styles.captureButtonContainer}>
-                <IconButton
-                  icon="camera"
-                  size={50}
-                  iconColor={MD3Colors.neutral100}
-                  onPress={takePicture}
-                  disabled={!isCameraReady || isAnalyzing}
-                />
-              </View>
-            </View>
-          </Camera>
-        )}
-        <BottomSheet
-          ref={bottomSheetRef}
-          index={-1}
-          snapPoints={['50%']}
-          enablePanDownToClose
+      {isFocused && (
+        <CameraView
+          ref={cameraRef}
+          style={styles.camera}
+          facing={facing}
+          onCameraReady={handleCameraReady}
         >
-          <BottomSheetScrollView contentContainerStyle={styles.bottomSheet}>
-            {capturedImage && (
-              <React.Fragment>
-                <Text style={styles.previewText}>Preview</Text>
-                <View style={styles.imagePreview}>
-                  {/* Add Image preview component here */}
-                </View>
-                <Button
-                  mode="contained"
-                  onPress={analyzeImage}
-                  loading={isAnalyzing}
-                  disabled={isAnalyzing}
-                  style={styles.analyzeButton}
-                >
-                  Analyze Food
-                </Button>
-              </React.Fragment>
-            )}
-          </BottomSheetScrollView>
-        </BottomSheet>
-      </View>
+          <View style={styles.buttonContainer}>
+            <IconButton
+              icon="camera-flip"
+              iconColor={MD3Colors.neutral100}
+              size={30}
+              onPress={toggleCameraFacing}
+            />
+            <IconButton
+              icon="camera"
+              iconColor={MD3Colors.neutral100}
+              size={50}
+              onPress={takePicture}
+              disabled={!isCameraReady || isAnalyzing}
+            />
+          </View>
+        </CameraView>
+      )}
+      <BottomSheet
+        ref={bottomSheetRef}
+        index={-1}
+        snapPoints={['50%']}
+        enablePanDownToClose
+      >
+        <BottomSheetScrollView contentContainerStyle={styles.bottomSheetContent}>
+          {capturedImage && (
+            <React.Fragment>
+              <Text style={styles.previewText}>Preview</Text>
+              <View style={styles.imagePreview}>
+                {/* Add Image preview component here */}
+              </View>
+              <Button
+                mode="contained"
+                onPress={analyzeImage}
+                loading={isAnalyzing}
+                disabled={isAnalyzing}
+                style={styles.analyzeButton}
+              >
+                Analyze Food
+              </Button>
+            </React.Fragment>
+          )}
+        </BottomSheetScrollView>
+      </BottomSheet>
     </GestureHandlerRootView>
   );
 };
@@ -194,9 +157,9 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
   },
-  centered: {
-    justifyContent: 'center',
-    alignItems: 'center',
+  message: {
+    fontSize: 18,
+    marginBottom: 16,
   },
   camera: {
     flex: 1,
@@ -208,19 +171,7 @@ const styles = StyleSheet.create({
     justifyContent: 'flex-end',
     margin: 20,
   },
-  buttonRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginBottom: 20,
-  },
-  captureButtonContainer: {
-    alignSelf: 'flex-end',
-    marginBottom: 20,
-  },
-  button: {
-    marginTop: 16,
-  },
-  bottomSheet: {
+  bottomSheetContent: {
     padding: 16,
   },
   previewText: {
