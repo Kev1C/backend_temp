@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { View, StyleSheet, Alert } from 'react-native';
-import { CameraView, CameraType, useCameraPermissions } from 'expo-camera';
+import { CameraView, useCameraPermissions } from 'expo-camera';
 import { useIsFocused } from '@react-navigation/native';
 import { Text, Button, IconButton, MD3Colors } from 'react-native-paper';
 import BottomSheet, { BottomSheetScrollView } from '@gorhom/bottom-sheet';
@@ -9,7 +9,7 @@ import { useAuthStore } from '../../stores/authStore';
 import { api } from '../../services/api';
 
 const CameraScreen = ({ navigation }) => {
-  const [facing, setFacing] = useState(CameraType.back);
+  const [facing, setFacing] = useState('back');
   const [permission, requestPermission] = useCameraPermissions();
   const [capturedImage, setCapturedImage] = useState(null);
   const [isCameraReady, setIsCameraReady] = useState(false);
@@ -81,7 +81,7 @@ const CameraScreen = ({ navigation }) => {
   };
 
   const toggleCameraFacing = () => {
-    setFacing(current => (current === CameraType.back ? CameraType.front : CameraType.back));
+    setFacing(current => (current === 'back' ? 'front' : 'back'));
   };
 
   if (!permission) {
