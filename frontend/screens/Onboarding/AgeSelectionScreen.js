@@ -80,7 +80,7 @@ const AgeSelectionScreen = ({ navigation }) => {
       </View>
 
       <View style={styles.content}>
-        <Text style={styles.title}>What's your age range?</Text>
+        <Text style={styles.title}>What's your age?</Text>
         <Text style={styles.subtitle}>This helps us personalize your fitness journey</Text>
 
         <View style={styles.levelsContainer}>
