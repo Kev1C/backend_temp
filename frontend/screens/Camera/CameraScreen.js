@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
-import { View, StyleSheet, Alert, Dimensions, Image, TextInput } from 'react-native';
+import { View, StyleSheet, Alert, Dimensions, Image, TextInput, ActivityIndicator } from 'react-native';
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import { useIsFocused } from '@react-navigation/native';
 import { Text, Button, IconButton, MD3Colors, FAB, Chip, useTheme } from 'react-native-paper';
@@ -28,6 +28,15 @@ const CameraScreen = ({ navigation }) => {
   });
   const [foodTitle, setFoodTitle] = useState('');
   const [servings, setServings] = useState(1);
+  const [foodAnalysis, setFoodAnalysis] = useState({
+    foodTitle: '',
+    calories: '',
+    carbs: '',
+    protein: '',
+    fats: '',
+    healthScore: '',
+  });
+  const [analysisLoading, setAnalysisLoading] = useState(false);
 
   const cameraRef = useRef(null);
   const bottomSheetRef = useRef(null);
@@ -50,52 +59,143 @@ const CameraScreen = ({ navigation }) => {
   };
 
   const takePicture = async () => {
-    if (!cameraRef.current || !isCameraReady) return;
+    if (!cameraRef.current || !isCameraReady) {
+      console.log('Camera not ready:', { hasCamera: !!cameraRef.current, isCameraReady });
+      return;
+    }
 
     try {
+      console.log('Taking picture...');
       const photo = await cameraRef.current.takePictureAsync({
         quality: 0.8,
         base64: true,
         exif: true,
       });
+      console.log('Picture taken successfully');
+      console.log('Photo properties:', {
+        hasUri: !!photo.uri,
+        hasBase64: !!photo.base64,
+        width: photo.width,
+        height: photo.height,
+        base64Length: photo.base64?.length
+      });
 
-      setCapturedImage({
+      const image = {
         uri: photo.uri,
         base64: photo.base64,
         width: photo.width,
         height: photo.height,
-      });
+      };
 
+      setCapturedImage(image);
       setIsModalVisible(true);
+      
+      // Automatically trigger analysis after capturing
+      await analyzeImage(image);
+
     } catch (error) {
+      console.error('Error taking picture:', error);
       Alert.alert('Error', 'Failed to take picture');
-      console.error(error);
     }
   };
 
-  const analyzeImage = async () => {
-    if (!capturedImage || !authToken) return;
+  const analyzeImage = async (imageData = null) => {
+    console.log('=== Starting Food Analysis ===');
+    console.log('Auth state:', { hasAuthToken: !!authToken });
+    
+    const imageToAnalyze = imageData || capturedImage;
+    console.log('Image state:', { 
+      hasImage: !!imageToAnalyze,
+      hasBase64: !!imageToAnalyze?.base64,
+      imageSize: imageToAnalyze?.base64?.length
+    });
+
+    if (!imageToAnalyze || !authToken) {
+      console.log('Missing required data:', { hasImage: !!imageToAnalyze, hasAuthToken: !!authToken });
+      Alert.alert('Error', 'Missing required data for analysis');
+      return;
+    }
 
     setIsAnalyzing(true);
+    setAnalysisLoading(true);
     try {
-      const response = await api.post('/analyze/food', {
-        image: capturedImage.base64,
-        width: capturedImage.width,
-        height: capturedImage.height,
+      // Ensure we have base64 data
+      if (!imageToAnalyze.base64) {
+        throw new Error('No base64 data in captured image');
+      }
+
+      // Clean the base64 string
+      let imageBase64 = imageToAnalyze.base64;
+      if (imageBase64.includes('base64,')) {
+        imageBase64 = imageBase64.split('base64,')[1];
+      }
+
+      console.log('Prepared image data:', {
+        dataLength: imageBase64.length,
+        sampleStart: imageBase64.substring(0, 50) + '...',
+      });
+      
+      // Log the request details
+      console.log('Making API request to /food-analysis...');
+      console.log('Request config:', {
+        authTokenLength: authToken.length,
+        authTokenStart: authToken.substring(0, 10) + '...',
+      });
+      
+      const response = await api.post('/food-analysis/analyze', 
+        { imageBase64 },
+        { 
+          headers: {
+            'Authorization': `Bearer ${authToken}`,
+            'Content-Type': 'application/json',
+          },
+          timeout: 30000 // Increase timeout for image processing
+        }
+      );
+
+      console.log('Response received:', {
+        status: response.status,
+        hasData: !!response.data,
+        dataKeys: response.data ? Object.keys(response.data) : []
       });
 
       if (response.data) {
-        navigation.navigate('FoodAnalysis', { 
-          analysis: response.data,
-          imageUri: capturedImage.uri 
+        console.log('Food analysis successful:', response.data);
+        // Update the food analysis state
+        setFoodAnalysis({
+          foodTitle: response.data.foodTitle,
+          calories: response.data.calories,
+          carbs: response.data.carbs,
+          protein: response.data.protein,
+          fats: response.data.fats,
+          healthScore: response.data.healthScore
         });
+        setAnalysisLoading(false);
+      } else {
+        throw new Error('Invalid response data format');
       }
+
     } catch (error) {
-      Alert.alert(
-        'Error',
-        'Failed to analyze image. Please try again.'
-      );
-      console.error(error);
+      console.error('Food analysis error:', {
+        name: error.name,
+        message: error.message,
+        status: error.response?.status,
+        responseData: error.response?.data,
+        stack: error.stack
+      });
+
+      let errorMessage = 'Failed to analyze image. ';
+      if (error.response?.status === 401) {
+        errorMessage += 'Authentication error. Please log in again.';
+      } else if (error.response?.status === 413) {
+        errorMessage += 'Image is too large.';
+      } else if (error.response?.data?.message) {
+        errorMessage += error.response.data.message;
+      } else {
+        errorMessage += 'Please try again.';
+      }
+
+      Alert.alert('Error', errorMessage);
     } finally {
       setIsAnalyzing(false);
     }
@@ -300,22 +400,22 @@ const CameraScreen = ({ navigation }) => {
                     >
                       {getMealType()}
                     </Chip>
-                    {nutritionState.healthScore && (
+                    {foodAnalysis.healthScore && (
                       <Chip 
                         mode="outlined" 
                         style={[
                           styles.healthScoreChip, 
                           { 
                             borderRadius: 25,
-                            borderColor: getHealthScoreColor(nutritionState.healthScore),
+                            borderColor: getHealthScoreColor(foodAnalysis.healthScore),
                           }
                         ]}
                         textStyle={{ 
                           fontSize: 14,
-                          color: getHealthScoreColor(nutritionState.healthScore)
+                          color: getHealthScoreColor(foodAnalysis.healthScore)
                         }}
                       >
-                        Health Score: {nutritionState.healthScore}
+                        Health Score: {foodAnalysis.healthScore}
                       </Chip>
                     )}
                   </View>

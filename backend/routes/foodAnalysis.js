@@ -2,8 +2,9 @@
 const express = require('express');
 const router = express.Router();
 const { analyzeFood } = require('../controllers/foodAnalysisController');
+const auth = require('../middleware/auth');
 
-// POST /api/analyze-food
-router.post('/analyze-food', analyzeFood);
+// POST /api/food-analysis/analyze
+router.post('/analyze', auth, analyzeFood);
 
 module.exports = router;
