@@ -114,6 +114,7 @@ const ActivityLevelScreen = ({ navigation }) => {
           title="Continue"
           onPress={handleContinue}
           disabled={!selectedLevel}
+          style={{ backgroundColor: selectedLevel ? '#2196F3' : '#ccc' }}
         />
       </View>
     </SafeAreaView>

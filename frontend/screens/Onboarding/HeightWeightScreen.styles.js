@@ -6,15 +6,11 @@ export default StyleSheet.create({
     backgroundColor: '#fff', // Changed to white background
   },
   header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
     paddingHorizontal: 20,
-    paddingTop: 10,
+    paddingVertical: 10,
   },
   backButton: {
-    color: '#000', // Changed text color to black
-    fontSize: 24,
+    padding: 8,
   },
   skipButton: {
     color: '#666', // Changed text color

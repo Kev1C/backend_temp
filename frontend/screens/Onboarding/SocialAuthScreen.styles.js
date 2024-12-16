@@ -8,8 +8,8 @@ export const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   header: {
-    marginBottom: 40,
-    alignItems: 'center',
+    paddingHorizontal: 20,
+    paddingVertical: 10,
   },
   title: {
     fontSize: 32,
@@ -73,5 +73,13 @@ export const styles = StyleSheet.create({
     textAlign: 'center',
     color: '#666',
     fontSize: 12,
+  },
+  backButton: {
+    padding: 8,
+  },
+  content: {
+    flex: 1,
+    paddingHorizontal: 20,
+    paddingTop: 20,
   },
 });

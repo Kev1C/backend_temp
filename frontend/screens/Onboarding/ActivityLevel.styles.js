@@ -61,4 +61,7 @@ export default StyleSheet.create({
     padding: 20,
     paddingBottom: 32,
   },
+  continueButton: {
+    marginBottom: 20,
+  },
 });

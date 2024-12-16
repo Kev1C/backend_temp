@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { View, Text, TouchableOpacity, Alert } from 'react-native';
 import * as WebBrowser from 'expo-web-browser';
 import * as Google from 'expo-auth-session/providers/google';
-import { AntDesign } from '@expo/vector-icons';
+import { AntDesign, MaterialCommunityIcons } from '@expo/vector-icons';
 import { styles } from './SocialAuthScreen.styles';
 import { auth, signInAsGuest } from '../../firebaseConfig';
 import { GoogleAuthProvider, signInWithCredential } from '@firebase/auth';
@@ -120,6 +120,12 @@ export default function SocialAuthScreen({ navigation }) {
   return (
     <View style={styles.container}>
       <View style={styles.header}>
+        <TouchableOpacity 
+          onPress={() => navigation.goBack()}
+          style={styles.backButton}
+        >
+          <MaterialCommunityIcons name="arrow-left" size={24} color="#000" />
+        </TouchableOpacity>
         <Text style={styles.title}>Welcome</Text>
         <Text style={styles.subtitle}>Sign in to continue</Text>
         {error && <Text style={styles.errorText}>{error}</Text>}

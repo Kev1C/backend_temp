@@ -70,8 +70,6 @@ export default StyleSheet.create({
     fontSize: 14,
   },
   continueButton: {
-    position: 'absolute',
-    bottom: 40,
-    width: '100%',
+    marginBottom: 20,
   },
 });

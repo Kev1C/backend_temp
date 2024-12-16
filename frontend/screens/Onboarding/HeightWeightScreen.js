@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, TouchableOpacity, Alert, StyleSheet } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
 import ScrollPicker from 'react-native-wheel-scrollview-picker';
 import Button from '../../Components/Button';
 import { api } from '../../services/api';
@@ -83,8 +84,11 @@ const HeightWeightScreen = ({ navigation, route }) => {
   return (
     <SafeAreaView edges={['top']} style={styles.container}>
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
-          <Text style={styles.backButtonText}>←</Text>
+        <TouchableOpacity 
+          onPress={() => navigation.goBack()} 
+          style={styles.backButton}
+        >
+          <MaterialCommunityIcons name="arrow-left" size={24} color="#000" />
         </TouchableOpacity>
       </View>
 
@@ -189,7 +193,7 @@ const HeightWeightScreen = ({ navigation, route }) => {
         <Button
           title="Continue"
           onPress={handleContinue}
-          style={styles.continueButton}
+          style={{ backgroundColor: '#2196F3' }}
         />
       </View>
     </SafeAreaView>
@@ -294,9 +298,6 @@ const styles = StyleSheet.create({
   buttonContainer: {
     paddingHorizontal: 24,
     paddingBottom: 24,
-  },
-  continueButton: {
-    width: '100%',
   },
 });
 

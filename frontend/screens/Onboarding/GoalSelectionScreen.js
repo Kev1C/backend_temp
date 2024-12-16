@@ -111,6 +111,7 @@ const GoalSelectionScreen = ({ navigation }) => {
           title="Continue"
           onPress={handleContinue}
           disabled={!selectedGoal}
+          style={{ backgroundColor: selectedGoal ? '#2196F3' : '#ccc' }}
         />
       </View>
     </SafeAreaView>

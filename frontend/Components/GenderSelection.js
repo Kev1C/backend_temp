@@ -70,7 +70,7 @@ const GenderSelection = ({ onNext }) => {
           title="Continue"
           onPress={handleContinue}
           disabled={!selectedGender}
-          style={styles.continueButton}
+          style={{ backgroundColor: selectedGender ? '#2196F3' : '#ccc' }}
         />
       </View>
     </View>
