@@ -2,8 +2,6 @@
 const asyncHandler = require('express-async-handler');
 const mongoose = require('mongoose');
 const Meal = require('../models/Meal');
-const User = require('../models/User');
-const { calculateBMR, getActivityMultiplier, getAgeFromRange, getGoalMultiplier } = require('../utils/nutritionCalculations');
 
 // Cache for daily nutrition data (TTL: 5 minutes)
 const nutritionCache = new Map();
@@ -183,105 +181,9 @@ const resetMacros = asyncHandler(async (req, res) => {
   res.json(resetData);
 });
 
-// Calculate and store user's nutritional requirements
-const calculateNutritionRequirements = asyncHandler(async (req, res) => {
-  try {
-    const userId = req.user.userId || req.user.id;
-    const user = await User.findById(userId);
-
-    if (!user) {
-      return res.status(404).json({ message: 'User not found' });
-    }
-
-    const { gender, weight, height, ageRange, activityLevel, goal } = user;
-
-    // Validate required fields
-    if (!gender || !weight || !height || !ageRange || !activityLevel || !goal) {
-      return res.status(400).json({ 
-        message: 'Missing required user data for calculations',
-        missingFields: {
-          gender: !gender,
-          weight: !weight,
-          height: !height,
-          ageRange: !ageRange,
-          activityLevel: !activityLevel,
-          goal: !goal
-        }
-      });
-    }
-
-    const age = getAgeFromRange(ageRange);
-    const bmr = calculateBMR(gender, weight, height, age);
-    const activityMultiplier = getActivityMultiplier(activityLevel);
-    const goalMultiplier = getGoalMultiplier(goal);
-
-    // Calculate TDEE and daily calories
-    const tdee = bmr * activityMultiplier;
-    const dailyCalories = Math.round(tdee * goalMultiplier);
-
-    // Calculate macronutrients
-    let proteinGrams, carbsGrams, fatGrams;
-
-    if (goal === 'gain_muscle') {
-      proteinGrams = Math.round(weight * 2.2);
-      fatGrams = Math.round((dailyCalories * 0.25) / 9);
-      carbsGrams = Math.round((dailyCalories - (proteinGrams * 4) - (fatGrams * 9)) / 4);
-    } else if (goal === 'lose_weight') {
-      proteinGrams = Math.round(weight * 2);
-      fatGrams = Math.round((dailyCalories * 0.3) / 9);
-      carbsGrams = Math.round((dailyCalories - (proteinGrams * 4) - (fatGrams * 9)) / 4);
-    } else {
-      proteinGrams = Math.round(weight * 1.8);
-      fatGrams = Math.round((dailyCalories * 0.25) / 9);
-      carbsGrams = Math.round((dailyCalories - (proteinGrams * 4) - (fatGrams * 9)) / 4);
-    }
-
-    // Update user's nutrition requirements
-    user.nutritionRequirements = {
-      dailyCalories,
-      macros: {
-        protein: proteinGrams,
-        carbs: carbsGrams,
-        fat: fatGrams
-      },
-      lastCalculated: new Date()
-    };
-
-    await user.save();
-
-    res.json({
-      message: 'Nutrition requirements calculated and saved successfully',
-      requirements: user.nutritionRequirements
-    });
-
-  } catch (error) {
-    console.error('Error calculating nutrition requirements:', error);
-    res.status(500).json({ message: 'Server error calculating nutrition requirements' });
-  }
-});
-
-// Get user's current nutrition requirements
-const getNutritionRequirements = asyncHandler(async (req, res) => {
-  try {
-    const userId = req.user.userId || req.user.id;
-    const user = await User.findById(userId);
-
-    if (!user || !user.nutritionRequirements) {
-      return res.status(404).json({ message: 'Nutrition requirements not found' });
-    }
-
-    res.json(user.nutritionRequirements);
-  } catch (error) {
-    console.error('Error fetching nutrition requirements:', error);
-    res.status(500).json({ message: 'Server error fetching nutrition requirements' });
-  }
-});
-
 module.exports = {
   getDailyNutrition,
   getNutritionCalculations,
   updateMacros,
-  resetMacros,
-  calculateNutritionRequirements,
-  getNutritionRequirements
+  resetMacros
 };

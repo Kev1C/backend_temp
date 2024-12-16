@@ -29,16 +29,6 @@ const UserSchema = new mongoose.Schema({
     desiredPhysique: { type: String, enum: ['lean', 'muscular', 'athletic'], default: 'athletic' },
     dietaryPreferences: [String],
     dietaryRestrictions: [String],
-    // Nutrition requirements
-    nutritionRequirements: {
-        dailyCalories: Number,
-        macros: {
-            protein: Number,
-            carbs: Number,
-            fat: Number
-        },
-        lastCalculated: Date
-    },
 }, { timestamps: true });
 
 // Password hashing middleware

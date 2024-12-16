@@ -1,95 +1,90 @@
-// Nutrient calculations hook for determining daily requirements
-export const useNutrientCalculations = () => {
-  const calculateBMR = (gender, weight, height, age) => {
-    // Mifflin-St Jeor Equation
-    if (gender === 'male') {
-      return (10 * weight) + (6.25 * height) - (5 * age) + 5;
-    } else {
-      return (10 * weight) + (6.25 * height) - (5 * age) - 161;
-    }
-  };
+import { create } from 'zustand';
+import { api } from '../services/api';
 
-  const getActivityMultiplier = (activityLevel) => {
-    const multipliers = {
-      'sedentary': 1.2,
-      'lightly_active': 1.375,
-      'moderately_active': 1.55,
-      'very_active': 1.725
-    };
-    return multipliers[activityLevel] || 1.2;
-  };
+const CACHE_DURATION = 24 * 60 * 60 * 1000; // 24 hours
 
-  const getAgeFromRange = (ageRange) => {
-    const ranges = {
-      '18-24': 21,
-      '25-34': 29,
-      '35-44': 39,
-      '45-54': 49,
-      '55-64': 59,
-      '65+': 70
-    };
-    return ranges[ageRange] || 30;
-  };
+const useNutrientStore = create((set, get) => ({
+  calculatedNutrients: {
+    calories: 0,
+    protein: 0,
+    carbs: 0,
+    fat: 0,
+  },
+  loading: false,
+  error: null,
+  lastFetch: null,
 
-  const getGoalMultiplier = (goal) => {
-    const multipliers = {
-      'lose_weight': 0.8,
-      'get_fitter': 1.0,
-      'gain_muscle': 1.2
-    };
-    return multipliers[goal] || 1.0;
-  };
-
-  const calculateDailyRequirements = (userData) => {
-    const {
-      gender,
-      weight, // in kg
-      height, // in cm
-      ageRange,
-      activityLevel,
-      goal
-    } = userData;
-
-    const age = getAgeFromRange(ageRange);
-    const bmr = calculateBMR(gender, weight, height, age);
-    const activityMultiplier = getActivityMultiplier(activityLevel);
-    const goalMultiplier = getGoalMultiplier(goal);
-
-    // Calculate TDEE (Total Daily Energy Expenditure)
-    const tdee = bmr * activityMultiplier;
-    
-    // Calculate daily calories based on goal
-    const dailyCalories = Math.round(tdee * goalMultiplier);
-
-    // Calculate macronutrients
-    let proteinGrams, carbsGrams, fatGrams;
-
-    if (goal === 'gain_muscle') {
-      proteinGrams = Math.round(weight * 2.2); // 2.2g per kg of body weight
-      fatGrams = Math.round((dailyCalories * 0.25) / 9); // 25% of calories from fat
-      carbsGrams = Math.round((dailyCalories - (proteinGrams * 4) - (fatGrams * 9)) / 4);
-    } else if (goal === 'lose_weight') {
-      proteinGrams = Math.round(weight * 2); // 2g per kg of body weight
-      fatGrams = Math.round((dailyCalories * 0.3) / 9); // 30% of calories from fat
-      carbsGrams = Math.round((dailyCalories - (proteinGrams * 4) - (fatGrams * 9)) / 4);
-    } else {
-      // get_fitter or default
-      proteinGrams = Math.round(weight * 1.8); // 1.8g per kg of body weight
-      fatGrams = Math.round((dailyCalories * 0.25) / 9); // 25% of calories from fat
-      carbsGrams = Math.round((dailyCalories - (proteinGrams * 4) - (fatGrams * 9)) / 4);
+  fetchCalculations: async (userData, force = false) => {
+    if (!userData) {
+      set({ loading: false });
+      return;
     }
 
-    return {
-      dailyCalories,
-      macros: {
-        protein: proteinGrams,
-        carbs: carbsGrams,
-        fat: fatGrams
+    // Check if we need to fetch again
+    if (!force && get().lastFetch) {
+      const timeSinceLastFetch = Date.now() - get().lastFetch;
+      if (timeSinceLastFetch < CACHE_DURATION) {
+        return get().calculatedNutrients;
       }
-    };
-  };
+    }
 
+    set({ loading: true, error: null });
+
+    try {
+      // Include user's data in the request
+      const response = await api.get('/nutrition/calculations', {
+        params: {
+          gender: userData.gender,
+          weight: userData.weight,
+          height: userData.height,
+          fitnessGoal: userData.fitnessGoal || userData.goal // Support both field names
+        }
+      });
+      
+      const nutrients = {
+        calories: response.data.calories || 0,
+        protein: response.data.protein || 0,
+        carbs: response.data.carbs || 0,
+        fat: response.data.fat || 0
+      };
+
+      set({ 
+        calculatedNutrients: nutrients,
+        loading: false,
+        lastFetch: Date.now(),
+        error: null
+      });
+
+      return nutrients;
+    } catch (error) {
+      console.error('Failed to fetch nutrient calculations:', error);
+      set({ 
+        loading: false,
+        error: error.message || 'Failed to fetch calculations'
+      });
+      return get().calculatedNutrients;
+    }
+  },
+
+  setCalculations: (nutrients) => {
+    set({ 
+      calculatedNutrients: nutrients,
+      lastFetch: Date.now(),
+      error: null
+    });
+  }
+}));
+
+// Create a custom hook that returns the store's state and actions
+const useNutrientCalculations = () => {
+  const store = useNutrientStore();
   return {
-    calculateDailyRequirements
+    calculatedNutrients: store.calculatedNutrients,
+    loading: store.loading,
+    error: store.error,
+    fetchCalculations: store.fetchCalculations,
+    setCalculations: store.setCalculations
   };
 };
+
+export default useNutrientCalculations;
