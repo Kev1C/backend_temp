@@ -26,6 +26,7 @@ export const useOnboardingStore = create((set, get) => ({
         updatedData.gender &&
         updatedData.height &&
         updatedData.weight &&
+        updatedData.activityLevel &&
         (updatedData.goal || updatedData.fitnessGoal)
       );
       
@@ -33,6 +34,7 @@ export const useOnboardingStore = create((set, get) => ({
         gender: Boolean(updatedData.gender),
         height: Boolean(updatedData.height),
         weight: Boolean(updatedData.weight),
+        activityLevel: Boolean(updatedData.activityLevel),
         goal: Boolean(updatedData.goal || updatedData.fitnessGoal)
       });
       
@@ -65,6 +67,7 @@ export const useOnboardingStore = create((set, get) => ({
         currentData.gender &&
         currentData.height &&
         currentData.weight &&
+        currentData.activityLevel &&
         (currentData.goal || currentData.fitnessGoal)
       );
 
@@ -73,6 +76,7 @@ export const useOnboardingStore = create((set, get) => ({
         gender: Boolean(currentData.gender),
         height: Boolean(currentData.height),
         weight: Boolean(currentData.weight),
+        activityLevel: Boolean(currentData.activityLevel),
         goal: Boolean(currentData.goal || currentData.fitnessGoal)
       });
 
@@ -117,6 +121,7 @@ export const useOnboardingStore = create((set, get) => ({
           parsedData.gender &&
           parsedData.height &&
           parsedData.weight &&
+          parsedData.activityLevel &&
           (parsedData.goal || parsedData.fitnessGoal) &&
           parsedData.isComplete
         );
@@ -125,6 +130,7 @@ export const useOnboardingStore = create((set, get) => ({
           gender: Boolean(parsedData.gender),
           height: Boolean(parsedData.height),
           weight: Boolean(parsedData.weight),
+          activityLevel: Boolean(parsedData.activityLevel),
           goal: Boolean(parsedData.goal || parsedData.fitnessGoal),
           isComplete: Boolean(parsedData.isComplete)
         });

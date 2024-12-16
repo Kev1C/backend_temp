@@ -71,7 +71,7 @@ const HeightWeightScreen = ({ navigation, route }) => {
         weight: Number(weight),
       };
       await saveOnboardingData(measurements);
-      navigation.navigate('GoalSelection');
+      navigation.navigate('ActivityLevel');
     } catch (error) {
       console.error('Error saving measurements:', error);
       Alert.alert('Error', 'Failed to save your measurements. Please try again.', [
