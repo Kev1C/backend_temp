@@ -6,12 +6,14 @@ const {
   getDailyNutrition, 
   getNutritionCalculations,
   updateMacros,
-  resetMacros
+  resetMacros,
+  calculateNutritionalNeeds
 } = require('../controllers/nutritionController');
 
 router.get('/daily/:date', auth, getDailyNutrition);
 router.get('/calculations', auth, getNutritionCalculations);
 router.post('/macros', auth, updateMacros);
 router.post('/macros/reset', auth, resetMacros);
+router.post('/calculate', auth, calculateNutritionalNeeds);
 
 module.exports = router;

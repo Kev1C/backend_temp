@@ -41,14 +41,18 @@ const MacroCard = React.memo(({ label, value = 0, total = 0, color }) => {
 const CalorieProgress = React.memo(({ nutrients }) => {
   const theme = useTheme();
   const {
-    calories = 0,
-    caloriesGoal = 2000,
-    carbs = 0,
-    carbsGoal = 250,
-    protein = 0,
-    proteinGoal = 150,
-    fat = 0,
-    fatGoal = 65,
+    current: {
+      calories = 0,
+      carbs = 0,
+      protein = 0,
+      fat = 0
+    } = {},
+    goals: {
+      calories: caloriesGoal = 2000,
+      carbs: carbsGoal = 250,
+      protein: proteinGoal = 150,
+      fat: fatGoal = 65
+    } = {}
   } = nutrients || {};
 
   const { caloriesLeft, caloriePercentage } = useMemo(() => ({

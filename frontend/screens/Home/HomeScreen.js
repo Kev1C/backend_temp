@@ -32,14 +32,24 @@ const HomeScreen = () => {
 
   // Fetch nutrient calculations when user and onboarding data are available
   useEffect(() => {
-    if (user && onboardingData && isOnboardingComplete) {
-      const userData = {
-        ...onboardingData,
-        fitnessGoal: onboardingData.goal || onboardingData.fitnessGoal
-      };
-      fetchCalculations(userData);
-    }
-  }, [user, onboardingData, isOnboardingComplete, fetchCalculations]);
+    const initializeNutrients = async () => {
+      if (user && onboardingData && isOnboardingComplete) {
+        const userData = {
+          ...onboardingData,
+          fitnessGoal: onboardingData.goal || onboardingData.fitnessGoal
+        };
+        try {
+          await fetchCalculations(userData);
+          // Reset macros after calculating nutrients
+          resetMacros();
+        } catch (error) {
+          console.error('Error initializing nutrients:', error);
+        }
+      }
+    };
+    
+    initializeNutrients();
+  }, [user, onboardingData, isOnboardingComplete, fetchCalculations, resetMacros]);
 
   // Memoize date selection handler
   const handleDateSelect = useCallback(async (date) => {
@@ -171,14 +181,32 @@ const HomeScreen = () => {
   }, [navigation]);
 
   // Memoize nutrients data for display
-  const nutrients = useMemo(() => ({
-    current: {
-      calories,
-      ...macros
-    },
-    goals: calculatedNutrients,
-    loading: loadingNutrients || isLoadingNutrition
-  }), [calories, macros, calculatedNutrients, loadingNutrients, isLoadingNutrition]);
+  const nutrients = useMemo(() => {
+    // Don't show any goals until calculations are complete
+    if (loadingNutrients || !calculatedNutrients) {
+      return {
+        current: { calories: 0, protein: 0, carbs: 0, fat: 0 },
+        goals: { calories: 0, protein: 0, carbs: 0, fat: 0 },
+        loading: true
+      };
+    }
+
+    return {
+      current: {
+        calories: calories || 0,
+        protein: macros?.protein || 0,
+        carbs: macros?.carbs || 0,
+        fat: macros?.fat || 0
+      },
+      goals: {
+        calories: calculatedNutrients?.calories || 0,
+        protein: calculatedNutrients?.protein || 0,
+        carbs: calculatedNutrients?.carbs || 0,
+        fat: calculatedNutrients?.fat || 0
+      },
+      loading: false
+    };
+  }, [calories, macros, calculatedNutrients, loadingNutrients]);
 
   return (
     <SafeAreaView style={styles.safeArea}>

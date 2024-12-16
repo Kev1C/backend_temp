@@ -31,7 +31,7 @@ const useNutrientStore = create((set, get) => ({
     set({ loading: true, error: null });
 
     try {
-      const response = await api.post('/users/nutrition/calculate', {
+      const response = await api.post('/nutrition/calculate', {
         gender: userData.gender,
         ageRange: userData.ageRange,
         weight: userData.weight,

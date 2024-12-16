@@ -18,9 +18,9 @@ const useMacroStore = create(
         const currentMacros = get().macros;
         set({
           macros: {
-            protein: currentMacros.protein + Number(protein),
-            carbs: currentMacros.carbs + Number(carbs),
-            fat: currentMacros.fat + Number(fat),
+            protein: Math.max(0, currentMacros.protein + Number(protein)),
+            carbs: Math.max(0, currentMacros.carbs + Number(carbs)),
+            fat: Math.max(0, currentMacros.fat + Number(fat)),
           }
         });
       },
@@ -46,7 +46,13 @@ const useMacroStore = create(
 
       setMacros: (newMacros) => {
         if (!get().hydrated) return;
-        set({ macros: newMacros });
+        set({ 
+          macros: {
+            protein: Math.max(0, Number(newMacros.protein || 0)),
+            carbs: Math.max(0, Number(newMacros.carbs || 0)),
+            fat: Math.max(0, Number(newMacros.fat || 0))
+          }
+        });
       },
 
       setHydrated: () => set({ hydrated: true })
