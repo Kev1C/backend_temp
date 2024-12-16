@@ -48,17 +48,23 @@ export const nutritionStore = create((set, get) => ({
     try {
       const response = await api.get(`/nutrition/daily/${formattedDate}`);
       const data = response.data;
-
-      cacheStore.getState().set(cacheKey, data, CACHE_DURATION);
-      set({ dailyNutrition: data, currentDate: formattedDate, isLoading: false });
+      
+      // Store the data in cache and state
+      cacheStore.getState().set(cacheKey, data);
+      set({ 
+        dailyNutrition: data, 
+        currentDate: formattedDate, 
+        isLoading: false 
+      });
       
       return data;
     } catch (error) {
+      console.error('Error fetching daily nutrition:', error);
       set({ 
-        isLoading: false, 
-        error: error.message || 'Failed to fetch nutrition data'
+        error: 'Failed to fetch daily nutrition data',
+        isLoading: false 
       });
-      throw error;
+      return null;
     }
   },
 

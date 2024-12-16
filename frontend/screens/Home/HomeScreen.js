@@ -54,9 +54,27 @@ const HomeScreen = () => {
   // Memoize date selection handler
   const handleDateSelect = useCallback(async (date) => {
     setSelectedDate(date);
-    await fetchDailyNutrition(date);
-    await fetchRecentMeals(date);
-  }, [fetchDailyNutrition, fetchRecentMeals]);
+    
+    // Reset macros and calories before fetching new data
+    resetMacros();
+    if (resetCalories) resetCalories();
+    
+    // Fetch new data
+    const nutritionData = await fetchDailyNutrition(date);
+    const mealsData = await fetchRecentMeals(date);
+    
+    // Update macros and calories with the fetched data
+    if (nutritionData) {
+      addMacros(
+        nutritionData.protein || 0,
+        nutritionData.carbs || 0,
+        nutritionData.fats || 0
+      );
+      if (addCalories) {
+        addCalories(nutritionData.calories || 0);
+      }
+    }
+  }, [fetchDailyNutrition, fetchRecentMeals, resetMacros, resetCalories, addMacros, addCalories]);
 
   // Load initial data
   useEffect(() => {
@@ -167,12 +185,19 @@ const HomeScreen = () => {
       
       // Update nutrition progress
       if (params.updateProgress) {
-        addCalories(params.updateProgress.calories);
-        addMacros({
-          carbs: params.updateProgress.carbs,
-          protein: params.updateProgress.protein,
-          fat: params.updateProgress.fats
-        });
+        const { calories, carbs, protein, fats } = params.updateProgress;
+        
+        // Update calories
+        if (addCalories) {
+          addCalories(Number(calories));
+        }
+        
+        // Update macros with individual parameters
+        addMacros(
+          Number(protein),
+          Number(carbs),
+          Number(fats)
+        );
       }
       
       // Save to backend
@@ -181,48 +206,7 @@ const HomeScreen = () => {
       // Clear the params to prevent duplicate updates
       navigation.setParams({ addMeal: null, updateProgress: null });
     }
-  }, [route.params, addCalories, addMacros, selectedDate]);
-
-  // Handle updates from camera screen with loading states
-  useEffect(() => {
-    if (route.params?.addMeal && route.params?.updateProgress) {
-      const { addMeal, updateProgress } = route.params;
-
-      const handleNewMeal = async () => {
-        try {
-          setLoadingStates(prev => ({ ...prev, saving: true }));
-
-          // Update dailyNutrition state here
-          // Removed since we now have a dedicated store
-
-          // Update macros
-          addMacros(
-            Number(updateProgress.protein),
-            Number(updateProgress.carbs),
-            Number(updateProgress.fats)
-          );
-
-          // Update calories
-          if (addCalories) addCalories(Number(updateProgress.calories));
-
-          if (isGuest) {
-            await saveGuestMealData(addMeal, selectedDate);
-          } else {
-            setRecentMeals(prevMeals => [...prevMeals, addMeal]);
-          }
-
-          // Fetch daily nutrition after adding a new meal
-          await fetchDailyNutrition(selectedDate);
-        } catch (error) {
-          console.error('Error handling new meal:', error);
-        } finally {
-          setLoadingStates(prev => ({ ...prev, saving: false }));
-        }
-      };
-
-      handleNewMeal();
-    }
-  }, [route.params, selectedDate, isGuest, fetchRecentMeals, saveGuestMealData, fetchDailyNutrition]);
+  }, [route.params, addCalories, addMacros, selectedDate, saveMealToBackend]);
 
   // Memoize FAB onPress handler
   const handleFABPress = useCallback(() => {
@@ -240,12 +224,15 @@ const HomeScreen = () => {
       };
     }
 
+    // Get daily nutrition from the nutrition store
+    const dailyNutritionData = dailyNutrition || {};
+
     return {
       current: {
-        calories: calories || 0,
-        protein: macros?.protein || 0,
-        carbs: macros?.carbs || 0,
-        fat: macros?.fat || 0
+        calories: dailyNutritionData.calories || 0,
+        protein: dailyNutritionData.protein || 0,
+        carbs: dailyNutritionData.carbs || 0,
+        fat: dailyNutritionData.fat || 0
       },
       goals: {
         calories: calculatedNutrients?.calories || 0,
@@ -255,7 +242,7 @@ const HomeScreen = () => {
       },
       loading: false
     };
-  }, [calories, macros, calculatedNutrients, loadingNutrients]);
+  }, [dailyNutrition, calculatedNutrients, loadingNutrients]);
 
   return (
     <SafeAreaView style={styles.safeArea}>
