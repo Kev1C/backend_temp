@@ -27,7 +27,7 @@ const GOALS = [
 ];
 
 const GoalSelectionScreen = ({ navigation }) => {
-  const [selectedGoal, setSelectedGoal] = React.useState(null);
+  const [selectedGoal, setSelectedGoal] = React.useState('get_fitter');
   const { saveOnboardingData, onboardingData } = useOnboardingStore();
 
   const handleGoalSelection = (goalId) => {

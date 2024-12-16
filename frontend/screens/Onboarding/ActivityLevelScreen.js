@@ -33,7 +33,7 @@ const ACTIVITY_LEVELS = [
 ];
 
 const ActivityLevelScreen = ({ navigation }) => {
-  const [selectedLevel, setSelectedLevel] = React.useState(null);
+  const [selectedLevel, setSelectedLevel] = React.useState('lightly_active');
   const { saveOnboardingData } = useOnboardingStore();
 
   const handleActivitySelection = (levelId) => {
