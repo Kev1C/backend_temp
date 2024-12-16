@@ -1,6 +1,6 @@
 // frontend/screens/Home/HomeScreen.js
 import React, { useMemo, useState, useEffect, useCallback } from 'react';
-import { Text, SafeAreaView, View, Image, FlatList, ScrollView, StyleSheet } from 'react-native';
+import { Text, SafeAreaView, View, Image, FlatList, ScrollView, StyleSheet, Alert } from 'react-native';
 import { useTheme, FAB } from 'react-native-paper';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { useAuthStore } from '../../stores/authStore';
@@ -133,6 +133,55 @@ const HomeScreen = () => {
       setLoadingStates(prev => ({ ...prev, saving: false }));
     }
   }, []);
+
+  // Save meal to backend
+  const saveMealToBackend = async (meal, date) => {
+    try {
+      setLoadingStates(prev => ({ ...prev, saving: true }));
+      const formattedDate = new Date(date.getFullYear(), date.getMonth(), date.getDate()).toISOString();
+      
+      if (isGuest) {
+        await saveGuestMealData(meal, date);
+      } else {
+        await api.post('/meals', { 
+          ...meal,
+          date: formattedDate
+        });
+      }
+    } catch (error) {
+      console.error('Error saving meal:', error);
+      Alert.alert('Error', 'Failed to save meal. Please try again.');
+    } finally {
+      setLoadingStates(prev => ({ ...prev, saving: false }));
+    }
+  };
+
+  // Handle navigation params when returning from camera
+  useEffect(() => {
+    const params = route.params;
+    if (params?.addMeal) {
+      const newMeal = params.addMeal;
+      
+      // Update local state immediately for better UX
+      setRecentMeals(prevMeals => [newMeal, ...prevMeals]);
+      
+      // Update nutrition progress
+      if (params.updateProgress) {
+        addCalories(params.updateProgress.calories);
+        addMacros({
+          carbs: params.updateProgress.carbs,
+          protein: params.updateProgress.protein,
+          fat: params.updateProgress.fats
+        });
+      }
+      
+      // Save to backend
+      saveMealToBackend(newMeal, selectedDate);
+      
+      // Clear the params to prevent duplicate updates
+      navigation.setParams({ addMeal: null, updateProgress: null });
+    }
+  }, [route.params, addCalories, addMacros, selectedDate]);
 
   // Handle updates from camera screen with loading states
   useEffect(() => {
