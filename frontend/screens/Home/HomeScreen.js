@@ -198,6 +198,9 @@ const HomeScreen = () => {
           Number(carbs),
           Number(fats)
         );
+
+        // Fetch updated daily nutrition data
+        fetchDailyNutrition(selectedDate);
       }
       
       // Save to backend
@@ -206,7 +209,7 @@ const HomeScreen = () => {
       // Clear the params to prevent duplicate updates
       navigation.setParams({ addMeal: null, updateProgress: null });
     }
-  }, [route.params, addCalories, addMacros, selectedDate, saveMealToBackend]);
+  }, [route.params, addCalories, addMacros, selectedDate, saveMealToBackend, fetchDailyNutrition]);
 
   // Memoize FAB onPress handler
   const handleFABPress = useCallback(() => {
