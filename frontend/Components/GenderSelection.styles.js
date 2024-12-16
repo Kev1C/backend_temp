@@ -5,15 +5,10 @@ export default StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#fff',
-    paddingHorizontal: 24,
   },
-  backButton: {
-    marginTop: 20,
-    padding: 8,
-  },
-  contentContainer: {
+  mainContent: {
     flex: 1,
-    alignItems: 'center',
+    paddingHorizontal: 24,
     paddingTop: 40,
   },
   title: {
@@ -43,8 +38,8 @@ export default StyleSheet.create({
     backgroundColor: '#fff',
   },
   selectedOptionFemale: {
-    borderColor: '#FFB6C1', // Light pink border
-    backgroundColor: '#FFF0F5', // Lavender blush background
+    borderColor: '#FFB6C1',
+    backgroundColor: '#FFF0F5',
   },
   selectedOptionMale: {
     borderColor: '#87CEEB',
@@ -56,18 +51,20 @@ export default StyleSheet.create({
     color: '#666',
   },
   selectedTextFemale: {
-    color: '#FF69B4', // Hot pink text when selected
+    color: '#FF69B4',
   },
   selectedTextMale: {
     color: '#87CEEB',
   },
   noneButton: {
-    marginTop: 20,
-    padding: 10,
+    marginTop: 16,
   },
   noneButtonText: {
     color: '#666',
     fontSize: 14,
+  },
+  buttonContainer: {
+    paddingHorizontal: 24,
   },
   continueButton: {
     marginBottom: 20,

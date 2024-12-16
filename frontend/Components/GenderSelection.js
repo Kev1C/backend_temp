@@ -16,7 +16,7 @@ const GenderSelection = ({ onNext }) => {
 
   return (
     <View style={styles.container}>
-      <View style={styles.contentContainer}>
+      <View style={styles.mainContent}>
         <Text style={styles.title}>What is your gender?</Text>
         <Text style={styles.subtitle}>Let us know you better</Text>
 
@@ -65,12 +65,17 @@ const GenderSelection = ({ onNext }) => {
         <TouchableOpacity style={styles.noneButton}>
           <Text style={styles.noneButtonText}>None of the above</Text>
         </TouchableOpacity>
+      </View>
 
+      <View style={styles.buttonContainer}>
         <Button
           title="Continue"
           onPress={handleContinue}
           disabled={!selectedGender}
-          style={{ backgroundColor: selectedGender ? '#2196F3' : '#ccc' }}
+          style={[
+            styles.continueButton,
+            { backgroundColor: selectedGender ? '#2196F3' : '#ccc' }
+          ]}
         />
       </View>
     </View>
