@@ -13,7 +13,7 @@ const GenderSelectionScreen = ({ navigation }) => {
       // Update onboarding store with gender
       await saveOnboardingData({ gender });
       // Navigate to next screen
-      navigation.navigate('HeightWeight');
+      navigation.navigate('AgeSelection');
     } catch (error) {
       console.error('Error saving gender:', error);
       Alert.alert(

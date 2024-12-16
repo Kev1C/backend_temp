@@ -1,6 +1,7 @@
 import React from 'react';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import GenderSelectionScreen from '../screens/Onboarding/GenderSelectionScreen';
+import AgeSelectionScreen from '../screens/Onboarding/AgeSelectionScreen';
 import HeightWeightScreen from '../screens/Onboarding/HeightWeightScreen';
 import ActivityLevelScreen from '../screens/Onboarding/ActivityLevelScreen';
 import GoalSelectionScreen from '../screens/Onboarding/GoalSelectionScreen';
@@ -19,6 +20,10 @@ const OnboardingNavigator = () => (
     <Stack.Screen
       name="GenderSelection"
       component={GenderSelectionScreen}
+    />
+    <Stack.Screen
+      name="AgeSelection"
+      component={AgeSelectionScreen}
     />
     <Stack.Screen
       name="HeightWeight"
