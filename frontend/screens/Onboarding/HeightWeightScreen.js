@@ -12,14 +12,17 @@ const HeightWeightScreen = ({ navigation, route }) => {
   const [heightCm, setHeightCm] = useState(175);
   const [heightFt, setHeightFt] = useState(5);
   const [heightIn, setHeightIn] = useState(9);
-  const [weight, setWeight] = useState(isMetric ? 70 : 150);
+  const [weight, setWeight] = useState(70);  // Default to 70kg for metric
 
   useEffect(() => {
     if (isMetric) {
       // Convert ft/in to cm when switching to metric
       const totalInches = (heightFt * 12) + heightIn;
       setHeightCm(Math.round(totalInches * 2.54));
-      setWeight(Math.round(weight / 2.205)); // Convert lbs to kg
+      // Only convert weight if it's not the initial state
+      if (weight !== 70) {
+        setWeight(Math.round(weight / 2.205)); // Convert lbs to kg
+      }
     } else {
       // Convert cm to ft/in when switching to imperial
       const totalInches = heightCm / 2.54;
