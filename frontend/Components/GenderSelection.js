@@ -61,10 +61,6 @@ const GenderSelection = ({ onNext }) => {
             </Text>
           </TouchableOpacity>
         </View>
-
-        <TouchableOpacity style={styles.noneButton}>
-          <Text style={styles.noneButtonText}>None of the above</Text>
-        </TouchableOpacity>
       </View>
 
       <View style={styles.buttonContainer}>

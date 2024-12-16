@@ -56,13 +56,6 @@ export default StyleSheet.create({
   selectedTextMale: {
     color: '#87CEEB',
   },
-  noneButton: {
-    marginTop: 16,
-  },
-  noneButtonText: {
-    color: '#666',
-    fontSize: 14,
-  },
   buttonContainer: {
     paddingHorizontal: 24,
   },
