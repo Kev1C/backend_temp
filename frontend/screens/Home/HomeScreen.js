@@ -18,19 +18,12 @@ const HomeScreen = () => {
   const { user, authToken, isGuest } = useAuthStore();
   const { onboardingData, isOnboardingComplete } = useOnboardingStore();
   const { calculatedNutrients, loading: loadingNutrients, fetchCalculations } = useNutrientCalculations();
-  const { 
-    nutritionalGoals, 
-    setNutritionalGoals, 
-    dailyNutrition, 
-    fetchDailyNutrition,
-    updateDailyNutrition
-  } = useNutritionStore();
   const theme = useTheme();
   const navigation = useNavigation();
   const route = useRoute();
   const styles = useMemo(() => createStyles(theme), [theme]);
 
-  const [selectedDate, setSelectedDate] = useState(new Date());
+  // Add loading state indicators
   const [loadingStates, setLoadingStates] = useState({
     meals: false,
     nutrition: false,
@@ -44,49 +37,148 @@ const HomeScreen = () => {
         ...onboardingData,
         fitnessGoal: onboardingData.goal || onboardingData.fitnessGoal
       };
-      fetchCalculations(userData).then(calculations => {
-        if (calculations) {
-          setNutritionalGoals(calculations);
-        }
-      });
+      fetchCalculations(userData);
     }
-  }, [user, onboardingData, isOnboardingComplete, fetchCalculations, setNutritionalGoals]);
+  }, [user, onboardingData, isOnboardingComplete, fetchCalculations]);
 
-  // Prepare nutrition data for CalorieProgress
-  const nutritionData = useMemo(() => ({
-    calories: dailyNutrition?.calories || 0,
-    caloriesGoal: nutritionalGoals.calories || 0,
-    protein: dailyNutrition?.protein || 0,
-    proteinGoal: nutritionalGoals.protein || 0,
-    carbs: dailyNutrition?.carbs || 0,
-    carbsGoal: nutritionalGoals.carbs || 0,
-    fat: dailyNutrition?.fat || 0,
-    fatGoal: nutritionalGoals.fat || 0
-  }), [dailyNutrition, nutritionalGoals]);
-
-  // Handle date selection
+  // Memoize date selection handler
   const handleDateSelect = useCallback(async (date) => {
     setSelectedDate(date);
-    setLoadingStates(prev => ({ ...prev, nutrition: true }));
-    try {
-      await fetchDailyNutrition(date);
-    } catch (error) {
-      console.error('Error fetching nutrition:', error);
-    } finally {
-      setLoadingStates(prev => ({ ...prev, nutrition: false }));
-    }
-  }, [fetchDailyNutrition]);
+    await fetchDailyNutrition(date);
+    await fetchRecentMeals(date);
+  }, [fetchDailyNutrition, fetchRecentMeals]);
 
   // Load initial data
   useEffect(() => {
-    if (user) {
-      handleDateSelect(new Date());
+    if (selectedDate) {
+      handleDateSelect(selectedDate);
     }
-  }, [user, handleDateSelect]);
+  }, []); // Only run on mount
 
+  // Get daily nutrition data
+  const { 
+    dailyNutrition, 
+    isLoading: isLoadingNutrition, 
+    fetchDailyNutrition 
+  } = useNutritionStore();
+
+  // Get calorie data
+  const { calories, addCalories, resetCalories } = useCalorieStore();
+
+  // Get macro data
+  const macroStore = useMacroStore();
+  const { macros, addMacros, resetMacros, checkDailyReset, hydrated } = macroStore;
+
+  // State for recently eaten meals
+  const [recentMeals, setRecentMeals] = useState([]);
+  const [isLoadingMeals, setIsLoadingMeals] = useState(false);
+  const [selectedDate, setSelectedDate] = useState(new Date());  // Initialize with current date
+  const [prevAddMeal, setPrevAddMeal] = useState(null);
+  const [prevUpdateProgress, setPrevUpdateProgress] = useState(null);
+
+  // Memoize fetchRecentMeals to prevent recreation on every render
+  const fetchRecentMeals = useCallback(async (date) => {
+    try {
+      setLoadingStates(prev => ({ ...prev, meals: true }));
+      const formattedDate = new Date(date.getFullYear(), date.getMonth(), date.getDate()).toISOString();
+
+      if (isGuest) {
+        const storedMeals = await AsyncStorage.getItem(`guest-meals-${formattedDate}`);
+        setRecentMeals(storedMeals ? JSON.parse(storedMeals) : []);
+        return;
+      }
+
+      const response = await api.get('/meals/recent', { 
+        params: { date: formattedDate },
+      });
+      setRecentMeals(response.data);
+    } catch (error) {
+      console.error('Error fetching recent meals:', error);
+      setRecentMeals([]);
+    } finally {
+      setLoadingStates(prev => ({ ...prev, meals: false }));
+    }
+  }, [isGuest]);
+
+  // Check for daily macro reset
+  useEffect(() => {
+    if (hydrated) {
+      checkDailyReset();
+    }
+  }, [hydrated, checkDailyReset]);
+
+  // Add function to save guest meal data
+  const saveGuestMealData = useCallback(async (meal, date) => {
+    try {
+      setLoadingStates(prev => ({ ...prev, saving: true }));
+      const formattedDate = new Date(date.getFullYear(), date.getMonth(), date.getDate()).toISOString();
+      const storedMeals = await AsyncStorage.getItem(`guest-meals-${formattedDate}`);
+      const currentMeals = storedMeals ? JSON.parse(storedMeals) : [];
+      const updatedMeals = [...currentMeals, meal];
+      await AsyncStorage.setItem(`guest-meals-${formattedDate}`, JSON.stringify(updatedMeals));
+      setRecentMeals(updatedMeals);
+    } catch (error) {
+      console.error('Error saving guest meal:', error);
+    } finally {
+      setLoadingStates(prev => ({ ...prev, saving: false }));
+    }
+  }, []);
+
+  // Handle updates from camera screen with loading states
+  useEffect(() => {
+    if (route.params?.addMeal && route.params?.updateProgress) {
+      const { addMeal, updateProgress } = route.params;
+
+      const handleNewMeal = async () => {
+        try {
+          setLoadingStates(prev => ({ ...prev, saving: true }));
+
+          // Update dailyNutrition state here
+          // Removed since we now have a dedicated store
+
+          // Update macros
+          addMacros(
+            Number(updateProgress.protein),
+            Number(updateProgress.carbs),
+            Number(updateProgress.fats)
+          );
+
+          // Update calories
+          if (addCalories) addCalories(Number(updateProgress.calories));
+
+          if (isGuest) {
+            await saveGuestMealData(addMeal, selectedDate);
+          } else {
+            setRecentMeals(prevMeals => [...prevMeals, addMeal]);
+          }
+
+          // Fetch daily nutrition after adding a new meal
+          await fetchDailyNutrition(selectedDate);
+        } catch (error) {
+          console.error('Error handling new meal:', error);
+        } finally {
+          setLoadingStates(prev => ({ ...prev, saving: false }));
+        }
+      };
+
+      handleNewMeal();
+    }
+  }, [route.params, selectedDate, isGuest, fetchRecentMeals, saveGuestMealData, fetchDailyNutrition]);
+
+  // Memoize FAB onPress handler
   const handleFABPress = useCallback(() => {
-    navigation.navigate('AddMeal');
+    navigation.navigate('Camera');
   }, [navigation]);
+
+  // Memoize nutrients data for display
+  const nutrients = useMemo(() => ({
+    current: {
+      calories,
+      ...macros
+    },
+    goals: calculatedNutrients,
+    loading: loadingNutrients || isLoadingNutrition
+  }), [calories, macros, calculatedNutrients, loadingNutrients, isLoadingNutrition]);
 
   return (
     <SafeAreaView style={styles.safeArea}>
@@ -101,12 +193,12 @@ const HomeScreen = () => {
             selectedDate={selectedDate} 
           />
         </View>
-        <MemoizedCalorieProgress nutrients={nutritionData} />
+        <MemoizedCalorieProgress nutrients={nutrients} />
         <View style={styles.recentlyEatenContainer}>
           <Text style={styles.sectionTitle}>Recently Eaten</Text>
           <MemoizedRecentlyEaten 
-            meals={dailyNutrition?.meals || []} 
-            isLoading={loadingStates.nutrition}
+            meals={recentMeals} 
+            isLoading={loadingStates.meals}
           />
         </View>
         <FAB
