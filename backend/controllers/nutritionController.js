@@ -11,6 +11,24 @@ const clearCacheEntry = (key) => {
   setTimeout(() => nutritionCache.delete(key), CACHE_TTL);
 };
 
+// Activity level multipliers
+const ACTIVITY_MULTIPLIERS = {
+  'sedentary': 1.2,
+  'lightly_active': 1.375,
+  'moderately_active': 1.55,
+  'very_active': 1.725
+};
+
+// Age ranges average values
+const AGE_RANGES = {
+  '18_24': 21,
+  '25_34': 29,
+  '35_44': 39,
+  '45_54': 49,
+  '55_64': 59,
+  '65_plus': 70
+};
+
 // @desc    Get daily nutrition data
 // @route   GET /api/nutrition/daily/:date
 // @access  Private
@@ -181,9 +199,85 @@ const resetMacros = asyncHandler(async (req, res) => {
   res.json(resetData);
 });
 
+// @desc    Calculate user's daily nutritional needs
+// @route   POST /api/nutrition/calculate
+// @access  Private
+const calculateNutritionalNeeds = asyncHandler(async (req, res) => {
+  const { gender, ageRange, height, weight, activityLevel, fitnessGoal } = req.body;
+
+  // Basic validation
+  if (!gender || !ageRange || !height || !weight || !activityLevel || !fitnessGoal) {
+    return res.status(400).json({ 
+      message: 'Missing required parameters' 
+    });
+  }
+
+  // Get average age for the range
+  const age = AGE_RANGES[ageRange] || 30;
+
+  // Calculate BMR using Mifflin-St Jeor Equation
+  let bmr;
+  if (gender.toLowerCase() === 'male') {
+    bmr = 10 * weight + 6.25 * height - 5 * age + 5;
+  } else {
+    bmr = 10 * weight + 6.25 * height - 5 * age - 161;
+  }
+
+  // Get activity multiplier
+  const activityMultiplier = ACTIVITY_MULTIPLIERS[activityLevel] || 1.375;
+
+  // Calculate TDEE (Total Daily Energy Expenditure)
+  const tdee = bmr * activityMultiplier;
+
+  // Adjust calories based on fitness goal
+  let calories;
+  let proteinRatio, carbsRatio, fatRatio;
+
+  switch (fitnessGoal) {
+    case 'lose_weight':
+      calories = tdee - 500; // 500 calorie deficit
+      proteinRatio = 0.35; // Higher protein for muscle preservation
+      carbsRatio = 0.35;
+      fatRatio = 0.30;
+      break;
+    case 'get_fitter':
+      calories = tdee;
+      proteinRatio = 0.30;
+      carbsRatio = 0.40;
+      fatRatio = 0.30;
+      break;
+    case 'gain_muscle':
+      calories = tdee + 300; // Caloric surplus for muscle gain
+      proteinRatio = 0.30;
+      carbsRatio = 0.45;
+      fatRatio = 0.25;
+      break;
+    default:
+      calories = tdee;
+      proteinRatio = 0.30;
+      carbsRatio = 0.40;
+      fatRatio = 0.30;
+  }
+
+  // Calculate macros in grams
+  const protein = Math.round((calories * proteinRatio) / 4); // 4 calories per gram of protein
+  const carbs = Math.round((calories * carbsRatio) / 4);     // 4 calories per gram of carbs
+  const fat = Math.round((calories * fatRatio) / 9);         // 9 calories per gram of fat
+
+  const nutritionalNeeds = {
+    calories: Math.round(calories),
+    protein,
+    carbs,
+    fat
+  };
+
+  res.status(200).json(nutritionalNeeds);
+});
+
 module.exports = {
   getDailyNutrition,
   getNutritionCalculations,
   updateMacros,
-  resetMacros
+  resetMacros,
+  calculateNutritionalNeeds
 };

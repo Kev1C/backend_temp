@@ -1,3 +1,4 @@
+const asyncHandler = require('express-async-handler');
 const User = require('../models/User');
 
 // Get user data
@@ -61,7 +62,38 @@ const updateUserData = async (req, res) => {
     }
 };
 
+// @desc    Update user's nutritional goals
+// @route   PUT /api/users/nutrition-goals
+// @access  Private
+const updateNutritionalGoals = asyncHandler(async (req, res) => {
+  const userId = req.user.userId || req.user._id;
+  const { calories, protein, carbs, fat } = req.body;
+
+  const updatedUser = await User.findByIdAndUpdate(
+    userId,
+    {
+      $set: {
+        'nutritionalGoals.calories': calories,
+        'nutritionalGoals.protein': protein,
+        'nutritionalGoals.carbs': carbs,
+        'nutritionalGoals.fat': fat,
+      }
+    },
+    { new: true }
+  );
+
+  if (!updatedUser) {
+    res.status(404);
+    throw new Error('User not found');
+  }
+
+  res.status(200).json({
+    nutritionalGoals: updatedUser.nutritionalGoals
+  });
+});
+
 module.exports = {
     getUserData,
-    updateUserData
+    updateUserData,
+    updateNutritionalGoals
 };

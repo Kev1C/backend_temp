@@ -31,14 +31,13 @@ const useNutrientStore = create((set, get) => ({
     set({ loading: true, error: null });
 
     try {
-      // Include user's data in the request
-      const response = await api.get('/nutrition/calculations', {
-        params: {
-          gender: userData.gender,
-          weight: userData.weight,
-          height: userData.height,
-          fitnessGoal: userData.fitnessGoal || userData.goal // Support both field names
-        }
+      const response = await api.post('/users/nutrition/calculate', {
+        gender: userData.gender,
+        ageRange: userData.ageRange,
+        weight: userData.weight,
+        height: userData.height,
+        activityLevel: userData.activityLevel,
+        fitnessGoal: userData.fitnessGoal || userData.goal
       });
       
       const nutrients = {
@@ -57,17 +56,17 @@ const useNutrientStore = create((set, get) => ({
 
       return nutrients;
     } catch (error) {
-      console.error('Failed to fetch nutrient calculations:', error);
+      console.error('Error calculating nutrients:', error);
       set({ 
         loading: false,
         error: error.message || 'Failed to fetch calculations'
       });
-      return get().calculatedNutrients;
+      throw error;
     }
   },
 
   setCalculations: (nutrients) => {
-    set({ 
+    set({
       calculatedNutrients: nutrients,
       lastFetch: Date.now(),
       error: null
@@ -75,15 +74,13 @@ const useNutrientStore = create((set, get) => ({
   }
 }));
 
-// Create a custom hook that returns the store's state and actions
 const useNutrientCalculations = () => {
   const store = useNutrientStore();
   return {
+    ...store,
     calculatedNutrients: store.calculatedNutrients,
     loading: store.loading,
-    error: store.error,
-    fetchCalculations: store.fetchCalculations,
-    setCalculations: store.setCalculations
+    error: store.error
   };
 };
 
