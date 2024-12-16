@@ -170,6 +170,23 @@ const CameraScreen = ({ navigation }) => {
           fats: response.data.fats,
           healthScore: response.data.healthScore
         });
+        
+        // Update nutritionState with the received values
+        setNutritionState({
+          calories: response.data.calories,
+          carbs: response.data.carbs,
+          protein: response.data.protein,
+          fats: response.data.fats,
+          healthScore: response.data.healthScore,
+          baseCalories: response.data.calories,
+          baseCarbs: response.data.carbs,
+          baseProtein: response.data.protein,
+          baseFats: response.data.fats,
+        });
+        
+        // Set the food title
+        setFoodTitle(response.data.foodTitle);
+        
         setAnalysisLoading(false);
       } else {
         throw new Error('Invalid response data format');
