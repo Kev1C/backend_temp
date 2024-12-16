@@ -5,7 +5,7 @@ import { Ionicons } from '@expo/vector-icons';
 import Button from './Button';
 import styles from './GenderSelection.styles';
 
-const GenderSelection = ({ onNext, onBack }) => {
+const GenderSelection = ({ onNext }) => {
   const [selectedGender, setSelectedGender] = useState(null);
 
   const handleContinue = () => {
@@ -16,10 +16,6 @@ const GenderSelection = ({ onNext, onBack }) => {
 
   return (
     <View style={styles.container}>
-      <TouchableOpacity style={styles.backButton} onPress={onBack}>
-        <Ionicons name="arrow-back" size={24} color="#000" />
-      </TouchableOpacity>
-      
       <View style={styles.contentContainer}>
         <Text style={styles.title}>What is your gender?</Text>
         <Text style={styles.subtitle}>Let us know you better</Text>

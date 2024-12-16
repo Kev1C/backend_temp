@@ -24,13 +24,9 @@ const GenderSelectionScreen = ({ navigation }) => {
     }
   };
 
-  const handleBack = () => {
-    navigation.goBack();
-  };
-
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: '#fff' }}>
-      <GenderSelection onNext={handleNext} onBack={handleBack} />
+      <GenderSelection onNext={handleNext} />
     </SafeAreaView>
   );
 };
