@@ -76,6 +76,10 @@ export const nutritionStore = create((set, get) => ({
       const response = await api.post(`/nutrition/daily/${formattedDate}`, newMeal);
       const data = response.data;
 
+      // Invalidate cache for this date
+      const cacheKey = `nutrition_${formattedDate}`;
+      cacheStore.getState().invalidate(cacheKey);
+
       set({ 
         dailyNutrition: data,
         currentDate: formattedDate,

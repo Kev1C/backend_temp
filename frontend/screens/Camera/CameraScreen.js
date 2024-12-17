@@ -99,122 +99,32 @@ const CameraScreen = ({ navigation }) => {
     }
   };
 
-  const analyzeImage = async (imageData = null) => {
-    console.log('=== Starting Food Analysis ===');
-    console.log('Auth state:', { hasAuthToken: !!authToken });
-    
-    const imageToAnalyze = imageData || capturedImage;
-    console.log('Image state:', { 
-      hasImage: !!imageToAnalyze,
-      hasBase64: !!imageToAnalyze?.base64,
-      imageSize: imageToAnalyze?.base64?.length
-    });
-
-    if (!imageToAnalyze || !authToken) {
-      console.log('Missing required data:', { hasImage: !!imageToAnalyze, hasAuthToken: !!authToken });
-      Alert.alert('Error', 'Missing required data for analysis');
+  const analyzeImage = async (image) => {
+    if (!image?.base64) {
+      Alert.alert('Error', 'No image data available');
       return;
     }
 
-    setIsAnalyzing(true);
     setAnalysisLoading(true);
     try {
-      // Ensure we have base64 data
-      if (!imageToAnalyze.base64) {
-        throw new Error('No base64 data in captured image');
-      }
-
-      // Clean the base64 string
-      let imageBase64 = imageToAnalyze.base64;
-      if (imageBase64.includes('base64,')) {
-        imageBase64 = imageBase64.split('base64,')[1];
-      }
-
-      console.log('Prepared image data:', {
-        dataLength: imageBase64.length,
-        sampleStart: imageBase64.substring(0, 50) + '...',
-      });
+      const response = await api.post('/food-analysis/analyze', { imageBase64: image.base64 });
+      if (!response?.data) throw new Error('No analysis data received');
       
-      // Log the request details
-      console.log('Making API request to /food-analysis...');
-      console.log('Request config:', {
-        authTokenLength: authToken.length,
-        authTokenStart: authToken.substring(0, 10) + '...',
-      });
-      
-      const response = await api.post('/food-analysis/analyze', 
-        { imageBase64 },
-        { 
-          headers: {
-            'Authorization': `Bearer ${authToken}`,
-            'Content-Type': 'application/json',
-          },
-          timeout: 30000 // Increase timeout for image processing
-        }
-      );
-
-      console.log('Response received:', {
-        status: response.status,
-        hasData: !!response.data,
-        dataKeys: response.data ? Object.keys(response.data) : []
-      });
-
-      if (response.data) {
-        console.log('Food analysis successful:', response.data);
-        // Update the food analysis state
-        setFoodAnalysis({
-          foodTitle: response.data.foodTitle,
-          calories: response.data.calories,
-          carbs: response.data.carbs,
-          protein: response.data.protein,
-          fats: response.data.fats,
-          healthScore: response.data.healthScore
-        });
-        
-        // Update nutritionState with the received values
-        setNutritionState({
-          calories: response.data.calories,
-          carbs: response.data.carbs,
-          protein: response.data.protein,
-          fats: response.data.fats,
-          healthScore: response.data.healthScore,
-          baseCalories: response.data.calories,
-          baseCarbs: response.data.carbs,
-          baseProtein: response.data.protein,
-          baseFats: response.data.fats,
-        });
-        
-        // Set the food title
-        setFoodTitle(response.data.foodTitle);
-        
-        setAnalysisLoading(false);
-      } else {
-        throw new Error('Invalid response data format');
-      }
-
+      const { calories, carbs, protein, fats, healthScore, foodTitle } = response.data;
+      setFoodAnalysis(response.data);
+      setNutritionState(prev => ({
+        ...prev,
+        calories, carbs, protein, fats, healthScore,
+        baseCalories: calories,
+        baseCarbs: carbs,
+        baseProtein: protein,
+        baseFats: fats,
+      }));
+      setFoodTitle(foodTitle || '');
     } catch (error) {
-      console.error('Food analysis error:', {
-        name: error.name,
-        message: error.message,
-        status: error.response?.status,
-        responseData: error.response?.data,
-        stack: error.stack
-      });
-
-      let errorMessage = 'Failed to analyze image. ';
-      if (error.response?.status === 401) {
-        errorMessage += 'Authentication error. Please log in again.';
-      } else if (error.response?.status === 413) {
-        errorMessage += 'Image is too large.';
-      } else if (error.response?.data?.message) {
-        errorMessage += error.response.data.message;
-      } else {
-        errorMessage += 'Please try again.';
-      }
-
-      Alert.alert('Error', errorMessage);
+      Alert.alert('Analysis Failed', 'Please try again or enter details manually.');
     } finally {
-      setIsAnalyzing(false);
+      setAnalysisLoading(false);
     }
   };
 
@@ -231,6 +141,7 @@ const CameraScreen = ({ navigation }) => {
   const handleNutrientChange = (value, nutrientType) => {
     const numValue = parseFloat(value) || 0;
     setNutritionState(prev => ({
+
       ...prev,
       [nutrientType]: value,
       [`base${nutrientType.charAt(0).toUpperCase() + nutrientType.slice(1)}`]: 
