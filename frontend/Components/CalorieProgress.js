@@ -49,14 +49,14 @@ const CalorieProgress = React.memo(({ nutrients }) => {
     calories = 0,
     carbs = 0,
     protein = 0,
-    fat = 0
+    fats: fat = 0
   } = current;
   
   const {
     calories: caloriesGoal = 2000,
     carbs: carbsGoal = 0,
     protein: proteinGoal = 0,
-    fat: fatGoal = 0
+    fats: fatGoal = 0
   } = goals;
   
   // Calculate calorie percentage

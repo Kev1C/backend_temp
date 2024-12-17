@@ -206,13 +206,21 @@ const HomeScreen = () => {
       (async () => {
         try {
           await saveMealToBackend(newMeal, selectedDate);
-          // Fetch fresh nutrition data
-          await fetchDailyNutrition(selectedDate, true); // Force refresh
+          
+          // Force refresh nutrition data and meals
+          await Promise.all([
+            fetchDailyNutrition(selectedDate, true), // Force refresh nutrition
+            fetchRecentMeals(selectedDate) // Refresh meals
+          ]);
           
           // Update progress if provided
           if (params.updateProgress && params.updateProgress !== prevUpdateProgress) {
             setPrevUpdateProgress(params.updateProgress);
             const { calories, carbs, protein, fats } = params.updateProgress;
+            
+            // Reset before adding new values
+            resetCalories();
+            resetMacros();
             
             // Update calories
             if (addCalories) {
@@ -231,7 +239,7 @@ const HomeScreen = () => {
         }
       })();
     }
-  }, [route.params, prevAddMeal, prevUpdateProgress, selectedDate, fetchDailyNutrition, addCalories, addMacros, saveMealToBackend]);
+  }, [route.params, prevAddMeal, prevUpdateProgress, selectedDate, fetchDailyNutrition, addCalories, addMacros, saveMealToBackend, fetchRecentMeals, resetCalories, resetMacros]);
 
   // Get daily nutrition data and force refresh when meals change
   useEffect(() => {
