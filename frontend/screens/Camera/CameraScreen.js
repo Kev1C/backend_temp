@@ -143,7 +143,6 @@ const CameraScreen = ({ navigation }) => {
   const handleNutrientChange = (value, nutrientType) => {
     const numValue = parseFloat(value) || 0;
     setNutritionState(prev => ({
-
       ...prev,
       [nutrientType]: value,
       [`base${nutrientType.charAt(0).toUpperCase() + nutrientType.slice(1)}`]: 
@@ -198,25 +197,25 @@ const CameraScreen = ({ navigation }) => {
       return;
     }
 
+    if (!capturedImage?.base64) {
+      Alert.alert('Error', 'No image captured');
+      return;
+    }
+
     const currentTime = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
     const meal = {
       name: foodTitle,
-      image: capturedImage?.base64 ? `data:image/jpeg;base64,${capturedImage.base64}` : null,
-      calories: nutritionState.calories,
-      carbs: nutritionState.carbs,
-      protein: nutritionState.protein,
-      fats: nutritionState.fats,
+      image: `data:image/jpeg;base64,${capturedImage.base64}`,
+      calories: Number(nutritionState.calories),
+      carbs: Number(nutritionState.carbs),
+      protein: Number(nutritionState.protein),
+      fats: Number(nutritionState.fats),
       time: currentTime
     };
 
     try {
       // Update nutrition store first
-      await updateDailyNutrition(new Date(), {
-        calories: Number(nutritionState.calories),
-        carbs: Number(nutritionState.carbs),
-        protein: Number(nutritionState.protein),
-        fats: Number(nutritionState.fats)
-      });
+      await updateDailyNutrition(new Date(), meal);
 
       // Navigate back with the meal data
       navigation.navigate('Home', {

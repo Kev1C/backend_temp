@@ -2,6 +2,7 @@
 import { create } from 'zustand';
 import { api } from '../services/api';
 import { cacheStore } from './cacheStore';
+import { isEqual } from 'lodash';
 
 const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
 
@@ -114,7 +115,10 @@ export const useNutritionStore = create((set, get) => ({
 
       // Send update to backend
       const response = await api.post(`/nutrition/daily/${formattedDate}`, {
-        meal: newMeal,
+        meal: {
+          ...newMeal,
+          date: formattedDate
+        },
         totals: {
           calories: updatedData.calories,
           protein: updatedData.protein,

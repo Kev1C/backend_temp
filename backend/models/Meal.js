@@ -32,7 +32,6 @@ const mealSchema = new mongoose.Schema({
   },
   time: {
     type: String,
-    enum: ['Breakfast', 'Lunch', 'Dinner'],
     required: true
   },
   date: {
