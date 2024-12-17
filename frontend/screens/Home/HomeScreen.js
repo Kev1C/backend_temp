@@ -76,16 +76,15 @@ const HomeScreen = () => {
     }
   }, [fetchDailyNutrition, fetchRecentMeals, resetMacros, resetCalories, addMacros, addCalories]);
 
-  // Load initial data
+  // Initialize selected date and load initial data
   useEffect(() => {
-    if (selectedDate) {
-      handleDateSelect(selectedDate);
-    }
-  }, [selectedDate, handleDateSelect]); // Add dependencies
-
-  // Initialize selected date
-  useEffect(() => {
-    setSelectedDate(new Date());
+    const initializeData = async () => {
+      const today = new Date();
+      setSelectedDate(today);
+      await handleDateSelect(today);
+    };
+    
+    initializeData();
   }, []); // Only run once on mount
 
   // Get daily nutrition data
