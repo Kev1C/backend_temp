@@ -40,25 +40,36 @@ const MacroCard = React.memo(({ label, value = 0, total = 0, color }) => {
 
 const CalorieProgress = React.memo(({ nutrients }) => {
   const theme = useTheme();
+  
+  // Ensure we have valid data
+  const current = nutrients?.current || {};
+  const goals = nutrients?.goals || {};
+  
   const {
-    current: {
-      calories = 0,
-      carbs = 0,
-      protein = 0,
-      fat = 0
-    } = {},
-    goals: {
-      calories: caloriesGoal = 2000,
-      carbs: carbsGoal = 250,
-      protein: proteinGoal = 150,
-      fat: fatGoal = 65
-    } = {}
-  } = nutrients || {};
-
-  const { caloriesLeft, caloriePercentage } = useMemo(() => ({
-    caloriesLeft: Math.max(0, caloriesGoal - calories),
-    caloriePercentage: calculatePercentage(calories, caloriesGoal)
-  }), [calories, caloriesGoal]);
+    calories = 0,
+    carbs = 0,
+    protein = 0,
+    fat = 0
+  } = current;
+  
+  const {
+    calories: caloriesGoal = 2000,
+    carbs: carbsGoal = 0,
+    protein: proteinGoal = 0,
+    fat: fatGoal = 0
+  } = goals;
+  
+  // Calculate calorie percentage
+  const caloriePercentage = useMemo(() => 
+    calculatePercentage(calories, caloriesGoal),
+    [calories, caloriesGoal]
+  );
+  
+  // Calculate calories left
+  const caloriesLeft = useMemo(() => 
+    Math.max(0, caloriesGoal - calories),
+    [calories, caloriesGoal]
+  );
 
   const renderMacroCard = useCallback((label, value, total, color) => (
     <MacroCard

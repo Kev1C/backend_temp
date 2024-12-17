@@ -15,6 +15,55 @@ const DailyNutrition = require('../models/DailyNutrition');
 // Get daily nutrition
 router.get('/daily/:date', auth, getDailyNutrition);
 
+// Update daily nutrition
+router.post('/daily/:date', auth, async (req, res) => {
+  try {
+    const { date } = req.params;
+    const userId = req.user.userId || req.user._id;
+    const { calories, carbs, protein, fats } = req.body;
+    
+    // Create date range for the given local date
+    const [year, month, day] = date.split('-').map(Number);
+    const startDate = new Date(year, month - 1, day);
+    startDate.setHours(0, 0, 0, 0);
+    const endDate = new Date(year, month - 1, day);
+    endDate.setHours(23, 59, 59, 999);
+
+    // Find or create daily nutrition
+    let dailyNutrition = await DailyNutrition.findOne({
+      userId,
+      date: {
+        $gte: startDate,
+        $lte: endDate
+      }
+    });
+
+    if (!dailyNutrition) {
+      dailyNutrition = new DailyNutrition({
+        userId,
+        date: startDate,
+        calories: 0,
+        protein: 0,
+        carbs: 0,
+        fat: 0
+      });
+    }
+
+    // Update nutrition totals
+    dailyNutrition.calories = Number(dailyNutrition.calories || 0) + Number(calories || 0);
+    dailyNutrition.protein = Number(dailyNutrition.protein || 0) + Number(protein || 0);
+    dailyNutrition.carbs = Number(dailyNutrition.carbs || 0) + Number(carbs || 0);
+    dailyNutrition.fat = Number(dailyNutrition.fat || 0) + Number(fats || 0);
+
+    await dailyNutrition.save();
+
+    res.status(200).json(dailyNutrition);
+  } catch (error) {
+    console.error('Error updating daily nutrition:', error);
+    res.status(500).json({ message: error.message || 'Error updating daily nutrition' });
+  }
+});
+
 // Get nutrition calculations
 router.get('/calculations', auth, getNutritionCalculations);
 

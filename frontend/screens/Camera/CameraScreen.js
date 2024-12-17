@@ -7,6 +7,7 @@ import BottomSheet, { BottomSheetScrollView } from '@gorhom/bottom-sheet';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { useAuthStore } from '../../stores/authStore';
 import { api } from '../../services/api';
+import { useNutritionStore } from '../../stores/nutritionStore';
 
 const CameraScreen = ({ navigation }) => {
   const [facing, setFacing] = useState('back');
@@ -42,6 +43,7 @@ const CameraScreen = ({ navigation }) => {
   const bottomSheetRef = useRef(null);
   const isFocused = useIsFocused();
   const { authToken } = useAuthStore();
+  const { updateDailyNutrition } = useNutritionStore();
   const theme = useTheme();
 
   const dynamicStyles = useMemo(() => ({
@@ -190,28 +192,48 @@ const CameraScreen = ({ navigation }) => {
     return 'Dinner';
   };
 
-  const handleConfirm = () => {
+  const handleConfirm = async () => {
+    if (!foodTitle) {
+      Alert.alert('Error', 'Please enter a food name');
+      return;
+    }
+
+    const currentTime = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
     const meal = {
       name: foodTitle,
-      image: capturedImage.uri,
-      calories: parseInt(nutritionState.calories),
-      carbs: parseInt(nutritionState.carbs),
-      protein: parseInt(nutritionState.protein),
-      fats: parseInt(nutritionState.fats),
-      time: getMealType(),
+      image: capturedImage?.base64 ? `data:image/jpeg;base64,${capturedImage.base64}` : null,
+      calories: nutritionState.calories,
+      carbs: nutritionState.carbs,
+      protein: nutritionState.protein,
+      fats: nutritionState.fats,
+      time: currentTime
     };
 
-    navigation.navigate('Home', { 
-      addMeal: meal,
-      updateProgress: {
-        calories: parseInt(nutritionState.calories),
-        carbs: parseInt(nutritionState.carbs),
-        protein: parseInt(nutritionState.protein),
-        fats: parseInt(nutritionState.fats),
-      }
-    });
+    try {
+      // Update nutrition store first
+      await updateDailyNutrition(new Date(), {
+        calories: Number(nutritionState.calories),
+        carbs: Number(nutritionState.carbs),
+        protein: Number(nutritionState.protein),
+        fats: Number(nutritionState.fats)
+      });
 
-    setIsModalVisible(false);
+      // Navigate back with the meal data
+      navigation.navigate('Home', {
+        addMeal: meal,
+        updateProgress: {
+          calories: nutritionState.calories,
+          carbs: nutritionState.carbs,
+          protein: nutritionState.protein,
+          fats: nutritionState.fats
+        }
+      });
+
+      setIsModalVisible(false);
+    } catch (error) {
+      console.error('Error saving meal:', error);
+      Alert.alert('Error', 'Failed to save meal. Please try again.');
+    }
   };
 
   const handleRetake = () => {

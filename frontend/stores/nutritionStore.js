@@ -10,7 +10,7 @@ const formatDate = (date) => {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 };
 
-export const nutritionStore = create((set, get) => ({
+export const useNutritionStore = create((set, get) => ({
   dailyNutrition: null,
   nutritionalGoals: {
     calories: 0,
@@ -73,21 +73,54 @@ export const nutritionStore = create((set, get) => ({
     set({ isLoading: true, error: null });
 
     try {
-      const response = await api.post(`/nutrition/daily/${formattedDate}`, newMeal);
-      const data = response.data;
+      // Get current nutrition data
+      const currentData = get().dailyNutrition || {
+        calories: 0,
+        protein: 0,
+        carbs: 0,
+        fat: 0,
+        meals: []
+      };
 
-      // Invalidate cache for this date
+      // Calculate new totals
+      const updatedData = {
+        calories: Number(currentData.calories || 0) + Number(newMeal.calories || 0),
+        protein: Number(currentData.protein || 0) + Number(newMeal.protein || 0),
+        carbs: Number(currentData.carbs || 0) + Number(newMeal.carbs || 0),
+        fat: Number(currentData.fat || 0) + Number(newMeal.fats || 0),
+        meals: [...(currentData.meals || []), newMeal]
+      };
+
+      // Update cache and state immediately for better UX
       const cacheKey = `nutrition_${formattedDate}`;
-      cacheStore.getState().invalidate(cacheKey);
-
+      cacheStore.getState().set(cacheKey, updatedData);
       set({ 
-        dailyNutrition: data,
+        dailyNutrition: updatedData,
         currentDate: formattedDate,
         isLoading: false
       });
 
-      return data;
+      // Send update to backend
+      const response = await api.post(`/nutrition/daily/${formattedDate}`, {
+        calories: Number(newMeal.calories || 0),
+        carbs: Number(newMeal.carbs || 0),
+        protein: Number(newMeal.protein || 0),
+        fats: Number(newMeal.fats || 0)
+      });
+      
+      // If backend returns different data, update again
+      if (response.data && !isEqual(response.data, updatedData)) {
+        cacheStore.getState().set(cacheKey, response.data);
+        set({ 
+          dailyNutrition: response.data,
+          currentDate: formattedDate,
+          isLoading: false
+        });
+      }
+
+      return updatedData;
     } catch (error) {
+      console.error('Error updating nutrition data:', error);
       set({ 
         isLoading: false,
         error: error.message || 'Failed to update nutrition data'
@@ -101,5 +134,3 @@ export const nutritionStore = create((set, get) => ({
     set({ dailyNutrition: null, currentDate: null });
   }
 }));
-
-export const useNutritionStore = nutritionStore;

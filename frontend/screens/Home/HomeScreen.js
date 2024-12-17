@@ -81,7 +81,12 @@ const HomeScreen = () => {
     if (selectedDate) {
       handleDateSelect(selectedDate);
     }
-  }, []); // Only run on mount
+  }, [selectedDate, handleDateSelect]); // Add dependencies
+
+  // Initialize selected date
+  useEffect(() => {
+    setSelectedDate(new Date());
+  }, []); // Only run once on mount
 
   // Get daily nutrition data
   const { 
@@ -100,7 +105,7 @@ const HomeScreen = () => {
   // State for recently eaten meals
   const [recentMeals, setRecentMeals] = useState([]);
   const [isLoadingMeals, setIsLoadingMeals] = useState(false);
-  const [selectedDate, setSelectedDate] = useState(new Date());  // Initialize with current date
+  const [selectedDate, setSelectedDate] = useState(null);  // Initialize with null
   const [prevAddMeal, setPrevAddMeal] = useState(null);
   const [prevUpdateProgress, setPrevUpdateProgress] = useState(null);
 
@@ -177,39 +182,50 @@ const HomeScreen = () => {
   // Handle navigation params when returning from camera
   useEffect(() => {
     const params = route.params;
-    if (params?.addMeal) {
+    if (params?.addMeal && params?.addMeal !== prevAddMeal) {
       const newMeal = params.addMeal;
+      setPrevAddMeal(newMeal);
       
       // Update local state immediately for better UX
       setRecentMeals(prevMeals => [newMeal, ...prevMeals]);
       
-      // Update nutrition progress
-      if (params.updateProgress) {
-        const { calories, carbs, protein, fats } = params.updateProgress;
-        
-        // Update calories
-        if (addCalories) {
-          addCalories(Number(calories));
+      // Save meal and update nutrition
+      (async () => {
+        try {
+          await saveMealToBackend(newMeal, selectedDate);
+          // Fetch fresh nutrition data
+          await fetchDailyNutrition(selectedDate, true); // Force refresh
+          
+          // Update progress if provided
+          if (params.updateProgress && params.updateProgress !== prevUpdateProgress) {
+            setPrevUpdateProgress(params.updateProgress);
+            const { calories, carbs, protein, fats } = params.updateProgress;
+            
+            // Update calories
+            if (addCalories) {
+              addCalories(Number(calories));
+            }
+            
+            // Update macros with individual parameters
+            addMacros(
+              Number(protein),
+              Number(carbs),
+              Number(fats)
+            );
+          }
+        } catch (error) {
+          console.error('Error handling new meal:', error);
         }
-        
-        // Update macros with individual parameters
-        addMacros(
-          Number(protein),
-          Number(carbs),
-          Number(fats)
-        );
-
-        // Fetch updated daily nutrition data
-        fetchDailyNutrition(selectedDate);
-      }
-      
-      // Save to backend
-      saveMealToBackend(newMeal, selectedDate);
-      
-      // Clear the params to prevent duplicate updates
-      navigation.setParams({ addMeal: null, updateProgress: null });
+      })();
     }
-  }, [route.params, addCalories, addMacros, selectedDate, saveMealToBackend, fetchDailyNutrition]);
+  }, [route.params, prevAddMeal, prevUpdateProgress, selectedDate, fetchDailyNutrition, addCalories, addMacros, saveMealToBackend]);
+
+  // Get daily nutrition data and force refresh when meals change
+  useEffect(() => {
+    if (selectedDate) {
+      fetchDailyNutrition(selectedDate, true);
+    }
+  }, [selectedDate, recentMeals]); // Re-fetch when meals change
 
   // Memoize FAB onPress handler
   const handleFABPress = useCallback(() => {
@@ -218,34 +234,25 @@ const HomeScreen = () => {
 
   // Memoize nutrients data for display
   const nutrients = useMemo(() => {
-    // Don't show any goals until calculations are complete
-    if (loadingNutrients || !calculatedNutrients) {
+    if (!dailyNutrition) {
       return {
         current: { calories: 0, protein: 0, carbs: 0, fat: 0 },
-        goals: { calories: 0, protein: 0, carbs: 0, fat: 0 },
-        loading: true
+        goals: calculatedNutrients || { calories: 0, protein: 0, carbs: 0, fat: 0 },
+        loading: isLoadingNutrition
       };
     }
 
-    // Get daily nutrition from the nutrition store
-    const dailyNutritionData = dailyNutrition || {};
-
     return {
       current: {
-        calories: dailyNutritionData.calories || 0,
-        protein: dailyNutritionData.protein || 0,
-        carbs: dailyNutritionData.carbs || 0,
-        fat: dailyNutritionData.fat || 0
+        calories: Number(dailyNutrition.calories || 0),
+        protein: Number(dailyNutrition.protein || 0),
+        carbs: Number(dailyNutrition.carbs || 0),
+        fat: Number(dailyNutrition.fat || 0)
       },
-      goals: {
-        calories: calculatedNutrients?.calories || 0,
-        protein: calculatedNutrients?.protein || 0,
-        carbs: calculatedNutrients?.carbs || 0,
-        fat: calculatedNutrients?.fat || 0
-      },
-      loading: false
+      goals: calculatedNutrients || { calories: 0, protein: 0, carbs: 0, fat: 0 },
+      loading: isLoadingNutrition
     };
-  }, [dailyNutrition, calculatedNutrients, loadingNutrients]);
+  }, [dailyNutrition, calculatedNutrients, isLoadingNutrition]);
 
   return (
     <SafeAreaView style={styles.safeArea}>
