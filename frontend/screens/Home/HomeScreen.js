@@ -53,28 +53,41 @@ const HomeScreen = () => {
 
   // Memoize date selection handler
   const handleDateSelect = useCallback(async (date) => {
-    setSelectedDate(date);
+    if (!date) return;
     
-    // Reset macros and calories before fetching new data
-    resetMacros();
-    if (resetCalories) resetCalories();
-    
-    // Fetch new data
-    const nutritionData = await fetchDailyNutrition(date);
-    const mealsData = await fetchRecentMeals(date);
-    
-    // Update macros and calories with the fetched data
-    if (nutritionData) {
-      addMacros(
-        nutritionData.protein || 0,
-        nutritionData.carbs || 0,
-        nutritionData.fats || 0
-      );
-      if (addCalories) {
-        addCalories(nutritionData.calories || 0);
-      }
+    // Prevent multiple calls for the same date
+    if (selectedDate && formatDate(selectedDate) === formatDate(date)) {
+      return;
     }
-  }, [fetchDailyNutrition, fetchRecentMeals, resetMacros, resetCalories, addMacros, addCalories]);
+
+    setSelectedDate(date);
+    setLoadingStates(prev => ({ ...prev, nutrition: true }));
+    
+    try {
+      // Fetch nutrition data (will use cache if available)
+      const nutritionData = await fetchDailyNutrition(date);
+      
+      if (nutritionData) {
+        // Reset and update macros only if we have new data
+        resetMacros();
+        addMacros(
+          nutritionData.protein || 0,
+          nutritionData.carbs || 0,
+          nutritionData.fat || 0
+        );
+        if (addCalories) {
+          addCalories(nutritionData.calories || 0);
+        }
+        
+        // Update meals in state
+        setMeals(nutritionData.meals || []);
+      }
+    } catch (error) {
+      console.error('Error handling date selection:', error);
+    } finally {
+      setLoadingStates(prev => ({ ...prev, nutrition: false }));
+    }
+  }, [selectedDate, fetchDailyNutrition, resetMacros, addMacros, addCalories]);
 
   // Initialize selected date and load initial data
   useEffect(() => {
@@ -107,6 +120,7 @@ const HomeScreen = () => {
   const [selectedDate, setSelectedDate] = useState(null);  // Initialize with null
   const [prevAddMeal, setPrevAddMeal] = useState(null);
   const [prevUpdateProgress, setPrevUpdateProgress] = useState(null);
+  const [meals, setMeals] = useState([]);
 
   // Memoize fetchRecentMeals to prevent recreation on every render
   const fetchRecentMeals = useCallback(async (date) => {
@@ -253,6 +267,13 @@ const HomeScreen = () => {
     };
   }, [dailyNutrition, calculatedNutrients, isLoadingNutrition]);
 
+  const renderRecentlyEaten = useMemo(() => (
+    <MemoizedRecentlyEaten
+      meals={meals}
+      isLoading={loadingStates.nutrition}
+    />
+  ), [meals, loadingStates.nutrition]);
+
   return (
     <SafeAreaView style={styles.safeArea}>
       <View style={styles.container}>
@@ -269,10 +290,7 @@ const HomeScreen = () => {
         <MemoizedCalorieProgress nutrients={nutrients} />
         <View style={styles.recentlyEatenContainer}>
           <Text style={styles.sectionTitle}>Recently Eaten</Text>
-          <MemoizedRecentlyEaten 
-            meals={recentMeals} 
-            isLoading={loadingStates.meals}
-          />
+          {renderRecentlyEaten}
         </View>
         <FAB
           icon="plus"

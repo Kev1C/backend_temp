@@ -31,18 +31,25 @@ export const useNutritionStore = create((set, get) => ({
     const cacheKey = `nutrition_${formattedDate}`;
     const state = get();
 
+    // Return state data if available and not forced
     if (!force && state.dailyNutrition && state.currentDate === formattedDate) {
       return state.dailyNutrition;
     }
 
+    // Return cached data if available and not forced
     if (!force) {
       const cachedData = cacheStore.getState().get(cacheKey);
       if (cachedData) {
-        set({ dailyNutrition: cachedData, currentDate: formattedDate, isLoading: false });
+        set({ 
+          dailyNutrition: cachedData, 
+          currentDate: formattedDate, 
+          isLoading: false 
+        });
         return cachedData;
       }
     }
 
+    // Only set loading if we're actually going to fetch
     set({ isLoading: true, error: null });
 
     try {
@@ -70,17 +77,23 @@ export const useNutritionStore = create((set, get) => ({
 
   updateDailyNutrition: async (date, newMeal) => {
     const formattedDate = formatDate(date);
+    const cacheKey = `nutrition_${formattedDate}`;
     set({ isLoading: true, error: null });
 
     try {
       // Get current nutrition data
-      const currentData = get().dailyNutrition || {
-        calories: 0,
-        protein: 0,
-        carbs: 0,
-        fat: 0,
-        meals: []
-      };
+      let currentData = get().dailyNutrition;
+      
+      // If no current data, try to fetch from cache first
+      if (!currentData) {
+        currentData = cacheStore.getState().get(cacheKey) || {
+          calories: 0,
+          protein: 0,
+          carbs: 0,
+          fat: 0,
+          meals: []
+        };
+      }
 
       // Calculate new totals
       const updatedData = {
@@ -91,8 +104,7 @@ export const useNutritionStore = create((set, get) => ({
         meals: [...(currentData.meals || []), newMeal]
       };
 
-      // Update cache and state immediately for better UX
-      const cacheKey = `nutrition_${formattedDate}`;
+      // Update cache and state immediately for optimistic updates
       cacheStore.getState().set(cacheKey, updatedData);
       set({ 
         dailyNutrition: updatedData,
@@ -102,14 +114,17 @@ export const useNutritionStore = create((set, get) => ({
 
       // Send update to backend
       const response = await api.post(`/nutrition/daily/${formattedDate}`, {
-        calories: Number(newMeal.calories || 0),
-        carbs: Number(newMeal.carbs || 0),
-        protein: Number(newMeal.protein || 0),
-        fats: Number(newMeal.fats || 0)
+        meal: newMeal,
+        totals: {
+          calories: updatedData.calories,
+          protein: updatedData.protein,
+          carbs: updatedData.carbs,
+          fats: updatedData.fat
+        }
       });
       
-      // If backend returns different data, update again
       if (response.data && !isEqual(response.data, updatedData)) {
+        // Update with server data if different
         cacheStore.getState().set(cacheKey, response.data);
         set({ 
           dailyNutrition: response.data,
