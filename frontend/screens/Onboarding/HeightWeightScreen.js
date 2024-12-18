@@ -5,6 +5,7 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import ScrollPicker from 'react-native-wheel-scrollview-picker';
 import Button from '../../Components/Button';
 import OnboardingProgress from '../../Components/OnboardingProgress';
+import sharedStyles from './SharedOnboardingLayout.styles';
 import { api } from '../../services/api';
 import { useOnboardingStore } from '../../stores/onboardingStore';
 
@@ -83,18 +84,18 @@ const HeightWeightScreen = ({ navigation, route }) => {
   };
 
   return (
-    <SafeAreaView edges={['top']} style={styles.container}>
+    <SafeAreaView edges={['top']} style={sharedStyles.container}>
       <OnboardingProgress currentScreen="HeightWeight" />
-      <View style={styles.header}>
+      <View style={sharedStyles.header}>
         <TouchableOpacity 
           onPress={() => navigation.goBack()} 
-          style={styles.backButton}
+          style={sharedStyles.backButton}
         >
           <MaterialCommunityIcons name="arrow-left" size={24} color="#000" />
         </TouchableOpacity>
       </View>
 
-      <View style={styles.mainContent}>
+      <View style={sharedStyles.content}>
         <Text style={styles.title}>Your Measurements</Text>
         <Text style={styles.subtitle}>Help us personalize your experience</Text>
 
@@ -191,7 +192,7 @@ const HeightWeightScreen = ({ navigation, route }) => {
         </View>
       </View>
 
-      <View style={styles.buttonContainer}>
+      <View style={sharedStyles.footer}>
         <Button
           title="Continue"
           onPress={handleContinue}
@@ -203,26 +204,6 @@ const HeightWeightScreen = ({ navigation, route }) => {
 };
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#FFFFFF',
-  },
-  header: {
-    paddingHorizontal: 20,
-    paddingTop: 10,
-  },
-  backButton: {
-    padding: 10,
-  },
-  backButtonText: {
-    fontSize: 24,
-    color: '#333',
-  },
-  mainContent: {
-    flex: 1,
-    paddingHorizontal: 24,
-    paddingTop: 20,
-  },
   title: {
     fontSize: 28,
     fontWeight: '700',
@@ -296,10 +277,6 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     marginBottom: 10,
     color: '#000000',
-  },
-  buttonContainer: {
-    paddingHorizontal: 24,
-    paddingBottom: 24,
   },
 });
 

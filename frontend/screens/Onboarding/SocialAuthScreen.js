@@ -1,9 +1,11 @@
 import React, { useState } from 'react';
-import { View, Text, TouchableOpacity, Alert, SafeAreaView } from 'react-native';
+import { View, Text, TouchableOpacity, Alert } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import * as WebBrowser from 'expo-web-browser';
 import * as Google from 'expo-auth-session/providers/google';
 import { AntDesign, MaterialCommunityIcons } from '@expo/vector-icons';
 import { styles } from './SocialAuthScreen.styles';
+import sharedStyles from './SharedOnboardingLayout.styles';
 import OnboardingProgress from '../../Components/OnboardingProgress';
 import { auth, signInAsGuest } from '../../firebaseConfig';
 import { GoogleAuthProvider, signInWithCredential } from '@firebase/auth';
@@ -119,16 +121,19 @@ export default function SocialAuthScreen({ navigation }) {
   };
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView edges={['top']} style={sharedStyles.container}>
       <OnboardingProgress currentScreen="SocialAuth" />
-      <View style={styles.content}>
-        <View style={styles.header}>
-          <TouchableOpacity 
-            onPress={() => navigation.goBack()}
-            style={styles.backButton}
-          >
-            <MaterialCommunityIcons name="arrow-left" size={24} color="#000" />
-          </TouchableOpacity>
+      <View style={sharedStyles.header}>
+        <TouchableOpacity
+          onPress={() => navigation.goBack()}
+          style={sharedStyles.backButton}
+        >
+          <MaterialCommunityIcons name="arrow-left" size={24} color="#000" />
+        </TouchableOpacity>
+      </View>
+
+      <View style={sharedStyles.content}>
+        <View style={styles.titleContainer}>
           <Text style={styles.title}>Welcome</Text>
           <Text style={styles.subtitle}>Sign in to continue</Text>
           {error && <Text style={styles.errorText}>{error}</Text>}

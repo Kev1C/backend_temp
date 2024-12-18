@@ -1,6 +1,7 @@
 // screens/onboarding/GenderSelectionScreen.js
 import React from 'react';
-import { SafeAreaView, Alert } from 'react-native';
+import { Alert } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import styles from './GenderSelection.styles';
 import GenderSelection from '../../Components/GenderSelection';
 import OnboardingProgress from '../../Components/OnboardingProgress';
@@ -23,7 +24,7 @@ const GenderSelectionScreen = ({ navigation }) => {
   };
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView edges={['top']} style={styles.container}>
       <OnboardingProgress currentScreen="GenderSelection" />
       <GenderSelection onNext={handleNext} />
     </SafeAreaView>

@@ -1,9 +1,11 @@
 import React from 'react';
-import { View, Text, TouchableOpacity, SafeAreaView, Alert } from 'react-native';
+import { View, Text, TouchableOpacity, Alert } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import styles from './ActivityLevel.styles';
 import Button from '../../Components/Button';
 import OnboardingProgress from '../../Components/OnboardingProgress';
+import sharedStyles from './SharedOnboardingLayout.styles';
 import { useOnboardingStore } from '../../stores/onboardingStore';
 
 const AGE_RANGES = [
@@ -70,18 +72,18 @@ const AgeSelectionScreen = ({ navigation }) => {
   };
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView edges={['top']} style={sharedStyles.container}>
       <OnboardingProgress currentScreen="AgeSelection" />
-      <View style={styles.header}>
+      <View style={sharedStyles.header}>
         <TouchableOpacity 
           onPress={() => navigation.goBack()}
-          style={styles.backButton}
+          style={sharedStyles.backButton}
         >
           <MaterialCommunityIcons name="arrow-left" size={24} color="#000" />
         </TouchableOpacity>
       </View>
 
-      <View style={styles.content}>
+      <View style={sharedStyles.content}>
         <Text style={styles.title}>What's your age?</Text>
         <Text style={styles.subtitle}>This helps us personalize your fitness journey</Text>
 
@@ -123,7 +125,7 @@ const AgeSelectionScreen = ({ navigation }) => {
         </View>
       </View>
 
-      <View style={styles.footer}>
+      <View style={sharedStyles.footer}>
         <Button
           title="Continue"
           onPress={handleContinue}
