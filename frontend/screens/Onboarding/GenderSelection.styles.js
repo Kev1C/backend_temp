@@ -43,12 +43,12 @@ const styles = StyleSheet.create({
     backgroundColor: '#fff',
   },
   selectedOptionFemale: {
-    borderColor: '#666',
-    backgroundColor: '#666',
+    borderColor: '#FFB6C1',
+    backgroundColor: '#FFF0F5', // Light pink background
   },
   selectedOptionMale: {
     borderColor: '#87CEEB',
-    backgroundColor: '#F0F8FF', // Light cyan background
+    backgroundColor: '#F0F8FF', // Light blue background
   },
   optionText: {
     marginTop: 8,
@@ -56,10 +56,10 @@ const styles = StyleSheet.create({
     color: '#666',
   },
   selectedTextFemale: {
-    color: '#fff',
+    color: '#FF69B4', // Pink text when selected
   },
   selectedTextMale: {
-    color: '#87CEEB', // Cyan text when selected
+    color: '#4169E1', // Blue text when selected
   },
   noneButton: {
     marginTop: 20,
