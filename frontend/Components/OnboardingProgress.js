@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { View, StyleSheet } from 'react-native';
 
 const ONBOARDING_STEPS = [
@@ -10,9 +10,11 @@ const ONBOARDING_STEPS = [
   'SocialAuth'
 ];
 
-const OnboardingProgress = ({ currentScreen }) => {
-  const currentIndex = ONBOARDING_STEPS.indexOf(currentScreen);
-  const progress = currentScreen === 'SocialAuth' ? 0.98 : (currentIndex + 1) / ONBOARDING_STEPS.length;
+function OnboardingProgress({ currentScreen }) {
+  const progress = useMemo(() => {
+    const currentIndex = ONBOARDING_STEPS.indexOf(currentScreen);
+    return currentScreen === 'SocialAuth' ? 0.98 : (currentIndex + 1) / ONBOARDING_STEPS.length;
+  }, [currentScreen]);
 
   return (
     <View style={styles.container}>
@@ -21,7 +23,9 @@ const OnboardingProgress = ({ currentScreen }) => {
       </View>
     </View>
   );
-};
+}
+
+OnboardingProgress.displayName = 'OnboardingProgress';
 
 const styles = StyleSheet.create({
   container: {
@@ -42,4 +46,4 @@ const styles = StyleSheet.create({
   },
 });
 
-export default OnboardingProgress;
+export default React.memo(OnboardingProgress);

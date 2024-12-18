@@ -16,10 +16,10 @@ export const useOnboardingStore = create((set, get) => ({
       const currentData = get().onboardingData || {};
       const updatedData = { ...currentData, ...data };
       
-      console.log('Saving onboarding data:', updatedData);
-      
-      // Save to secure storage
-      await SecureStore.setItemAsync(ONBOARDING_DATA_KEY, JSON.stringify(updatedData));
+      // Save to secure storage in the background
+      SecureStore.setItemAsync(ONBOARDING_DATA_KEY, JSON.stringify(updatedData)).catch(error => {
+        console.error('Background save failed:', error);
+      });
       
       // Check if all required fields are present
       const isComplete = Boolean(
@@ -30,14 +30,7 @@ export const useOnboardingStore = create((set, get) => ({
         (updatedData.goal || updatedData.fitnessGoal)
       );
       
-      console.log('Is data complete?', isComplete, {
-        gender: Boolean(updatedData.gender),
-        height: Boolean(updatedData.height),
-        weight: Boolean(updatedData.weight),
-        activityLevel: Boolean(updatedData.activityLevel),
-        goal: Boolean(updatedData.goal || updatedData.fitnessGoal)
-      });
-      
+      // Update state immediately without waiting for storage
       set({ 
         onboardingData: updatedData,
         loading: false,
@@ -46,7 +39,6 @@ export const useOnboardingStore = create((set, get) => ({
       
       return isComplete;
     } catch (error) {
-      console.error('Error saving onboarding data:', error);
       set({ error: 'Failed to save onboarding data', loading: false });
       throw error;
     }
@@ -56,7 +48,6 @@ export const useOnboardingStore = create((set, get) => ({
     set({ loading: true, error: null });
     try {
       const currentData = get().onboardingData;
-      console.log('Completing onboarding with data:', currentData);
       
       if (!currentData) {
         throw new Error('No onboarding data available');
@@ -71,15 +62,6 @@ export const useOnboardingStore = create((set, get) => ({
         (currentData.goal || currentData.fitnessGoal)
       );
 
-      console.log('Onboarding data complete check:', {
-        hasAllData: isComplete,
-        gender: Boolean(currentData.gender),
-        height: Boolean(currentData.height),
-        weight: Boolean(currentData.weight),
-        activityLevel: Boolean(currentData.activityLevel),
-        goal: Boolean(currentData.goal || currentData.fitnessGoal)
-      });
-
       if (!isComplete) {
         throw new Error('Missing required onboarding data');
       }
@@ -90,7 +72,9 @@ export const useOnboardingStore = create((set, get) => ({
         goal: currentData.goal || currentData.fitnessGoal,
         isComplete: true 
       };
-      await SecureStore.setItemAsync(ONBOARDING_DATA_KEY, JSON.stringify(updatedData));
+      SecureStore.setItemAsync(ONBOARDING_DATA_KEY, JSON.stringify(updatedData)).catch(error => {
+        console.error('Background save failed:', error);
+      });
       
       set({ 
         onboardingData: updatedData,
@@ -98,7 +82,6 @@ export const useOnboardingStore = create((set, get) => ({
         loading: false 
       });
 
-      console.log('Onboarding completed successfully:', updatedData);
     } catch (error) {
       console.error('Error completing onboarding:', error);
       set({ error: 'Failed to complete onboarding', loading: false });
@@ -109,13 +92,10 @@ export const useOnboardingStore = create((set, get) => ({
   loadOnboardingData: async () => {
     set({ loading: true, error: null });
     try {
-      console.log('Loading onboarding data...');
       const storedData = await SecureStore.getItemAsync(ONBOARDING_DATA_KEY);
-      console.log('Stored data:', storedData);
       
       if (storedData) {
         const parsedData = JSON.parse(storedData);
-        console.log('Parsed data:', parsedData);
         
         const isComplete = Boolean(
           parsedData.gender &&
@@ -126,22 +106,12 @@ export const useOnboardingStore = create((set, get) => ({
           parsedData.isComplete
         );
         
-        console.log('Is data complete?', isComplete, {
-          gender: Boolean(parsedData.gender),
-          height: Boolean(parsedData.height),
-          weight: Boolean(parsedData.weight),
-          activityLevel: Boolean(parsedData.activityLevel),
-          goal: Boolean(parsedData.goal || parsedData.fitnessGoal),
-          isComplete: Boolean(parsedData.isComplete)
-        });
-        
         set({ 
           onboardingData: parsedData,
           isOnboardingComplete: isComplete,
           loading: false 
         });
       } else {
-        console.log('No stored onboarding data found');
         set({ onboardingData: null, loading: false });
       }
     } catch (error) {

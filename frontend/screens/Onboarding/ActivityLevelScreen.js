@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useCallback, useMemo } from 'react';
 import { View, Text, TouchableOpacity, Alert } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -39,17 +39,16 @@ const ActivityLevelScreen = ({ navigation }) => {
   const [selectedLevel, setSelectedLevel] = React.useState('lightly_active');
   const { saveOnboardingData } = useOnboardingStore();
 
-  const handleActivitySelection = (levelId) => {
+  const handleActivitySelection = useCallback((levelId) => {
     setSelectedLevel(levelId);
-  };
+  }, []);
 
-  const handleContinue = async () => {
+  const handleContinue = useCallback(async () => {
     if (selectedLevel) {
       try {
         await saveOnboardingData({ activityLevel: selectedLevel });
         navigation.navigate('GoalSelection');
       } catch (error) {
-        console.error('Error saving activity level:', error);
         Alert.alert(
           'Error',
           'Failed to save your activity level. Please try again.',
@@ -57,7 +56,46 @@ const ActivityLevelScreen = ({ navigation }) => {
         );
       }
     }
-  };
+  }, [selectedLevel, saveOnboardingData, navigation]);
+
+  const renderActivityLevel = useCallback(({ id, icon, title, subtitle }) => (
+    <TouchableOpacity
+      key={id}
+      style={[
+        styles.levelCard,
+        selectedLevel === id && styles.selectedLevelCard,
+      ]}
+      onPress={() => handleActivitySelection(id)}
+    >
+      <MaterialCommunityIcons
+        name={icon}
+        size={24}
+        color={selectedLevel === id ? '#fff' : '#000'}
+      />
+      <View style={styles.levelTextContainer}>
+        <Text 
+          style={[
+            styles.levelTitle,
+            selectedLevel === id && styles.selectedText
+          ]}
+        >
+          {title}
+        </Text>
+        <Text 
+          style={[
+            styles.levelSubtitle,
+            selectedLevel === id && styles.selectedText
+          ]}
+        >
+          {subtitle}
+        </Text>
+      </View>
+    </TouchableOpacity>
+  ), [selectedLevel, handleActivitySelection]);
+
+  const activityLevels = useMemo(() => 
+    ACTIVITY_LEVELS.map(renderActivityLevel)
+  , [renderActivityLevel]);
 
   return (
     <SafeAreaView edges={['top']} style={sharedStyles.container}>
@@ -76,40 +114,7 @@ const ActivityLevelScreen = ({ navigation }) => {
         <Text style={styles.subtitle}>This helps us calculate your daily calorie needs</Text>
 
         <View style={styles.levelsContainer}>
-          {ACTIVITY_LEVELS.map((level) => (
-            <TouchableOpacity
-              key={level.id}
-              style={[
-                styles.levelCard,
-                selectedLevel === level.id && styles.selectedLevelCard,
-              ]}
-              onPress={() => handleActivitySelection(level.id)}
-            >
-              <MaterialCommunityIcons
-                name={level.icon}
-                size={24}
-                color={selectedLevel === level.id ? '#fff' : '#000'}
-              />
-              <View style={styles.levelTextContainer}>
-                <Text 
-                  style={[
-                    styles.levelTitle,
-                    selectedLevel === level.id && styles.selectedText
-                  ]}
-                >
-                  {level.title}
-                </Text>
-                <Text 
-                  style={[
-                    styles.levelSubtitle,
-                    selectedLevel === level.id && styles.selectedText
-                  ]}
-                >
-                  {level.subtitle}
-                </Text>
-              </View>
-            </TouchableOpacity>
-          ))}
+          {activityLevels}
         </View>
       </View>
 
