@@ -35,6 +35,27 @@ const ACTIVITY_LEVELS = [
   },
 ];
 
+const ActivityCard = React.memo(({ id, icon, title, subtitle, isSelected, onSelect }) => (
+  <TouchableOpacity
+    style={[styles.levelCard, isSelected && styles.selectedLevelCard]}
+    onPress={() => onSelect(id)}
+  >
+    <MaterialCommunityIcons
+      name={icon}
+      size={24}
+      color={isSelected ? '#fff' : '#000'}
+    />
+    <View style={styles.levelTextContainer}>
+      <Text style={[styles.levelTitle, isSelected && styles.selectedText]}>
+        {title}
+      </Text>
+      <Text style={[styles.levelSubtitle, isSelected && styles.selectedText]}>
+        {subtitle}
+      </Text>
+    </View>
+  </TouchableOpacity>
+));
+
 const ActivityLevelScreen = ({ navigation }) => {
   const [selectedLevel, setSelectedLevel] = React.useState('lightly_active');
   const { saveOnboardingData } = useOnboardingStore();
@@ -58,44 +79,16 @@ const ActivityLevelScreen = ({ navigation }) => {
     }
   }, [selectedLevel, saveOnboardingData, navigation]);
 
-  const renderActivityLevel = useCallback(({ id, icon, title, subtitle }) => (
-    <TouchableOpacity
-      key={id}
-      style={[
-        styles.levelCard,
-        selectedLevel === id && styles.selectedLevelCard,
-      ]}
-      onPress={() => handleActivitySelection(id)}
-    >
-      <MaterialCommunityIcons
-        name={icon}
-        size={24}
-        color={selectedLevel === id ? '#fff' : '#000'}
-      />
-      <View style={styles.levelTextContainer}>
-        <Text 
-          style={[
-            styles.levelTitle,
-            selectedLevel === id && styles.selectedText
-          ]}
-        >
-          {title}
-        </Text>
-        <Text 
-          style={[
-            styles.levelSubtitle,
-            selectedLevel === id && styles.selectedText
-          ]}
-        >
-          {subtitle}
-        </Text>
-      </View>
-    </TouchableOpacity>
-  ), [selectedLevel, handleActivitySelection]);
-
   const activityLevels = useMemo(() => 
-    ACTIVITY_LEVELS.map(renderActivityLevel)
-  , [renderActivityLevel]);
+    ACTIVITY_LEVELS.map(level => (
+      <ActivityCard
+        key={level.id}
+        {...level}
+        isSelected={selectedLevel === level.id}
+        onSelect={handleActivitySelection}
+      />
+    ))
+  , [selectedLevel, handleActivitySelection]);
 
   return (
     <SafeAreaView edges={['top']} style={sharedStyles.container}>

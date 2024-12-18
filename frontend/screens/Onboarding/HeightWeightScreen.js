@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { View, Text, TouchableOpacity, Alert, StyleSheet } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
@@ -8,66 +8,95 @@ import OnboardingProgress from '../../Components/OnboardingProgress';
 import sharedStyles from './SharedOnboardingLayout.styles';
 import { api } from '../../services/api';
 import { useOnboardingStore } from '../../stores/onboardingStore';
+import { debounce } from 'lodash';
+
+// Unit conversion utilities
+const convertToMetric = {
+  height: (ft, inches) => Math.round((ft * 12 + inches) * 2.54),
+  weight: (lbs) => Math.round(lbs / 2.205),
+};
+
+const convertToImperial = {
+  height: (cm) => {
+    const totalInches = cm / 2.54;
+    return {
+      ft: Math.floor(totalInches / 12),
+      inches: Math.round(totalInches % 12),
+    };
+  },
+  weight: (kg) => Math.round(kg * 2.205),
+};
 
 const HeightWeightScreen = ({ navigation, route }) => {
   const { saveOnboardingData } = useOnboardingStore();
   const [isMetric, setIsMetric] = useState(true);
-  const [heightCm, setHeightCm] = useState(175);
-  const [heightFt, setHeightFt] = useState(5);
-  const [heightIn, setHeightIn] = useState(9);
-  const [weight, setWeight] = useState(70);  // Default to 70kg for metric
+  const [measurements, setMeasurements] = useState({
+    heightCm: 175,
+    heightFt: 5,
+    heightIn: 9,
+    weight: 70,
+  });
+
+  const { heightCm, heightFt, heightIn, weight } = measurements;
+
+  // Memoize ranges to prevent recalculation
+  const ranges = useMemo(() => ({
+    height: isMetric ? { min: 140, max: 220 } : { min: 4, max: 7 },
+    inches: { min: 0, max: 11 },
+    weight: isMetric ? { min: 40, max: 150 } : { min: 88, max: 330 },
+  }), [isMetric]);
+
+  // Debounced update functions
+  const debouncedSetMeasurements = useCallback(
+    debounce((updates) => {
+      setMeasurements(prev => ({ ...prev, ...updates }));
+    }, 100),
+    []
+  );
 
   useEffect(() => {
     if (isMetric) {
-      // Convert ft/in to cm when switching to metric
-      const totalInches = (heightFt * 12) + heightIn;
-      setHeightCm(Math.round(totalInches * 2.54));
-      // Only convert weight if it's not the initial state
-      if (weight !== 70) {
-        setWeight(Math.round(weight / 2.205)); // Convert lbs to kg
-      }
+      const newHeightCm = convertToMetric.height(heightFt, heightIn);
+      const newWeight = weight === 70 ? weight : convertToMetric.weight(weight);
+      debouncedSetMeasurements({
+        heightCm: newHeightCm,
+        weight: newWeight,
+      });
     } else {
-      // Convert cm to ft/in when switching to imperial
-      const totalInches = heightCm / 2.54;
-      setHeightFt(Math.floor(totalInches / 12));
-      setHeightIn(Math.round(totalInches % 12));
-      setWeight(Math.round(weight * 2.205)); // Convert kg to lbs
+      const { ft, inches } = convertToImperial.height(heightCm);
+      debouncedSetMeasurements({
+        heightFt: ft,
+        heightIn: inches,
+        weight: convertToImperial.weight(weight),
+      });
     }
   }, [isMetric]);
 
-  const heightRange = isMetric 
-    ? { min: 140, max: 220 }
-    : { min: 4, max: 7 };
+  const handleHeightChange = useCallback((value) => {
+    debouncedSetMeasurements({ heightCm: value });
+  }, []);
 
-  const inchesRange = { min: 0, max: 11 };
+  const handleHeightFtChange = useCallback((value) => {
+    const newHeightCm = convertToMetric.height(value, heightIn);
+    debouncedSetMeasurements({
+      heightFt: value,
+      heightCm: newHeightCm,
+    });
+  }, [heightIn]);
 
-  const weightRange = isMetric
-    ? { min: 40, max: 150 }
-    : { min: 88, max: 330 };
+  const handleHeightInChange = useCallback((value) => {
+    const newHeightCm = convertToMetric.height(heightFt, value);
+    debouncedSetMeasurements({
+      heightIn: value,
+      heightCm: newHeightCm,
+    });
+  }, [heightFt]);
 
-  const handleHeightChange = (value) => {
-    setHeightCm(value);
-  };
+  const handleWeightChange = useCallback((value) => {
+    debouncedSetMeasurements({ weight: value });
+  }, []);
 
-  const handleHeightFtChange = (value) => {
-    setHeightFt(value);
-    // Update cm value
-    const totalInches = (value * 12) + heightIn;
-    setHeightCm(Math.round(totalInches * 2.54));
-  };
-
-  const handleHeightInChange = (value) => {
-    setHeightIn(value);
-    // Update cm value
-    const totalInches = (heightFt * 12) + value;
-    setHeightCm(Math.round(totalInches * 2.54));
-  };
-
-  const handleWeightChange = (value) => {
-    setWeight(value);
-  };
-
-  const handleContinue = async () => {
+  const handleContinue = useCallback(async () => {
     try {
       const measurements = {
         height: Number(heightCm),
@@ -81,7 +110,7 @@ const HeightWeightScreen = ({ navigation, route }) => {
         { text: 'OK' },
       ]);
     }
-  };
+  }, [heightCm, weight, saveOnboardingData, navigation]);
 
   return (
     <SafeAreaView edges={['top']} style={sharedStyles.container}>
