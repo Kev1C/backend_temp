@@ -8,7 +8,7 @@ import OnboardingProgress from '../../Components/OnboardingProgress';
 import sharedStyles from './SharedOnboardingLayout.styles';
 import { useOnboardingStore } from '../../stores/onboardingStore';
 
-const AGE_RANGES = [
+const AGE_RANGES = Object.freeze([
   {
     id: '18_24',
     title: '18-24',
@@ -45,17 +45,17 @@ const AGE_RANGES = [
     subtitle: 'Senior Adult',
     icon: 'human',
   },
-];
+]);
 
-const AgeSelectionScreen = ({ navigation }) => {
+const AgeSelectionScreen = React.memo(({ navigation }) => {
   const [selectedAge, setSelectedAge] = React.useState('18_24');
   const { saveOnboardingData } = useOnboardingStore();
 
-  const handleAgeSelection = (ageId) => {
+  const handleAgeSelection = React.useCallback((ageId) => {
     setSelectedAge(ageId);
-  };
+  }, []);
 
-  const handleContinue = async () => {
+  const handleContinue = React.useCallback(async () => {
     if (selectedAge) {
       try {
         await saveOnboardingData({ ageRange: selectedAge });
@@ -69,7 +69,42 @@ const AgeSelectionScreen = ({ navigation }) => {
         );
       }
     }
-  };
+  }, [selectedAge, saveOnboardingData, navigation]);
+
+  const renderAgeRange = React.useCallback(({ id, title, subtitle, icon }) => (
+    <TouchableOpacity
+      key={id}
+      style={[
+        styles.levelCard,
+        selectedAge === id && styles.selectedLevelCard,
+      ]}
+      onPress={() => handleAgeSelection(id)}
+    >
+      <MaterialCommunityIcons
+        name={icon}
+        size={24}
+        color={selectedAge === id ? '#FFFFFF' : '#000000'}
+      />
+      <View style={styles.levelTextContainer}>
+        <Text 
+          style={[
+            styles.levelTitle,
+            selectedAge === id && styles.selectedText
+          ]}
+        >
+          {title}
+        </Text>
+        <Text 
+          style={[
+            styles.levelSubtitle,
+            selectedAge === id && styles.selectedText
+          ]}
+        >
+          {subtitle}
+        </Text>
+      </View>
+    </TouchableOpacity>
+  ), [selectedAge, handleAgeSelection]);
 
   return (
     <SafeAreaView edges={['top']} style={sharedStyles.container}>
@@ -88,40 +123,7 @@ const AgeSelectionScreen = ({ navigation }) => {
         <Text style={styles.subtitle}>This helps us personalize your fitness journey</Text>
 
         <View style={styles.levelsContainer}>
-          {AGE_RANGES.map((range) => (
-            <TouchableOpacity
-              key={range.id}
-              style={[
-                styles.levelCard,
-                selectedAge === range.id && styles.selectedLevelCard,
-              ]}
-              onPress={() => handleAgeSelection(range.id)}
-            >
-              <MaterialCommunityIcons
-                name={range.icon}
-                size={24}
-                color={selectedAge === range.id ? '#fff' : '#000'}
-              />
-              <View style={styles.levelTextContainer}>
-                <Text 
-                  style={[
-                    styles.levelTitle,
-                    selectedAge === range.id && styles.selectedText
-                  ]}
-                >
-                  {range.title}
-                </Text>
-                <Text 
-                  style={[
-                    styles.levelSubtitle,
-                    selectedAge === range.id && styles.selectedText
-                  ]}
-                >
-                  {range.subtitle}
-                </Text>
-              </View>
-            </TouchableOpacity>
-          ))}
+          {AGE_RANGES.map((range) => renderAgeRange(range))}
         </View>
       </View>
 
@@ -135,6 +137,6 @@ const AgeSelectionScreen = ({ navigation }) => {
       </View>
     </SafeAreaView>
   );
-};
+});
 
 export default AgeSelectionScreen;
