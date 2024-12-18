@@ -24,6 +24,8 @@ export const useNutritionStore = create((set, get) => ({
   isLoading: false,
   error: null,
   formatDate, // Add formatDate to the store
+  pendingRequests: new Map(), // Track ongoing requests to prevent duplicates
+  visitedDates: new Set(), // Track visited dates to optimize cache
 
   setNutritionalGoals: (goals) => {
     set({ nutritionalGoals: goals });
@@ -36,46 +38,64 @@ export const useNutritionStore = create((set, get) => ({
 
     // Return state data if available and not forced
     if (!force && state.dailyNutrition && state.currentDate === formattedDate) {
+      console.log('Using existing data for:', formattedDate);
       return state.dailyNutrition;
     }
 
-    // Return cached data if available and not forced
-    if (!force) {
-      const cachedData = cacheStore.getState().get(cacheKey);
-      if (cachedData) {
+    // Check cache first
+    const cache = cacheStore.getState();
+    const cachedData = cache.get(cacheKey);
+    if (!force && cachedData) {
+      console.log('Using cached data for:', formattedDate);
+      set({ 
+        dailyNutrition: cachedData,
+        currentDate: formattedDate,
+        isLoading: false 
+      });
+      return cachedData;
+    }
+
+    // Check if there's already a pending request for this date
+    const pendingRequest = state.pendingRequests.get(formattedDate);
+    if (pendingRequest) {
+      console.log('Using pending request for:', formattedDate);
+      return pendingRequest;
+    }
+
+    // Create the request promise
+    const requestPromise = (async () => {
+      console.log('Fetching from server for:', formattedDate);
+      set({ isLoading: true, error: null });
+
+      try {
+        const response = await api.get(`/nutrition/daily/${formattedDate}`);
+        const data = response.data;
+        
+        // Store the data in cache and state
+        cache.set(cacheKey, data);
         set({ 
-          dailyNutrition: cachedData, 
-          currentDate: formattedDate, 
+          dailyNutrition: data,
+          currentDate: formattedDate,
+          isLoading: false
+        });
+        
+        return data;
+      } catch (error) {
+        console.error('Error fetching daily nutrition:', error);
+        set({ 
+          error: 'Failed to fetch daily nutrition data',
           isLoading: false 
         });
-        return cachedData;
+        throw error;
+      } finally {
+        // Clean up pending request
+        state.pendingRequests.delete(formattedDate);
       }
-    }
+    })();
 
-    // Only set loading if we're actually going to fetch
-    set({ isLoading: true, error: null });
-
-    try {
-      const response = await api.get(`/nutrition/daily/${formattedDate}`);
-      const data = response.data;
-      
-      // Store the data in cache and state
-      cacheStore.getState().set(cacheKey, data);
-      set({ 
-        dailyNutrition: data, 
-        currentDate: formattedDate, 
-        isLoading: false 
-      });
-      
-      return data;
-    } catch (error) {
-      console.error('Error fetching daily nutrition:', error);
-      set({ 
-        error: 'Failed to fetch daily nutrition data',
-        isLoading: false 
-      });
-      return null;
-    }
+    // Store the promise in pendingRequests
+    state.pendingRequests.set(formattedDate, requestPromise);
+    return requestPromise;
   },
 
   updateDailyNutrition: async (date, newMeal) => {
@@ -89,7 +109,8 @@ export const useNutritionStore = create((set, get) => ({
       
       // If no current data, try to fetch from cache first
       if (!currentData) {
-        currentData = cacheStore.getState().get(cacheKey) || {
+        const cache = cacheStore.getState();
+        currentData = cache.get(cacheKey) || {
           calories: 0,
           protein: 0,
           carbs: 0,
@@ -108,7 +129,8 @@ export const useNutritionStore = create((set, get) => ({
       };
 
       // Update cache and state immediately for optimistic updates
-      cacheStore.getState().set(cacheKey, updatedData);
+      const cache = cacheStore.getState();
+      cache.set(cacheKey, updatedData);
       set({ 
         dailyNutrition: updatedData,
         currentDate: formattedDate,
@@ -131,7 +153,8 @@ export const useNutritionStore = create((set, get) => ({
       
       if (response.data && !isEqual(response.data, updatedData)) {
         // Update with server data if different
-        cacheStore.getState().set(cacheKey, response.data);
+        const cache = cacheStore.getState();
+        cache.set(cacheKey, response.data);
         set({ 
           dailyNutrition: response.data,
           currentDate: formattedDate,
@@ -151,7 +174,12 @@ export const useNutritionStore = create((set, get) => ({
   },
 
   clearCache: () => {
-    cacheStore.getState().clear();
-    set({ dailyNutrition: null, currentDate: null });
+    const cache = cacheStore.getState();
+    cache.clearAll();
+    set({ 
+      dailyNutrition: null, 
+      currentDate: null,
+      visitedDates: new Set()
+    });
   }
 }));
