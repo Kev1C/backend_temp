@@ -1,9 +1,10 @@
 import React, { useState } from 'react';
-import { View, Text, TouchableOpacity, Alert } from 'react-native';
+import { View, Text, TouchableOpacity, Alert, SafeAreaView } from 'react-native';
 import * as WebBrowser from 'expo-web-browser';
 import * as Google from 'expo-auth-session/providers/google';
 import { AntDesign, MaterialCommunityIcons } from '@expo/vector-icons';
 import { styles } from './SocialAuthScreen.styles';
+import OnboardingProgress from '../../Components/OnboardingProgress';
 import { auth, signInAsGuest } from '../../firebaseConfig';
 import { GoogleAuthProvider, signInWithCredential } from '@firebase/auth';
 import { useAuthStore } from '../../stores/authStore';
@@ -118,54 +119,57 @@ export default function SocialAuthScreen({ navigation }) {
   };
 
   return (
-    <View style={styles.container}>
-      <View style={styles.header}>
-        <TouchableOpacity 
-          onPress={() => navigation.goBack()}
-          style={styles.backButton}
-        >
-          <MaterialCommunityIcons name="arrow-left" size={24} color="#000" />
-        </TouchableOpacity>
-        <Text style={styles.title}>Welcome</Text>
-        <Text style={styles.subtitle}>Sign in to continue</Text>
-        {error && <Text style={styles.errorText}>{error}</Text>}
+    <SafeAreaView style={styles.container}>
+      <OnboardingProgress currentScreen="SocialAuth" />
+      <View style={styles.content}>
+        <View style={styles.header}>
+          <TouchableOpacity 
+            onPress={() => navigation.goBack()}
+            style={styles.backButton}
+          >
+            <MaterialCommunityIcons name="arrow-left" size={24} color="#000" />
+          </TouchableOpacity>
+          <Text style={styles.title}>Welcome</Text>
+          <Text style={styles.subtitle}>Sign in to continue</Text>
+          {error && <Text style={styles.errorText}>{error}</Text>}
+        </View>
+
+        <View style={styles.buttonsContainer}>
+          <TouchableOpacity 
+            style={[
+              styles.socialButton, 
+              styles.googleButton,
+              loading && styles.disabledButton
+            ]}
+            onPress={handleGoogleSignIn}
+            disabled={loading}
+          >
+            <AntDesign name="google" size={24} color="#DB4437" style={styles.socialIcon} />
+            <Text style={styles.buttonText}>
+              {loading ? 'Signing in...' : 'Continue with Google'}
+            </Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity 
+            style={[
+              styles.socialButton, 
+              styles.guestButton,
+              loading && styles.disabledButton
+            ]}
+            onPress={handleGuestSignIn}
+            disabled={loading}
+          >
+            <AntDesign name="user" size={24} color="#666666" style={styles.socialIcon} />
+            <Text style={styles.buttonText}>
+              {loading ? 'Creating guest account...' : 'Continue as Guest'}
+            </Text>
+          </TouchableOpacity>
+        </View>
+
+        <Text style={styles.termsText}>
+          By continuing, you agree to our Terms of Service and Privacy Policy
+        </Text>
       </View>
-
-      <View style={styles.buttonsContainer}>
-        <TouchableOpacity 
-          style={[
-            styles.socialButton, 
-            styles.googleButton,
-            loading && styles.disabledButton
-          ]}
-          onPress={handleGoogleSignIn}
-          disabled={loading}
-        >
-          <AntDesign name="google" size={24} color="#DB4437" style={styles.socialIcon} />
-          <Text style={styles.buttonText}>
-            {loading ? 'Signing in...' : 'Continue with Google'}
-          </Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity 
-          style={[
-            styles.socialButton, 
-            styles.guestButton,
-            loading && styles.disabledButton
-          ]}
-          onPress={handleGuestSignIn}
-          disabled={loading}
-        >
-          <AntDesign name="user" size={24} color="#666666" style={styles.socialIcon} />
-          <Text style={styles.buttonText}>
-            {loading ? 'Creating guest account...' : 'Continue as Guest'}
-          </Text>
-        </TouchableOpacity>
-      </View>
-
-      <Text style={styles.termsText}>
-        By continuing, you agree to our Terms of Service and Privacy Policy
-      </Text>
-    </View>
+    </SafeAreaView>
   );
 }

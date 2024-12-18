@@ -3,6 +3,7 @@ import { View, Text, TouchableOpacity, SafeAreaView, Alert } from 'react-native'
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import styles from './GoalSelection.styles';
 import Button from '../../Components/Button';
+import OnboardingProgress from '../../Components/OnboardingProgress';
 import { useOnboardingStore } from '../../stores/onboardingStore';
 
 const GOALS = [
@@ -55,6 +56,7 @@ const GoalSelectionScreen = ({ navigation }) => {
 
   return (
     <SafeAreaView style={styles.container}>
+      <OnboardingProgress currentScreen="GoalSelection" />
       <View style={styles.header}>
         <TouchableOpacity 
           onPress={() => navigation.goBack()}

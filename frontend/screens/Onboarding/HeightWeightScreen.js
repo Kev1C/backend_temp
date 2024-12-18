@@ -4,6 +4,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import ScrollPicker from 'react-native-wheel-scrollview-picker';
 import Button from '../../Components/Button';
+import OnboardingProgress from '../../Components/OnboardingProgress';
 import { api } from '../../services/api';
 import { useOnboardingStore } from '../../stores/onboardingStore';
 
@@ -83,6 +84,7 @@ const HeightWeightScreen = ({ navigation, route }) => {
 
   return (
     <SafeAreaView edges={['top']} style={styles.container}>
+      <OnboardingProgress currentScreen="HeightWeight" />
       <View style={styles.header}>
         <TouchableOpacity 
           onPress={() => navigation.goBack()} 

@@ -3,6 +3,7 @@ import { View, Text, TouchableOpacity, SafeAreaView, Alert } from 'react-native'
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import styles from './ActivityLevel.styles';
 import Button from '../../Components/Button';
+import OnboardingProgress from '../../Components/OnboardingProgress';
 import { useOnboardingStore } from '../../stores/onboardingStore';
 
 const AGE_RANGES = [
@@ -70,6 +71,7 @@ const AgeSelectionScreen = ({ navigation }) => {
 
   return (
     <SafeAreaView style={styles.container}>
+      <OnboardingProgress currentScreen="AgeSelection" />
       <View style={styles.header}>
         <TouchableOpacity 
           onPress={() => navigation.goBack()}
