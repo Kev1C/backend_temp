@@ -7,7 +7,7 @@ import BottomSheet, { BottomSheetScrollView } from '@gorhom/bottom-sheet';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { useAuthStore } from '../../stores/authStore';
 import { api } from '../../services/api';
-import { useNutritionStore } from '../../stores/nutritionStore';
+import { useNutritionStore, formatDate } from '../../stores/nutritionStore';
 
 const CameraScreen = ({ navigation }) => {
   const [facing, setFacing] = useState('back');

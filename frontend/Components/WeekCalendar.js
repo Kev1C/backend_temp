@@ -77,10 +77,11 @@ const WeekCalendar = memo(({ onDateSelect, selectedDate }) => {
     let currentDate = new Date(startDate);
     
     while (currentDate <= endDate) {
+      const dateObj = new Date(currentDate);
       datesArray.push({
-        date: new Date(currentDate),
-        isToday: currentDate.toDateString() === today.toDateString(),
-        isSelected: selectedDate && currentDate.toDateString() === selectedDate.toDateString()
+        date: dateObj,
+        isToday: dateObj.toDateString() === today.toDateString(),
+        isSelected: selectedDate && dateObj.toDateString() === selectedDate.toDateString()
       });
       currentDate.setDate(currentDate.getDate() + 1);
     }
@@ -89,7 +90,9 @@ const WeekCalendar = memo(({ onDateSelect, selectedDate }) => {
   }, [selectedDate]);
 
   const handleDateSelect = useCallback((date) => {
-    onDateSelect?.(date);
+    if (onDateSelect) {
+      onDateSelect(new Date(date));
+    }
   }, [onDateSelect]);
 
   const getItemLayout = useCallback((_, index) => ({

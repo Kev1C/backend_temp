@@ -6,7 +6,8 @@ import { isEqual } from 'lodash';
 
 const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
 
-const formatDate = (date) => {
+// Export the formatDate function so it can be used by other components
+export const formatDate = (date) => {
   const d = new Date(date);
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 };
@@ -22,6 +23,7 @@ export const useNutritionStore = create((set, get) => ({
   currentDate: null,
   isLoading: false,
   error: null,
+  formatDate, // Add formatDate to the store
 
   setNutritionalGoals: (goals) => {
     set({ nutritionalGoals: goals });

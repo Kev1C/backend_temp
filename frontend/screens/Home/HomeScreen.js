@@ -4,20 +4,24 @@ import { Text, SafeAreaView, View, Image, FlatList, ScrollView, StyleSheet, Aler
 import { useTheme, FAB } from 'react-native-paper';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { useAuthStore } from '../../stores/authStore';
-import { useNutritionStore } from '../../stores/nutritionStore';
+import { useNutritionStore, formatDate } from '../../stores/nutritionStore';
 import { useOnboardingStore } from '../../stores/onboardingStore';
-import createStyles from './HomeScreenStyles';
 import { useCalorieStore } from '../../hooks/useCalorieTracker';
 import useMacroStore from '../../hooks/useMacroTracker';
 import useNutrientCalculations from '../../hooks/useNutrientCalculations';
 import { MemoizedWeekCalendar, MemoizedCalorieProgress, MemoizedRecentlyEaten } from './MemoizedComponents';
 import { api } from '../../services/api';
 import isEqual from 'lodash/isEqual';
+import createStyles from './HomeScreenStyles';
 
 const HomeScreen = () => {
   const { user, authToken, isGuest } = useAuthStore();
   const { onboardingData, isOnboardingComplete } = useOnboardingStore();
   const { calculatedNutrients, loading: loadingNutrients, fetchCalculations } = useNutrientCalculations();
+  const { fetchDailyNutrition, dailyNutrition, isLoading: isLoadingNutrition } = useNutritionStore();
+  const { calories, addCalories, resetCalories } = useCalorieStore();
+  const macroStore = useMacroStore();
+  const { macros, addMacros, resetMacros, checkDailyReset, hydrated } = macroStore;
   const theme = useTheme();
   const navigation = useNavigation();
   const route = useRoute();
@@ -29,6 +33,14 @@ const HomeScreen = () => {
     nutrition: false,
     saving: false
   });
+
+  // State for recently eaten meals
+  const [recentMeals, setRecentMeals] = useState([]);
+  const [isLoadingMeals, setIsLoadingMeals] = useState(false);
+  const [selectedDate, setSelectedDate] = useState(new Date());  
+  const [prevAddMeal, setPrevAddMeal] = useState(null);
+  const [prevUpdateProgress, setPrevUpdateProgress] = useState(null);
+  const [meals, setMeals] = useState([]);
 
   // Fetch nutrient calculations when user and onboarding data are available
   useEffect(() => {
@@ -55,11 +67,6 @@ const HomeScreen = () => {
   const handleDateSelect = useCallback(async (date) => {
     if (!date) return;
     
-    // Prevent multiple calls for the same date
-    if (selectedDate && formatDate(selectedDate) === formatDate(date)) {
-      return;
-    }
-
     setSelectedDate(date);
     setLoadingStates(prev => ({ ...prev, nutrition: true }));
     
@@ -87,46 +94,22 @@ const HomeScreen = () => {
     } finally {
       setLoadingStates(prev => ({ ...prev, nutrition: false }));
     }
-  }, [selectedDate, fetchDailyNutrition, resetMacros, addMacros, addCalories]);
+  }, [fetchDailyNutrition, resetMacros, addMacros, addCalories]);
 
   // Initialize selected date and load initial data
   useEffect(() => {
     const initializeData = async () => {
-      const today = new Date();
-      setSelectedDate(today);
-      await handleDateSelect(today);
+      await handleDateSelect(selectedDate);
     };
     
     initializeData();
   }, []); // Only run once on mount
 
-  // Get daily nutrition data
-  const { 
-    dailyNutrition, 
-    isLoading: isLoadingNutrition, 
-    fetchDailyNutrition 
-  } = useNutritionStore();
-
-  // Get calorie data
-  const { calories, addCalories, resetCalories } = useCalorieStore();
-
-  // Get macro data
-  const macroStore = useMacroStore();
-  const { macros, addMacros, resetMacros, checkDailyReset, hydrated } = macroStore;
-
-  // State for recently eaten meals
-  const [recentMeals, setRecentMeals] = useState([]);
-  const [isLoadingMeals, setIsLoadingMeals] = useState(false);
-  const [selectedDate, setSelectedDate] = useState(null);  // Initialize with null
-  const [prevAddMeal, setPrevAddMeal] = useState(null);
-  const [prevUpdateProgress, setPrevUpdateProgress] = useState(null);
-  const [meals, setMeals] = useState([]);
-
   // Memoize fetchRecentMeals to prevent recreation on every render
   const fetchRecentMeals = useCallback(async (date) => {
     try {
       setLoadingStates(prev => ({ ...prev, meals: true }));
-      const formattedDate = new Date(date.getFullYear(), date.getMonth(), date.getDate()).toISOString();
+      const formattedDate = formatDate(date);
 
       if (isGuest) {
         const storedMeals = await AsyncStorage.getItem(`guest-meals-${formattedDate}`);
@@ -144,7 +127,7 @@ const HomeScreen = () => {
     } finally {
       setLoadingStates(prev => ({ ...prev, meals: false }));
     }
-  }, [isGuest]);
+  }, [isGuest, formatDate]);
 
   // Check for daily macro reset
   useEffect(() => {
@@ -157,7 +140,7 @@ const HomeScreen = () => {
   const saveGuestMealData = useCallback(async (meal, date) => {
     try {
       setLoadingStates(prev => ({ ...prev, saving: true }));
-      const formattedDate = new Date(date.getFullYear(), date.getMonth(), date.getDate()).toISOString();
+      const formattedDate = formatDate(date);
       const storedMeals = await AsyncStorage.getItem(`guest-meals-${formattedDate}`);
       const currentMeals = storedMeals ? JSON.parse(storedMeals) : [];
       const updatedMeals = [...currentMeals, meal];
@@ -168,13 +151,13 @@ const HomeScreen = () => {
     } finally {
       setLoadingStates(prev => ({ ...prev, saving: false }));
     }
-  }, []);
+  }, [formatDate]);
 
   // Save meal to backend
   const saveMealToBackend = async (meal, date) => {
     try {
       setLoadingStates(prev => ({ ...prev, saving: true }));
-      const formattedDate = new Date(date.getFullYear(), date.getMonth(), date.getDate()).toISOString();
+      const formattedDate = formatDate(date);
       
       if (isGuest) {
         await saveGuestMealData(meal, date);
@@ -202,13 +185,14 @@ const HomeScreen = () => {
       // Save meal and update nutrition
       (async () => {
         try {
+          setLoadingStates(prev => ({ ...prev, saving: true }));
           await saveMealToBackend(newMeal, selectedDate);
           
-          // Fetch fresh data
-          await Promise.all([
-            fetchDailyNutrition(selectedDate, true), // Force refresh nutrition
-            fetchRecentMeals(selectedDate) // Refresh recently eaten meals
-          ]);
+          // Force refresh nutrition data
+          await fetchDailyNutrition(selectedDate, true);
+          
+          // Update local state with new meal
+          setMeals(prevMeals => [...prevMeals, newMeal]);
           
           // Update progress if provided
           if (params.updateProgress && params.updateProgress !== prevUpdateProgress) {
@@ -216,27 +200,29 @@ const HomeScreen = () => {
             const { calories, carbs, protein, fats } = params.updateProgress;
             
             // Reset before adding new values
-            resetCalories();
             resetMacros();
+            resetCalories();
             
-            // Update calories
-            if (addCalories) {
-              addCalories(Number(calories));
-            }
-            
-            // Update macros with individual parameters
+            // Add new values
             addMacros(
-              Number(protein),
-              Number(carbs),
-              Number(fats)
+              Number(protein) || 0,
+              Number(carbs) || 0,
+              Number(fats) || 0
             );
+            if (addCalories) {
+              addCalories(Number(calories) || 0);
+            }
           }
         } catch (error) {
-          console.error('Error handling new meal:', error);
+          console.error('Error handling camera return:', error);
+          Alert.alert('Error', 'Failed to update nutrition data');
+        } finally {
+          setLoadingStates(prev => ({ ...prev, saving: false }));
         }
       })();
     }
-  }, [route.params, prevAddMeal, prevUpdateProgress, selectedDate, fetchDailyNutrition, addCalories, addMacros, saveMealToBackend, fetchRecentMeals, resetCalories, resetMacros]);
+  }, [route.params, prevAddMeal, prevUpdateProgress, selectedDate, saveMealToBackend, 
+      fetchDailyNutrition, resetMacros, resetCalories, addMacros, addCalories]);
 
   // Get daily nutrition data and force refresh when meals change
   useEffect(() => {
