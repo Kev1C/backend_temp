@@ -12,15 +12,14 @@ export const styles = StyleSheet.create({
     paddingVertical: 10,
   },
   title: {
-    fontSize: 32,
+    fontSize: 24,
     fontWeight: 'bold',
-    marginBottom: 10,
-    color: '#333',
+    marginBottom: 8,
   },
   subtitle: {
-    fontSize: 18,
+    fontSize: 16,
     color: '#666',
-    marginBottom: 10,
+    marginBottom: 32,
   },
   errorText: {
     color: '#D32F2F',

@@ -24,7 +24,7 @@ const styles = StyleSheet.create({
   subtitle: {
     fontSize: 16,
     color: '#666',
-    marginBottom: 40,
+    marginBottom: 32,
   },
   optionsContainer: {
     width: '100%',

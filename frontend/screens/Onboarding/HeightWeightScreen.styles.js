@@ -22,16 +22,14 @@ export default StyleSheet.create({
     paddingTop: 40,
   },
   title: {
-    color: '#000', // Changed text color to black
     fontSize: 24,
     fontWeight: 'bold',
     marginBottom: 8,
   },
   subtitle: {
-    color: '#666', // Changed text color
     fontSize: 16,
-    opacity: 0.7,
-    marginBottom: 40,
+    color: '#666',
+    marginBottom: 32,
   },
   inputContainer: {
     flex: 1,
