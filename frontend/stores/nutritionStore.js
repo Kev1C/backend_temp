@@ -17,7 +17,7 @@ export const useNutritionStore = create((set, get) => ({
     calories: 0,
     protein: 0,
     carbs: 0,
-    fat: 0
+    fats: 0
   },
   currentDate: null,
   isLoading: false,
@@ -91,7 +91,7 @@ export const useNutritionStore = create((set, get) => ({
           calories: 0,
           protein: 0,
           carbs: 0,
-          fat: 0,
+          fats: 0,
           meals: []
         };
       }
@@ -101,7 +101,7 @@ export const useNutritionStore = create((set, get) => ({
         calories: Number(currentData.calories || 0) + Number(newMeal.calories || 0),
         protein: Number(currentData.protein || 0) + Number(newMeal.protein || 0),
         carbs: Number(currentData.carbs || 0) + Number(newMeal.carbs || 0),
-        fat: Number(currentData.fat || 0) + Number(newMeal.fats || 0),
+        fats: Number(currentData.fats || 0) + Number(newMeal.fats || 0),
         meals: [...(currentData.meals || []), newMeal]
       };
 
@@ -123,7 +123,7 @@ export const useNutritionStore = create((set, get) => ({
           calories: updatedData.calories,
           protein: updatedData.protein,
           carbs: updatedData.carbs,
-          fats: updatedData.fat
+          fats: updatedData.fats
         }
       });
       

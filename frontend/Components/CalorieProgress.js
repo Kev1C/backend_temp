@@ -49,14 +49,14 @@ const CalorieProgress = React.memo(({ nutrients }) => {
     calories = 0,
     carbs = 0,
     protein = 0,
-    fats: fat = 0
+    fats = 0
   } = current;
   
   const {
     calories: caloriesGoal = 2000,
     carbs: carbsGoal = 0,
     protein: proteinGoal = 0,
-    fats: fatGoal = 0
+    fats: fatsGoal = 0
   } = goals;
   
   // Calculate calorie percentage
@@ -109,7 +109,7 @@ const CalorieProgress = React.memo(({ nutrients }) => {
         <View style={styles.macroContainer}>
           {renderMacroCard("Carbs", carbs, carbsGoal, "#8A2BE2")}
           {renderMacroCard("Protein", protein, proteinGoal, theme.colors.secondary)}
-          {renderMacroCard("Fat", fat, fatGoal, "#FFD700")}
+          {renderMacroCard("Fats", fats, fatsGoal, "#FFD700")}
         </View>
       </View>
     </View>

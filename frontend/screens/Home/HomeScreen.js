@@ -73,7 +73,7 @@ const HomeScreen = () => {
         addMacros(
           nutritionData.protein || 0,
           nutritionData.carbs || 0,
-          nutritionData.fat || 0
+          nutritionData.fats || 0
         );
         if (addCalories) {
           addCalories(nutritionData.calories || 0);
@@ -199,18 +199,15 @@ const HomeScreen = () => {
       const newMeal = params.addMeal;
       setPrevAddMeal(newMeal);
       
-      // Update local state immediately for better UX
-      setRecentMeals(prevMeals => [newMeal, ...prevMeals]);
-      
       // Save meal and update nutrition
       (async () => {
         try {
           await saveMealToBackend(newMeal, selectedDate);
           
-          // Force refresh nutrition data and meals
+          // Fetch fresh data
           await Promise.all([
             fetchDailyNutrition(selectedDate, true), // Force refresh nutrition
-            fetchRecentMeals(selectedDate) // Refresh meals
+            fetchRecentMeals(selectedDate) // Refresh recently eaten meals
           ]);
           
           // Update progress if provided
@@ -257,8 +254,8 @@ const HomeScreen = () => {
   const nutrients = useMemo(() => {
     if (!dailyNutrition) {
       return {
-        current: { calories: 0, protein: 0, carbs: 0, fat: 0 },
-        goals: calculatedNutrients || { calories: 0, protein: 0, carbs: 0, fat: 0 },
+        current: { calories: 0, protein: 0, carbs: 0, fats: 0 },
+        goals: calculatedNutrients || { calories: 0, protein: 0, carbs: 0, fats: 0 },
         loading: isLoadingNutrition
       };
     }
@@ -268,9 +265,9 @@ const HomeScreen = () => {
         calories: Number(dailyNutrition.calories || 0),
         protein: Number(dailyNutrition.protein || 0),
         carbs: Number(dailyNutrition.carbs || 0),
-        fat: Number(dailyNutrition.fat || 0)
+        fats: Number(dailyNutrition.fats || 0)
       },
-      goals: calculatedNutrients || { calories: 0, protein: 0, carbs: 0, fat: 0 },
+      goals: calculatedNutrients || { calories: 0, protein: 0, carbs: 0, fats: 0 },
       loading: isLoadingNutrition
     };
   }, [dailyNutrition, calculatedNutrients, isLoadingNutrition]);

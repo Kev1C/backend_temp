@@ -8,19 +8,19 @@ const useMacroStore = create(
       macros: {
         protein: 0,
         carbs: 0,
-        fat: 0,
+        fats: 0,
       },
       lastResetDate: null,
       hydrated: false,
 
-      addMacros: (protein, carbs, fat) => {
+      addMacros: (protein, carbs, fats) => {
         if (!get().hydrated) return;
         const currentMacros = get().macros;
         set({
           macros: {
             protein: Math.max(0, currentMacros.protein + Number(protein)),
             carbs: Math.max(0, currentMacros.carbs + Number(carbs)),
-            fat: Math.max(0, currentMacros.fat + Number(fat)),
+            fats: Math.max(0, currentMacros.fats + Number(fats)),
           }
         });
       },
@@ -29,7 +29,7 @@ const useMacroStore = create(
         if (!get().hydrated) return;
         const today = new Date().toDateString();
         set({
-          macros: { protein: 0, carbs: 0, fat: 0 },
+          macros: { protein: 0, carbs: 0, fats: 0 },
           lastResetDate: today
         });
       },
@@ -50,7 +50,7 @@ const useMacroStore = create(
           macros: {
             protein: Math.max(0, Number(newMacros.protein || 0)),
             carbs: Math.max(0, Number(newMacros.carbs || 0)),
-            fat: Math.max(0, Number(newMacros.fat || 0))
+            fats: Math.max(0, Number(newMacros.fats || 0))
           }
         });
       },

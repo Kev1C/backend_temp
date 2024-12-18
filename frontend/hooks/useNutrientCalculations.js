@@ -8,7 +8,7 @@ const useNutrientStore = create((set, get) => ({
     calories: 0,
     protein: 0,
     carbs: 0,
-    fat: 0,
+    fats: 0,
   },
   loading: false,
   error: null,
@@ -44,7 +44,7 @@ const useNutrientStore = create((set, get) => ({
         calories: response.data.calories || 0,
         protein: response.data.protein || 0,
         carbs: response.data.carbs || 0,
-        fat: response.data.fat || 0
+        fats: response.data.fats || 0
       };
 
       set({ 
