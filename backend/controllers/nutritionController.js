@@ -33,6 +33,8 @@ const AGE_RANGES = {
 // @route   GET /api/nutrition/daily/:date
 // @access  Private
 const getDailyNutrition = asyncHandler(async (req, res) => {
+  const startTime = process.hrtime();
+  
   try {
     const { date } = req.params;
     const userId = req.user.userId || req.user._id;
@@ -44,19 +46,21 @@ const getDailyNutrition = asyncHandler(async (req, res) => {
     // Check cache first
     const cacheKey = `${userId}-${date}`;
     if (nutritionCache.has(cacheKey)) {
-      // Use ETag for caching
       const cachedData = nutritionCache.get(cacheKey);
       const etag = require('crypto')
         .createHash('md5')
         .update(JSON.stringify(cachedData))
         .digest('hex');
       
-      // Check if client has latest version
       if (req.headers['if-none-match'] === etag) {
+        const [seconds, nanoseconds] = process.hrtime(startTime);
+        console.log(`Cache hit - Response time: ${seconds}s ${nanoseconds/1000000}ms`);
         return res.status(304).end();
       }
       
       res.set('ETag', etag);
+      const [seconds, nanoseconds] = process.hrtime(startTime);
+      console.log(`Cache hit - Response time: ${seconds}s ${nanoseconds/1000000}ms`);
       return res.json(cachedData);
     }
 
@@ -67,36 +71,73 @@ const getDailyNutrition = asyncHandler(async (req, res) => {
     const endDate = new Date(year, month - 1, day);
     endDate.setHours(23, 59, 59, 999);
 
-    // Get all meals for the day
-    const meals = await Meal.find({
-      userId: new mongoose.Types.ObjectId(userId),
-      date: {
-        $gte: startDate,
-        $lte: endDate
+    // Get all meals for the day with optimized query
+    const pipeline = [
+      {
+        $match: {
+          userId: new mongoose.Types.ObjectId(userId),
+          date: {
+            $gte: startDate,
+            $lte: endDate
+          }
+        }
+      },
+      {
+        $project: {
+          _id: 1,
+          name: 1,
+          calories: 1,
+          protein: 1,
+          carbs: 1,
+          fats: 1,
+          time: 1,
+          date: 1,
+          image: 1
+        }
+      },
+      {
+        $group: {
+          _id: null,
+          totalCalories: { $sum: "$calories" },
+          totalProtein: { $sum: "$protein" },
+          totalCarbs: { $sum: "$carbs" },
+          totalFats: { $sum: "$fats" },
+          meals: { $push: "$$ROOT" }
+        }
       }
-    }).lean();
+    ];
 
-    // Calculate totals and format response
-    const result = meals.reduce((acc, meal) => {
-      acc.calories += Number(meal.calories) || 0;
-      acc.protein += Number(meal.protein) || 0;
-      acc.carbs += Number(meal.carbs) || 0;
-      acc.fats += Number(meal.fats) || 0;
-      return acc;
-    }, { calories: 0, protein: 0, carbs: 0, fats: 0, meals: [] });
+    const [aggregateResult] = await Meal.aggregate(pipeline);
+    
+    if (!aggregateResult) {
+      const [seconds, nanoseconds] = process.hrtime(startTime);
+      console.log(`Cache miss - Response time: ${seconds}s ${nanoseconds/1000000}ms`);
+      return res.json({
+        calories: 0,
+        protein: 0,
+        carbs: 0,
+        fats: 0,
+        meals: []
+      });
+    }
 
-    // Add formatted meals to the result
-    result.meals = meals.map(meal => ({
-      id: meal._id,
-      name: meal.name,
-      calories: meal.calories,
-      protein: meal.protein,
-      carbs: meal.carbs,
-      fats: meal.fats,
-      image: meal.image,
-      time: meal.time,
-      date: meal.date
-    }));
+    const result = {
+      calories: aggregateResult.totalCalories,
+      protein: aggregateResult.totalProtein,
+      carbs: aggregateResult.totalCarbs,
+      fats: aggregateResult.totalFats,
+      meals: aggregateResult.meals.map(meal => ({
+        id: meal._id,
+        name: meal.name,
+        calories: meal.calories,
+        protein: meal.protein,
+        carbs: meal.carbs,
+        fats: meal.fats,
+        image: meal.image,
+        time: meal.time,
+        date: meal.date
+      }))
+    };
 
     // Cache the result
     nutritionCache.set(cacheKey, result);
@@ -109,6 +150,8 @@ const getDailyNutrition = asyncHandler(async (req, res) => {
       .digest('hex');
     res.set('ETag', etag);
     
+    const [seconds, nanoseconds] = process.hrtime(startTime);
+    console.log(`Cache miss - Response time: ${seconds}s ${nanoseconds/1000000}ms`);
     res.json(result);
   } catch (error) {
     console.error('Error in getDailyNutrition:', error);

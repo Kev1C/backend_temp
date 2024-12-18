@@ -69,9 +69,11 @@ const CameraScreen = ({ navigation }) => {
     try {
       console.log('Taking picture...');
       const photo = await cameraRef.current.takePictureAsync({
-        quality: 0.8,
+        quality: 0.5,
         base64: true,
         exif: true,
+        width: 1024,
+        height: 1024
       });
       console.log('Picture taken successfully');
       console.log('Photo properties:', {
