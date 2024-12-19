@@ -198,12 +198,12 @@ const CameraScreen = ({ navigation }) => {
       Alert.alert('Error', 'Please enter a food name');
       return;
     }
-
+  
     if (!capturedImage?.base64) {
       Alert.alert('Error', 'No image captured');
       return;
     }
-
+  
     const currentTime = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
     const meal = {
       name: foodTitle,
@@ -214,13 +214,13 @@ const CameraScreen = ({ navigation }) => {
       fats: Number(nutritionState.fats),
       time: currentTime
     };
-
+  
     try {
-      // Navigate back with the meal data only
-      navigation.navigate('Home', {
-        addMeal: meal
-      });
-
+      // Update nutrition store first
+      await updateDailyNutrition(new Date(), meal);
+      
+      // Navigate back without passing meal data
+      navigation.navigate('Home');
       setIsModalVisible(false);
     } catch (error) {
       console.error('Error saving meal:', error);
