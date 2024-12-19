@@ -118,25 +118,7 @@ export const useNutritionStore = create((set, get) => ({
         };
       }
 
-      // Calculate new totals
-      const updatedData = {
-        calories: Number(currentData.calories || 0) + Number(newMeal.calories || 0),
-        protein: Number(currentData.protein || 0) + Number(newMeal.protein || 0),
-        carbs: Number(currentData.carbs || 0) + Number(newMeal.carbs || 0),
-        fats: Number(currentData.fats || 0) + Number(newMeal.fats || 0),
-        meals: [...(currentData.meals || []), newMeal]
-      };
-
-      // Update cache and state immediately for optimistic updates
-      const cache = cacheStore.getState();
-      cache.set(cacheKey, updatedData);
-      set({ 
-        dailyNutrition: updatedData,
-        currentDate: formattedDate,
-        isLoading: false
-      });
-
-      // Send update to backend
+      // Send update to backend first
       const response = await api.post(`/nutrition/daily/${formattedDate}`, {
         meal: {
           ...newMeal,
@@ -144,17 +126,17 @@ export const useNutritionStore = create((set, get) => ({
         }
       });
       
-      if (response.data && !isEqual(response.data, updatedData)) {
-        // Update with server data if different
-        cache.set(cacheKey, response.data);
-        set({ 
-          dailyNutrition: response.data,
-          currentDate: formattedDate,
-          isLoading: false
-        });
-      }
+      // Only update with server response
+      const serverData = response.data;
+      const cache = cacheStore.getState();
+      cache.set(cacheKey, serverData);
+      set({ 
+        dailyNutrition: serverData,
+        currentDate: formattedDate,
+        isLoading: false
+      });
 
-      return updatedData;
+      return serverData;
     } catch (error) {
       console.error('Error updating nutrition data:', error);
       set({ 
