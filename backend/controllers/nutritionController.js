@@ -3,13 +3,9 @@ const asyncHandler = require('express-async-handler');
 const mongoose = require('mongoose');
 const Meal = require('../models/Meal');
 
-// Cache for daily nutrition data (TTL: 5 minutes)
+// Optimized cache implementation with Map
 const nutritionCache = new Map();
 const CACHE_TTL = 5 * 60 * 1000; // 5 minutes in milliseconds
-
-const clearCacheEntry = (key) => {
-  setTimeout(() => nutritionCache.delete(key), CACHE_TTL);
-};
 
 // Activity level multipliers
 const ACTIVITY_MULTIPLIERS = {
@@ -29,199 +25,163 @@ const AGE_RANGES = {
   '65_plus': 70
 };
 
+// Utility function to generate cache key
+const generateCacheKey = (userId, date) => `nutrition:${userId}:${date}`;
+
+// Utility function to manage cache entries
+const setCacheWithTTL = (key, value) => {
+  if (nutritionCache.has(key)) {
+    clearTimeout(nutritionCache.get(key).timeout);
+  }
+  const timeout = setTimeout(() => nutritionCache.delete(key), CACHE_TTL);
+  nutritionCache.set(key, { value, timeout });
+};
+
+const getCacheValue = (key) => {
+  const entry = nutritionCache.get(key);
+  return entry ? entry.value : null;
+};
+
+// Utility function to parse date
+const parseDateRange = (dateStr) => {
+  const [year, month, day] = dateStr.split('-').map(Number);
+  const startDate = new Date(year, month - 1, day);
+  startDate.setHours(0, 0, 0, 0);
+  const endDate = new Date(year, month - 1, day);
+  endDate.setHours(23, 59, 59, 999);
+  return { startDate, endDate };
+};
+
 // @desc    Get daily nutrition data
 // @route   GET /api/nutrition/daily/:date
 // @access  Private
 const getDailyNutrition = asyncHandler(async (req, res) => {
-  const startTime = process.hrtime();
-  
-  try {
-    const { date } = req.params;
-    const userId = req.user.userId || req.user._id;
+  const { date } = req.params;
+  const userId = req.user.userId || req.user._id;
 
-    if (!mongoose.Types.ObjectId.isValid(userId)) {
-      return res.status(400).json({ message: 'Invalid user ID format' });
-    }
+  if (!mongoose.Types.ObjectId.isValid(userId)) {
+    return res.status(400).json({ message: 'Invalid user ID format' });
+  }
 
-    // Check cache first
-    const cacheKey = `${userId}-${date}`;
-    if (nutritionCache.has(cacheKey)) {
-      const cachedData = nutritionCache.get(cacheKey);
-      const etag = require('crypto')
-        .createHash('md5')
-        .update(JSON.stringify(cachedData))
-        .digest('hex');
-      
-      if (req.headers['if-none-match'] === etag) {
-        const [seconds, nanoseconds] = process.hrtime(startTime);
-        console.log(`Cache hit - Response time: ${seconds}s ${nanoseconds/1000000}ms`);
-        return res.status(304).end();
-      }
-      
-      res.set('ETag', etag);
-      const [seconds, nanoseconds] = process.hrtime(startTime);
-      console.log(`Cache hit - Response time: ${seconds}s ${nanoseconds/1000000}ms`);
-      return res.json(cachedData);
-    }
+  const cacheKey = generateCacheKey(userId, date);
+  const cachedData = getCacheValue(cacheKey);
 
-    // Create date range for the given local date
-    const [year, month, day] = date.split('-').map(Number);
-    const startDate = new Date(year, month - 1, day);
-    startDate.setHours(0, 0, 0, 0);
-    const endDate = new Date(year, month - 1, day);
-    endDate.setHours(23, 59, 59, 999);
-
-    // Get all meals for the day with optimized query
-    const pipeline = [
-      {
-        $match: {
-          userId: new mongoose.Types.ObjectId(userId),
-          date: {
-            $gte: startDate,
-            $lte: endDate
-          }
-        }
-      },
-      {
-        $project: {
-          _id: 1,
-          name: 1,
-          calories: 1,
-          protein: 1,
-          carbs: 1,
-          fats: 1,
-          time: 1,
-          date: 1,
-          image: 1
-        }
-      },
-      {
-        $group: {
-          _id: null,
-          totalCalories: { $sum: "$calories" },
-          totalProtein: { $sum: "$protein" },
-          totalCarbs: { $sum: "$carbs" },
-          totalFats: { $sum: "$fats" },
-          meals: { $push: "$$ROOT" }
-        }
-      }
-    ];
-
-    const [aggregateResult] = await Meal.aggregate(pipeline);
-    
-    if (!aggregateResult) {
-      const [seconds, nanoseconds] = process.hrtime(startTime);
-      console.log(`Cache miss - Response time: ${seconds}s ${nanoseconds/1000000}ms`);
-      return res.json({
-        calories: 0,
-        protein: 0,
-        carbs: 0,
-        fats: 0,
-        meals: []
-      });
-    }
-
-    const result = {
-      calories: aggregateResult.totalCalories,
-      protein: aggregateResult.totalProtein,
-      carbs: aggregateResult.totalCarbs,
-      fats: aggregateResult.totalFats,
-      meals: aggregateResult.meals.map(meal => ({
-        id: meal._id,
-        name: meal.name,
-        calories: meal.calories,
-        protein: meal.protein,
-        carbs: meal.carbs,
-        fats: meal.fats,
-        image: meal.image,
-        time: meal.time,
-        date: meal.date
-      }))
-    };
-
-    // Cache the result
-    nutritionCache.set(cacheKey, result);
-    clearCacheEntry(cacheKey);
-
-    // Set ETag for the new data
+  if (cachedData) {
     const etag = require('crypto')
       .createHash('md5')
-      .update(JSON.stringify(result))
+      .update(JSON.stringify(cachedData))
       .digest('hex');
-    res.set('ETag', etag);
     
-    const [seconds, nanoseconds] = process.hrtime(startTime);
-    console.log(`Cache miss - Response time: ${seconds}s ${nanoseconds/1000000}ms`);
-    res.json(result);
-  } catch (error) {
-    console.error('Error in getDailyNutrition:', error);
-    res.status(500).json({ message: error.message || 'Error fetching nutrition data' });
+    if (req.headers['if-none-match'] === etag) {
+      return res.status(304).end();
+    }
+    
+    res.set('ETag', etag);
+    return res.json(cachedData);
   }
+
+  const { startDate, endDate } = parseDateRange(date);
+
+  // Optimized aggregation pipeline with index hints
+  const pipeline = [
+    {
+      $match: {
+        userId: new mongoose.Types.ObjectId(userId),
+        date: {
+          $gte: startDate,
+          $lte: endDate
+        }
+      }
+    },
+    {
+      $group: {
+        _id: null,
+        totalCalories: { $sum: "$calories" },
+        totalProtein: { $sum: "$protein" },
+        totalCarbs: { $sum: "$carbs" },
+        totalFats: { $sum: "$fats" },
+        meals: {
+          $push: {
+            id: "$_id",
+            name: "$name",
+            calories: "$calories",
+            protein: "$protein",
+            carbs: "$carbs",
+            fats: "$fats",
+            image: "$image",
+            time: "$time",
+            date: "$date"
+          }
+        }
+      }
+    }
+  ];
+
+  const [aggregateResult] = await Meal.aggregate(pipeline)
+    .hint({ userId: 1, date: 1 })
+    .exec();
+
+  const result = aggregateResult ? {
+    calories: aggregateResult.totalCalories,
+    protein: aggregateResult.totalProtein,
+    carbs: aggregateResult.totalCarbs,
+    fats: aggregateResult.totalFats,
+    meals: aggregateResult.meals
+  } : {
+    calories: 0,
+    protein: 0,
+    carbs: 0,
+    fats: 0,
+    meals: []
+  };
+
+  // Cache the result
+  setCacheWithTTL(cacheKey, result);
+
+  // Set ETag for the new data
+  const etag = require('crypto')
+    .createHash('md5')
+    .update(JSON.stringify(result))
+    .digest('hex');
+  res.set('ETag', etag);
+  
+  res.json(result);
 });
 
 // @desc    Update daily nutrition data
 // @route   POST /api/nutrition/daily/:date
 // @access  Private
 const updateDailyNutrition = asyncHandler(async (req, res) => {
+  const { date } = req.params;
+  const { meal } = req.body;
+  const userId = req.user.userId || req.user._id;
+  const { startDate } = parseDateRange(date);
+
+  const session = await mongoose.startSession();
   try {
-    const { date } = req.params;
-    const { meal, totals } = req.body;
-    const userId = req.user.userId || req.user._id;
-
-    // Create date range for the given local date
-    const [year, month, day] = date.split('-').map(Number);
-    const startDate = new Date(year, month - 1, day);
-    startDate.setHours(0, 0, 0, 0);
-    const endDate = new Date(year, month - 1, day);
-    endDate.setHours(23, 59, 59, 999);
-
-    // Save the new meal
-    const newMeal = new Meal({
-      userId: new mongoose.Types.ObjectId(userId),
-      ...meal,
-      date: startDate
-    });
-    await newMeal.save();
-
-    // Get existing cache data or fetch from database
-    const cacheKey = `${userId}-${date}`;
-    let existingData = nutritionCache.get(cacheKey);
-    
-    if (!existingData) {
-      // Fetch current day's meals from database
-      const meals = await Meal.find({
+    await session.withTransaction(async () => {
+      // Save the new meal
+      const newMeal = new Meal({
         userId: new mongoose.Types.ObjectId(userId),
-        date: {
-          $gte: startDate,
-          $lte: endDate
-        }
-      }).sort({ date: 1 });
+        ...meal,
+        date: startDate
+      });
+      await newMeal.save({ session });
 
-      existingData = {
-        calories: 0,
-        protein: 0,
-        carbs: 0,
-        fats: 0,
-        meals: meals
-      };
-    }
+      // Invalidate cache
+      const cacheKey = generateCacheKey(userId, date);
+      if (nutritionCache.has(cacheKey)) {
+        clearTimeout(nutritionCache.get(cacheKey).timeout);
+        nutritionCache.delete(cacheKey);
+      }
+    });
 
-    // Calculate new totals by adding the new meal to existing totals
-    const updatedData = {
-      calories: (existingData.calories || 0) + (meal.calories || 0),
-      protein: (existingData.protein || 0) + (meal.protein || 0),
-      carbs: (existingData.carbs || 0) + (meal.carbs || 0),
-      fats: (existingData.fats || 0) + (meal.fats || 0),
-      meals: [...(existingData.meals || []), meal]
-    };
-    
-    nutritionCache.set(cacheKey, updatedData);
-    clearCacheEntry(cacheKey);
-
-    res.status(200).json(updatedData);
+    res.status(201).json({ message: 'Nutrition data updated successfully' });
   } catch (error) {
-    console.error('Error updating nutrition:', error);
+    console.error('Error in updateDailyNutrition:', error);
     res.status(500).json({ message: 'Error updating nutrition data' });
+  } finally {
+    session.endSession();
   }
 });
 
@@ -290,8 +250,7 @@ const updateMacros = asyncHandler(async (req, res) => {
   // Store in cache with user-specific key
   const cacheKey = `macros-${userId}`;
   const macroData = { calories, protein, carbs, fats, lastUpdated: new Date() };
-  nutritionCache.set(cacheKey, macroData);
-  clearCacheEntry(cacheKey);
+  setCacheWithTTL(cacheKey, macroData);
 
   res.json(macroData);
 });
@@ -312,8 +271,7 @@ const resetMacros = asyncHandler(async (req, res) => {
     lastUpdated: new Date()
   };
   
-  nutritionCache.set(cacheKey, resetData);
-  clearCacheEntry(cacheKey);
+  setCacheWithTTL(cacheKey, resetData);
 
   res.json(resetData);
 });
