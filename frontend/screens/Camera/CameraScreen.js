@@ -152,10 +152,17 @@ const CameraScreen = ({ navigation }) => {
 
     try {
       const mealType = getMealType();
-      const today = formatDate(new Date());
+      const today = new Date();
+      const currentTime = new Date().toLocaleTimeString('en-US', { 
+        hour: '2-digit', 
+        minute: '2-digit',
+        hour12: true 
+      });
       
       const nutritionData = {
-        date: today,
+        name: foodTitle,
+        image: capturedImage?.uri || '',
+        time: currentTime,
         mealType,
         foodName: foodTitle,
         servings,
@@ -166,7 +173,7 @@ const CameraScreen = ({ navigation }) => {
         healthScore: parseFloat(foodAnalysis.healthScore) || 0,
       };
 
-      await updateDailyNutrition(nutritionData);
+      await updateDailyNutrition(today, nutritionData);
       setIsModalVisible(false);
       navigation.goBack();
     } catch (error) {

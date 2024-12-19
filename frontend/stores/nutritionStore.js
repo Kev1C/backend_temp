@@ -99,7 +99,9 @@ export const useNutritionStore = create((set, get) => ({
   },
 
   updateDailyNutrition: async (date, newMeal) => {
-    const formattedDate = formatDate(date);
+    // Ensure date is a Date object
+    const dateObj = typeof date === 'string' ? new Date(date) : new Date();
+    const formattedDate = formatDate(dateObj);
     const cacheKey = `nutrition_${formattedDate}`;
     set({ isLoading: true, error: null });
 
@@ -118,6 +120,11 @@ export const useNutritionStore = create((set, get) => ({
         };
       }
 
+      // Validate required fields
+      if (!newMeal.name || !newMeal.image || !newMeal.time) {
+        throw new Error('Missing required fields: name, image, or time');
+      }
+
       // Send update to backend first
       const response = await api.post(`/nutrition/daily/${formattedDate}`, {
         meal: {
@@ -126,15 +133,18 @@ export const useNutritionStore = create((set, get) => ({
         }
       });
       
-      // Only update with server response
+      // Update with server response and invalidate cache
       const serverData = response.data;
-      const cache = cacheStore.getState();
-      cache.set(cacheKey, serverData);
+      cacheStore.getState().invalidate(cacheKey); // Use the invalidate method from cacheStore
+      
       set({ 
         dailyNutrition: serverData,
         currentDate: formattedDate,
         isLoading: false
       });
+
+      // Force a fresh fetch to ensure all components get updated data
+      await get().fetchDailyNutrition(dateObj, true);
 
       return serverData;
     } catch (error) {
