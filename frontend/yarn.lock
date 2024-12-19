@@ -5039,10 +5039,10 @@ expo-crypto@~14.0.0:
   dependencies:
     base64-js "^1.3.0"
 
-expo-file-system@~18.0.5:
-  version "18.0.5"
-  resolved "https://registry.npmjs.org/expo-file-system/-/expo-file-system-18.0.5.tgz"
-  integrity sha512-vm7gA+PB7j99hfvBBFMRiti8OeazFK3AZWtDmCi6WQCXDxngXkAJViXhkHyF3xwDKljzlP8+4BIGrKCzbfoObg==
+expo-file-system@^18.0.6, expo-file-system@~18.0.5:
+  version "18.0.6"
+  resolved "https://registry.npmjs.org/expo-file-system/-/expo-file-system-18.0.6.tgz"
+  integrity sha512-gGEwIJCXV3/wpIJ/wRyhmieLOSAY7HeFFjb+wEfHs04aE63JYR+rXXV4b7rBpEh1ZgNV9U91zfet/iQG7J8HBQ==
   dependencies:
     web-streams-polyfill "^3.3.2"
 
