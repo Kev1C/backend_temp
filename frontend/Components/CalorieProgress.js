@@ -36,14 +36,22 @@ const MacroCard = React.memo(({ label, value = 0, total = 0, color }) => {
       </View>
     </View>
   );
+}, (prevProps, nextProps) => {
+  // Custom comparison function for MacroCard
+  return (
+    prevProps.label === nextProps.label &&
+    prevProps.value === nextProps.value &&
+    prevProps.total === nextProps.total &&
+    prevProps.color === nextProps.color
+  );
 });
 
 const CalorieProgress = React.memo(({ nutrients }) => {
   const theme = useTheme();
   
   // Ensure we have valid data
-  const current = nutrients?.current || {};
-  const goals = nutrients?.goals || {};
+  const current = useMemo(() => nutrients?.current || {}, [nutrients?.current]);
+  const goals = useMemo(() => nutrients?.goals || {}, [nutrients?.goals]);
   
   const {
     calories = 0,
@@ -71,13 +79,31 @@ const CalorieProgress = React.memo(({ nutrients }) => {
     [calories, caloriesGoal]
   );
 
-  const renderMacroCard = useCallback((label, value, total, color) => (
+  const macroCards = useMemo(() => ([
+    {
+      label: 'Carbs',
+      value: carbs,
+      total: carbsGoal,
+      color: '#8A2BE2'
+    },
+    {
+      label: 'Protein',
+      value: protein,
+      total: proteinGoal,
+      color: theme.colors.secondary
+    },
+    {
+      label: 'Fats',
+      value: fats,
+      total: fatsGoal,
+      color: '#FFD700'
+    }
+  ]), [carbs, carbsGoal, protein, proteinGoal, fats, fatsGoal, theme.colors.secondary]);
+
+  const renderMacroCard = useCallback((cardData) => (
     <MacroCard
-      key={label}
-      label={label}
-      value={value}
-      total={total}
-      color={color}
+      key={cardData.label}
+      {...cardData}
     />
   ), []);
 
@@ -107,12 +133,27 @@ const CalorieProgress = React.memo(({ nutrients }) => {
           </AnimatedCircularProgress>
         </View>
         <View style={styles.macroContainer}>
-          {renderMacroCard("Carbs", carbs, carbsGoal, "#8A2BE2")}
-          {renderMacroCard("Protein", protein, proteinGoal, theme.colors.secondary)}
-          {renderMacroCard("Fats", fats, fatsGoal, "#FFD700")}
+          {macroCards.map(renderMacroCard)}
         </View>
       </View>
     </View>
+  );
+}, (prevProps, nextProps) => {
+  // Deep comparison of nutrients
+  const prevCurrent = prevProps.nutrients?.current || {};
+  const nextCurrent = nextProps.nutrients?.current || {};
+  const prevGoals = prevProps.nutrients?.goals || {};
+  const nextGoals = nextProps.nutrients?.goals || {};
+  
+  return (
+    prevCurrent.calories === nextCurrent.calories &&
+    prevCurrent.carbs === nextCurrent.carbs &&
+    prevCurrent.protein === nextCurrent.protein &&
+    prevCurrent.fats === nextCurrent.fats &&
+    prevGoals.calories === nextGoals.calories &&
+    prevGoals.carbs === nextGoals.carbs &&
+    prevGoals.protein === nextGoals.protein &&
+    prevGoals.fats === nextGoals.fats
   );
 });
 

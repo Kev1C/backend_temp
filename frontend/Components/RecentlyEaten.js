@@ -1,5 +1,5 @@
 // frontend/Components/RecentlyEaten.js
-import React, { memo } from 'react';
+import React, { memo, useMemo, useCallback } from 'react';
 import { View, Image, VirtualizedList, Dimensions } from 'react-native';
 import { Text, Card, useTheme, ActivityIndicator } from 'react-native-paper';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
@@ -7,7 +7,16 @@ import { StyleSheet } from 'react-native';
 
 const MealItem = memo(({ meal }) => {
   const theme = useTheme();
-  const styles = getStyles(theme);
+  const styles = useMemo(() => getStyles(theme), [theme]);
+
+  const nutritionInfo = useMemo(() => (
+    <View style={styles.nutritionInfo}>
+      <Text style={styles.mealCalories}>{meal.calories} cal</Text>
+      <Text style={[styles.macroText, { color: '#8A2BE2' }]}>{meal.carbs}g</Text>
+      <Text style={[styles.macroText, { color: theme.colors.secondary }]}>{meal.protein}g</Text>
+      <Text style={[styles.macroText, { color: '#FFD700' }]}>{meal.fats}g</Text>
+    </View>
+  ), [meal.calories, meal.carbs, meal.protein, meal.fats, styles, theme.colors.secondary]);
 
   return (
     <Card style={styles.mealCard}>
@@ -25,27 +34,36 @@ const MealItem = memo(({ meal }) => {
         )}
         <View style={styles.mealInfo}>
           <Text style={styles.mealName}>{meal.name}</Text>
-          <View style={styles.nutritionInfo}>
-            <Text style={styles.mealCalories}>{meal.calories} cal</Text>
-            <Text style={[styles.macroText, { color: '#8A2BE2' }]}>{meal.carbs}g</Text>
-            <Text style={[styles.macroText, { color: theme.colors.secondary }]}>{meal.protein}g</Text>
-            <Text style={[styles.macroText, { color: '#FFD700' }]}>{meal.fats}g</Text>
-          </View>
+          {nutritionInfo}
         </View>
         <Text style={styles.mealTime}>{meal.time}</Text>
       </Card.Content>
     </Card>
   );
+}, (prevProps, nextProps) => {
+  // Custom comparison function to prevent unnecessary re-renders
+  return (
+    prevProps.meal.id === nextProps.meal.id &&
+    prevProps.meal.calories === nextProps.meal.calories &&
+    prevProps.meal.carbs === nextProps.meal.carbs &&
+    prevProps.meal.protein === nextProps.meal.protein &&
+    prevProps.meal.fats === nextProps.meal.fats
+  );
 });
 
-const RecentlyEaten = ({ meals = [], isLoading = false }) => {
+const RecentlyEaten = memo(({ meals = [], isLoading = false }) => {
   const theme = useTheme();
-  const styles = getStyles(theme);
-  const windowHeight = Dimensions.get('window').height;
+  const styles = useMemo(() => getStyles(theme), [theme]);
 
-  const getItem = (data, index) => data[index];
-  const getItemCount = (data) => data.length;
-  const keyExtractor = (item, index) => item.id?.toString() || item._id?.toString() || index.toString();
+  const getItem = useCallback((data, index) => data[index], []);
+  const getItemCount = useCallback((data) => data.length, []);
+  const keyExtractor = useCallback((item, index) => 
+    item.id?.toString() || item._id?.toString() || index.toString()
+  , []);
+
+  const renderItem = useCallback(({ item }) => (
+    <MealItem meal={item} />
+  ), []);
 
   if (isLoading) {
     return (
@@ -56,7 +74,7 @@ const RecentlyEaten = ({ meals = [], isLoading = false }) => {
     );
   }
 
-  if (meals.length === 0) {
+  if (!meals.length) {
     return (
       <View style={styles.emptyContainer}>
         <MaterialCommunityIcons 
@@ -73,7 +91,7 @@ const RecentlyEaten = ({ meals = [], isLoading = false }) => {
     <View style={styles.container}>
       <VirtualizedList
         data={meals}
-        renderItem={({ item }) => <MealItem meal={item} />}
+        renderItem={renderItem}
         keyExtractor={keyExtractor}
         getItemCount={getItemCount}
         getItem={getItem}
@@ -90,7 +108,25 @@ const RecentlyEaten = ({ meals = [], isLoading = false }) => {
       />
     </View>
   );
-};
+}, (prevProps, nextProps) => {
+  // Deep comparison of meals array
+  if (prevProps.isLoading !== nextProps.isLoading) return false;
+  if (prevProps.meals.length !== nextProps.meals.length) return false;
+  
+  // Compare only the last meal (most recently added)
+  const prevLastMeal = prevProps.meals[prevProps.meals.length - 1];
+  const nextLastMeal = nextProps.meals[nextProps.meals.length - 1];
+  
+  if (!prevLastMeal || !nextLastMeal) return false;
+  
+  return (
+    prevLastMeal.id === nextLastMeal.id &&
+    prevLastMeal.calories === nextLastMeal.calories &&
+    prevLastMeal.carbs === nextLastMeal.carbs &&
+    prevLastMeal.protein === nextLastMeal.protein &&
+    prevLastMeal.fats === nextLastMeal.fats
+  );
+});
 
 const getStyles = (theme) => StyleSheet.create({
   container: {
@@ -178,4 +214,4 @@ const getStyles = (theme) => StyleSheet.create({
   },
 });
 
-export default memo(RecentlyEaten);
+export default RecentlyEaten;

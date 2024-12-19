@@ -183,13 +183,36 @@ const updateDailyNutrition = asyncHandler(async (req, res) => {
     });
     await newMeal.save();
 
-    // Update cache
+    // Get existing cache data or fetch from database
     const cacheKey = `${userId}-${date}`;
+    let existingData = nutritionCache.get(cacheKey);
+    
+    if (!existingData) {
+      // Fetch current day's meals from database
+      const meals = await Meal.find({
+        userId: new mongoose.Types.ObjectId(userId),
+        date: {
+          $gte: startDate,
+          $lte: endDate
+        }
+      }).sort({ date: 1 });
+
+      existingData = {
+        calories: 0,
+        protein: 0,
+        carbs: 0,
+        fats: 0,
+        meals: meals
+      };
+    }
+
+    // Calculate new totals by adding the new meal to existing totals
     const updatedData = {
-      ...totals,
-      meals: nutritionCache.has(cacheKey) 
-        ? [...nutritionCache.get(cacheKey).meals, meal]
-        : [meal]
+      calories: (existingData.calories || 0) + (meal.calories || 0),
+      protein: (existingData.protein || 0) + (meal.protein || 0),
+      carbs: (existingData.carbs || 0) + (meal.carbs || 0),
+      fats: (existingData.fats || 0) + (meal.fats || 0),
+      meals: [...(existingData.meals || []), meal]
     };
     
     nutritionCache.set(cacheKey, updatedData);

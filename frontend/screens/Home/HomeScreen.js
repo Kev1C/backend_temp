@@ -1,6 +1,6 @@
 // frontend/screens/Home/HomeScreen.js
 import React, { useMemo, useState, useEffect, useCallback } from 'react';
-import { Text, SafeAreaView, View, Image, FlatList, ScrollView, StyleSheet, Alert } from 'react-native';
+import { Text, SafeAreaView, View, Image, FlatList, StyleSheet, Alert } from 'react-native';
 import { useTheme, FAB } from 'react-native-paper';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { useAuthStore } from '../../stores/authStore';
@@ -18,7 +18,7 @@ const HomeScreen = () => {
   const { user, authToken, isGuest } = useAuthStore();
   const { onboardingData, isOnboardingComplete } = useOnboardingStore();
   const { calculatedNutrients, loading: loadingNutrients, fetchCalculations } = useNutrientCalculations();
-  const { fetchDailyNutrition, dailyNutrition, isLoading: isLoadingNutrition } = useNutritionStore();
+  const { fetchDailyNutrition, dailyNutrition, isLoading: isLoadingNutrition, updateDailyNutrition } = useNutritionStore();
   const { calories, addCalories, resetCalories } = useCalorieStore();
   const macroStore = useMacroStore();
   const { macros, addMacros, resetMacros, checkDailyReset, hydrated } = macroStore;
@@ -212,33 +212,16 @@ const HomeScreen = () => {
       (async () => {
         try {
           setLoadingStates(prev => ({ ...prev, saving: true }));
+          
+          // Update nutrition store with new meal
+          await updateDailyNutrition(selectedDate, newMeal);
+          
+          // Save to backend without triggering another fetch
           await saveMealToBackend(newMeal, selectedDate);
           
-          // Force refresh nutrition data
-          await fetchDailyNutrition(selectedDate, true);
+          // Force a re-render of the meals list
+          setMeals(prev => [...prev, newMeal]);
           
-          // Update local state with new meal
-          setMeals(prevMeals => [...prevMeals, newMeal]);
-          
-          // Update progress if provided
-          if (params.updateProgress && params.updateProgress !== prevUpdateProgress) {
-            setPrevUpdateProgress(params.updateProgress);
-            const { calories, carbs, protein, fats } = params.updateProgress;
-            
-            // Reset before adding new values
-            resetMacros();
-            resetCalories();
-            
-            // Add new values
-            addMacros(
-              Number(protein) || 0,
-              Number(carbs) || 0,
-              Number(fats) || 0
-            );
-            if (addCalories) {
-              addCalories(Number(calories) || 0);
-            }
-          }
         } catch (error) {
           console.error('Error handling camera return:', error);
           Alert.alert('Error', 'Failed to update nutrition data');
@@ -247,34 +230,7 @@ const HomeScreen = () => {
         }
       })();
     }
-  }, [route.params, prevAddMeal, prevUpdateProgress, selectedDate, saveMealToBackend, 
-      fetchDailyNutrition, resetMacros, resetCalories, addMacros, addCalories]);
-
-  // Get daily nutrition data and force refresh when meals change
-  useEffect(() => {
-    if (selectedDate) {
-      // Only fetch if we don't have data for this date
-      const store = useNutritionStore.getState();
-      const currentFormattedDate = formatDate(selectedDate);
-      const hasData = store.dailyNutrition && store.currentDate === currentFormattedDate;
-      
-      if (!hasData) {
-        fetchDailyNutrition(selectedDate);
-      }
-    }
-  }, [selectedDate]); // Only depend on selectedDate
-
-  // Sync meals with nutrition data
-  useEffect(() => {
-    if (dailyNutrition) {
-      setMeals(dailyNutrition.meals || []);
-    }
-  }, [dailyNutrition]);
-
-  // Memoize FAB onPress handler
-  const handleFABPress = useCallback(() => {
-    navigation.navigate('Camera');
-  }, [navigation]);
+  }, [route.params, prevAddMeal, selectedDate, saveMealToBackend, updateDailyNutrition]);
 
   // Memoize nutrients data for display
   const nutrients = useMemo(() => {
@@ -298,76 +254,58 @@ const HomeScreen = () => {
     };
   }, [dailyNutrition, calculatedNutrients, isLoadingNutrition]);
 
-  const renderRecentlyEaten = useMemo(() => (
-    <MemoizedRecentlyEaten
-      meals={meals}
-      isLoading={loadingStates.nutrition}
-    />
-  ), [meals, loadingStates.nutrition]);
+  // Memoize meals data to prevent unnecessary re-renders
+  const mealsData = useMemo(() => ({
+    meals: dailyNutrition?.meals || [],
+    isLoading: isLoadingNutrition || loadingStates.saving
+  }), [dailyNutrition?.meals, isLoadingNutrition, loadingStates.saving]);
 
   return (
-    <SafeAreaView style={styles.safeArea}>
-      <View style={styles.container}>
-        <Image 
-          source={require('../../assets/images/panda-looking-over.jpg')}
-          style={styles.logo}
+    <SafeAreaView style={styles.container}>
+      <View style={styles.header}>
+        <MemoizedWeekCalendar 
+          onDateSelect={handleDateSelect} 
+          selectedDate={selectedDate} 
         />
-        <View style={styles.calendarContainer}>
-          <MemoizedWeekCalendar 
-            onDateSelect={handleDateSelect} 
-            selectedDate={selectedDate} 
-          />
-        </View>
         <MemoizedCalorieProgress nutrients={nutrients} />
-        <View style={styles.recentlyEatenContainer}>
-          <Text style={styles.sectionTitle}>Recently Eaten</Text>
-          {renderRecentlyEaten}
-        </View>
-        <FAB
-          icon="plus"
-          style={styles.fab}
-          onPress={handleFABPress}
-        />
       </View>
+      <View style={styles.mealsContainer}>
+        <Text style={styles.sectionTitle}>Recently Eaten</Text>
+        <MemoizedRecentlyEaten {...mealsData} />
+      </View>
+      <FAB
+        icon="plus"
+        style={[styles.fab, { backgroundColor: theme.colors.primary }]}
+        onPress={() => navigation.navigate('Camera')}
+      />
     </SafeAreaView>
   );
 };
 
 const getStyles = (theme) => StyleSheet.create({
-  safeArea: {
+  container: {
     flex: 1,
     backgroundColor: theme.colors.background,
   },
-  container: {
-    flex: 1,
+  header: {
     paddingHorizontal: 16,
     paddingTop: 16,
   },
-  logo: {
-    width: 80,
-    height: 80,
-    resizeMode: 'contain',
-    marginBottom: 8,
-  },
-  calendarContainer: {
-    marginBottom: 12,
-  },
-  recentlyEatenContainer: {
+  mealsContainer: {
     flex: 1,
-    marginTop: 12,
-    marginBottom: 16,
+    paddingHorizontal: 16,
   },
   sectionTitle: {
     fontSize: 20,
     fontWeight: 'bold',
-    marginBottom: 12,
-    color: theme.colors.text,
+    marginVertical: 8,
+    color: theme.colors.onSurface,
   },
   fab: {
     position: 'absolute',
-    bottom: 24,
-    right: 24,
-    elevation: 4,
+    margin: 16,
+    right: 0,
+    bottom: 0,
   },
 });
 

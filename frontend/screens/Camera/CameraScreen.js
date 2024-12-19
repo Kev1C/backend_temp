@@ -216,18 +216,9 @@ const CameraScreen = ({ navigation }) => {
     };
 
     try {
-      // Update nutrition store first
-      await updateDailyNutrition(new Date(), meal);
-
-      // Navigate back with the meal data
+      // Navigate back with the meal data only
       navigation.navigate('Home', {
-        addMeal: meal,
-        updateProgress: {
-          calories: nutritionState.calories,
-          carbs: nutritionState.carbs,
-          protein: nutritionState.protein,
-          fats: nutritionState.fats
-        }
+        addMeal: meal
       });
 
       setIsModalVisible(false);

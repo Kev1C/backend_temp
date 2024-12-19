@@ -107,10 +107,9 @@ export const useNutritionStore = create((set, get) => ({
       // Get current nutrition data
       let currentData = get().dailyNutrition;
       
-      // If no current data, try to fetch from cache first
-      if (!currentData) {
-        const cache = cacheStore.getState();
-        currentData = cache.get(cacheKey) || {
+      // If no current data, initialize with zeros
+      if (!currentData || get().currentDate !== formattedDate) {
+        currentData = {
           calories: 0,
           protein: 0,
           carbs: 0,
@@ -142,18 +141,11 @@ export const useNutritionStore = create((set, get) => ({
         meal: {
           ...newMeal,
           date: formattedDate
-        },
-        totals: {
-          calories: updatedData.calories,
-          protein: updatedData.protein,
-          carbs: updatedData.carbs,
-          fats: updatedData.fats
         }
       });
       
       if (response.data && !isEqual(response.data, updatedData)) {
         // Update with server data if different
-        const cache = cacheStore.getState();
         cache.set(cacheKey, response.data);
         set({ 
           dailyNutrition: response.data,
