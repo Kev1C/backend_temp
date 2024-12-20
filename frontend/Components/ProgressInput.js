@@ -88,28 +88,23 @@ const ProgressInput = React.memo(({ token, onSubmit, disabled }) => {
       return;
     }
 
-    // Validate all fields
-    const numericFields = ['weight', 'muscleMass', 'fatPercentage'];
-    const invalidFields = numericFields.filter(
-      field => !formData[field] || !validateField(formData[field])
-    );
-
-    if (invalidFields.length > 0) {
-      setError(`Please enter valid numbers for: ${invalidFields.join(', ')}`);
+    // Validate weight field only
+    if (!formData.weight || !validateField(formData.weight)) {
+      setError('Please enter a valid weight');
       return;
     }
 
-    setLoading(true);
-    setError(null);
-
     try {
-      const payload = {
+      setLoading(true);
+      setError(null);
+
+      const dataToSubmit = {
         weight: parseFloat(formData.weight),
-        muscleMass: parseFloat(formData.muscleMass),
-        fatPercentage: parseFloat(formData.fatPercentage)
+        muscleMass: formData.muscleMass ? parseFloat(formData.muscleMass) : null,
+        fatPercentage: formData.fatPercentage ? parseFloat(formData.fatPercentage) : null
       };
 
-      await api.post('/progress', payload);
+      await api.post('/progress', dataToSubmit);
 
       setFormData({
         weight: '',

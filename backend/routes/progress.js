@@ -15,18 +15,18 @@ router.post('/', auth, async (req, res) => {
         const { weight, muscleMass, fatPercentage } = req.body;
 
         // Validate input
-        if (!weight || !muscleMass || !fatPercentage) {
+        if (!weight) {
             return res.status(400).json({ 
-                error: 'Weight, muscle mass, and fat percentage are required.',
-                received: { weight, muscleMass, fatPercentage }
+                error: 'Weight is required.',
+                received: { weight }
             });
         }
 
         const progress = new Progress({
             user: req.user.userId,
             weight: Number(weight),
-            muscleMass: Number(muscleMass),
-            fatPercentage: Number(fatPercentage),
+            muscleMass: muscleMass ? Number(muscleMass) : null,
+            fatPercentage: fatPercentage ? Number(fatPercentage) : null,
             measurements: req.body.measurements,
             date: req.body.date || new Date()
         });

@@ -137,15 +137,23 @@ const ProgressChart = React.forwardRef(({ token, selectedCategories }, ref) => {
 
   // Memoize the filtered data
   const validProgressData = useMemo(() => {
-    return progressData.filter(entry => 
-      entry && 
-      typeof entry.weight === 'number' && 
-      typeof entry.muscleMass === 'number' && 
-      typeof entry.fatPercentage === 'number' && 
-      entry.date
-    ).sort((a, b) => new Date(a.date) - new Date(b.date))
+    return progressData.filter(entry => {
+      if (!entry || !entry.date) return false;
+      
+      // Only validate fields that are selected
+      const validations = {
+        Weight: () => typeof entry.weight === 'number',
+        MuscleMass: () => typeof entry.muscleMass === 'number',
+        BodyFat: () => typeof entry.fatPercentage === 'number'
+      };
+
+      // Check if at least one selected category has valid data
+      return selectedCategories.some(category => 
+        validations[category] ? validations[category]() : false
+      );
+    }).sort((a, b) => new Date(a.date) - new Date(b.date))
     .slice(-DATA_WINDOW_SIZE);
-  }, [progressData]);
+  }, [progressData, selectedCategories]);
 
   // Calculate domains based on selected categories and values
   const calculateYDomain = useCallback((weightVals, muscleVals, fatVals, categories) => {

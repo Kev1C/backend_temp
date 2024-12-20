@@ -134,20 +134,29 @@ const authStore = create((set, get) => ({
       }
 
       const response = await api.post('/auth/refresh', { refreshToken });
-      if (!response.data || !response.data.token || !response.data.refreshToken) {
+      if (!response.data || !response.data.token) {
         throw new Error('Invalid response from refresh endpoint');
       }
 
-      const { token: newToken, refreshToken: newRefreshToken } = response.data;
-      if (typeof newToken !== 'string' || typeof newRefreshToken !== 'string') {
+      const { token: newToken, refreshToken: newRefreshToken = refreshToken } = response.data;
+      if (typeof newToken !== 'string') {
         throw new Error('Token received is not a string');
       }
 
-      // Ensure all values stored in SecureStore are strings
-      await Promise.all([
-        SecureStore.setItemAsync(SIGNIN_KEY, newToken),
-        SecureStore.setItemAsync(REFRESH_TOKEN_KEY, newRefreshToken)
-      ]);
+      // Store the new token and optionally the new refresh token if provided
+      const storagePromises = [SecureStore.setItemAsync(SIGNIN_KEY, newToken)];
+      if (newRefreshToken && typeof newRefreshToken === 'string') {
+        storagePromises.push(SecureStore.setItemAsync(REFRESH_TOKEN_KEY, newRefreshToken));
+      }
+      await Promise.all(storagePromises);
+
+      // Decode the new token to get its expiration
+      const decoded = jwtDecode(newToken);
+      if (decoded.exp) {
+        // Set up next refresh 1 minute before expiration
+        const timeUntilRefresh = (decoded.exp * 1000) - Date.now() - 60000;
+        setTimeout(() => get().refreshAccessToken(), Math.max(0, timeUntilRefresh));
+      }
 
       set({
         authToken: newToken,
