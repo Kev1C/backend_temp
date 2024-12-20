@@ -1,7 +1,7 @@
 // frontend/screens/Profile/ProfileScreen.js
 
 import React, { useCallback, useMemo } from 'react';
-import { View, StyleSheet, ActivityIndicator, TouchableOpacity, FlatList } from 'react-native';
+import { View, StyleSheet, ActivityIndicator, TouchableOpacity, FlatList, Image } from 'react-native';
 import { Title, Caption, Text } from 'react-native-paper';
 import { useAuthStore } from '../../stores/authStore';
 import { useTheme } from 'react-native-paper';
@@ -20,25 +20,25 @@ const ProfileScreen = ({ navigation }) => {
   // Memoize the user info section
   const UserInfoSection = useMemo(() => (
     <View style={styles.userInfoSection}>
-      <View>
-        {user.name ? (
+      <View style={styles.headerContainer}>
+        <Image 
+          source={require('../../assets/images/panda-looking-over.jpg')} 
+          style={styles.pandaLogo}
+        />
+        {user.name && (
           <Title style={[styles.title, { color: theme.colors.text }]}>{user.name}</Title>
-        ) : (
-          <Title style={[styles.title, { color: theme.colors.text }]}>User ID: {user.id}</Title>
         )}
-        {user.email && (
-          <Caption style={[styles.caption, { color: theme.colors.text }]}>{user.email}</Caption>
-        )}
+        <TouchableOpacity
+          onPress={() => navigation.navigate('Settings')}
+          accessibilityLabel="Open Settings"
+          accessibilityRole="button"
+          style={styles.settingsButton}
+        >
+          <Icon name="menu" size={28} color={theme.colors.primary} />
+        </TouchableOpacity>
       </View>
-      <TouchableOpacity
-        onPress={() => navigation.navigate('Settings')}
-        accessibilityLabel="Open Settings"
-        accessibilityRole="button"
-      >
-        <Icon name="menu" size={28} color={theme.colors.primary} />
-      </TouchableOpacity>
     </View>
-  ), [user.name, user.id, user.email, theme.colors, navigation]);
+  ), [user.name, theme.colors, navigation]);
 
   // Memoize the error section
   const ErrorSection = useMemo(() => error && (
@@ -108,20 +108,26 @@ const styles = StyleSheet.create({
   },
   userInfoSection: {
     paddingHorizontal: 20,
-    paddingVertical: 12,
+    paddingVertical: 15,
+  },
+  headerContainer: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
-    backgroundColor: 'transparent',
+    justifyContent: 'space-between',
+  },
+  pandaLogo: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
   },
   title: {
+    flex: 1,
+    marginLeft: 15,
     fontSize: 26,
     fontWeight: 'bold',
   },
-  caption: {
-    fontSize: 16,
-    lineHeight: 16,
-    marginTop: 5,
+  settingsButton: {
+    marginLeft: 10,
   },
   loadingContainer: {
     flex: 1,

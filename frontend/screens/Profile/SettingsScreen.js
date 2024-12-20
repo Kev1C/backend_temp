@@ -65,6 +65,7 @@ const SettingsScreen = () => {
 
         {/* User Stats Section */}
         <View style={styles.statsContainer}>
+          {renderUserStat('User ID', user?.id || '--', 'account')}
           {renderUserStat('Age', user?.age || '--', 'calendar')}
           {renderUserStat('Height', user?.height ? `${user.height} cm` : '--', 'human-male-height')}
           {renderUserStat('Weight', user?.weight ? `${user.weight} kg` : '--', 'weight')}
