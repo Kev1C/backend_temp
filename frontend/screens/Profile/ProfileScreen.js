@@ -21,22 +21,18 @@ const ProfileScreen = ({ navigation }) => {
   const UserInfoSection = useMemo(() => (
     <View style={styles.userInfoSection}>
       <View style={styles.headerContainer}>
-        <Image 
-          source={require('../../assets/images/panda-looking-over.jpg')} 
-          style={styles.pandaLogo}
-        />
         {user.name && (
           <Title style={[styles.title, { color: theme.colors.text }]}>{user.name}</Title>
         )}
-        <TouchableOpacity
-          onPress={() => navigation.navigate('Settings')}
-          accessibilityLabel="Open Settings"
-          accessibilityRole="button"
-          style={styles.settingsButton}
-        >
-          <Icon name="menu" size={28} color={theme.colors.primary} />
-        </TouchableOpacity>
       </View>
+      <TouchableOpacity
+        onPress={() => navigation.navigate('Settings')}
+        accessibilityLabel="Open Settings"
+        accessibilityRole="button"
+        style={styles.settingsButton}
+      >
+        <Icon name="menu" size={28} color={theme.colors.primary} />
+      </TouchableOpacity>
     </View>
   ), [user.name, theme.colors, navigation]);
 
@@ -59,7 +55,15 @@ const ProfileScreen = ({ navigation }) => {
   // Render item for FlatList
   const renderItem = useCallback(({ item }) => {
     if (item.type === 'heatmap') {
-      return <NutritionHeatmap data={calendarData} />;
+      return (
+        <View style={styles.heatmapContainer}>
+          <Image 
+            source={require('../../assets/images/panda-looking-over.jpg')} 
+            style={styles.pandaLogo}
+          />
+          <NutritionHeatmap data={calendarData} />
+        </View>
+      );
     } else if (item.type === 'chart') {
       return <MacroNutrientsChart data={macroData} />;
     }
@@ -107,27 +111,35 @@ const styles = StyleSheet.create({
     padding: 20,
   },
   userInfoSection: {
-    paddingHorizontal: 20,
     paddingVertical: 15,
-  },
-  headerContainer: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
+    paddingHorizontal: 20,
+  },
+  headerContainer: {
+    flex: 1,
+  },
+  heatmapContainer: {
+    position: 'relative',
+    width: '100%',
   },
   pandaLogo: {
+    position: 'absolute',
+    top: 8,
+    left: 8,
     width: 40,
     height: 40,
     borderRadius: 20,
+    zIndex: 1,
   },
   title: {
-    flex: 1,
-    marginLeft: 15,
     fontSize: 26,
     fontWeight: 'bold',
   },
   settingsButton: {
-    marginLeft: 10,
+    padding: 10,
+    marginLeft: 'auto',
   },
   loadingContainer: {
     flex: 1,
