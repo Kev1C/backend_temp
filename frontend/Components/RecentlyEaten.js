@@ -188,7 +188,7 @@ const getStyles = (theme) => StyleSheet.create({
     gap: 8,
   },
   mealName: {
-    fontSize: 16,
+    fontSize: 18,
     fontWeight: '600',
     color: theme.colors.text,
     marginBottom: 2,
@@ -204,8 +204,7 @@ const getStyles = (theme) => StyleSheet.create({
   },
   mealTime: {
     fontSize: 12,
-    color: theme.colors.text,
-    opacity: 0.6,
+    color: '#666',
   },
   emptyText: {
     marginTop: 8,
