@@ -12,8 +12,7 @@ const mealSchema = new mongoose.Schema({
   },
   image: {
     type: String,
-    required: true,
-    description: 'Local path to the image file on user device'
+    required: true
   },
   calories: {
     type: Number,
@@ -34,10 +33,14 @@ const mealSchema = new mongoose.Schema({
   time: {
     type: String,
     required: true
+  },
+  date: {
+    type: Date,
+    default: Date.now
   }
-}, { timestamps: true });
+});
 
 // Add index for userId and date for better query performance
-mealSchema.index({ userId: 1, createdAt: 1 });
+mealSchema.index({ userId: 1, date: 1 });
 
 module.exports = mongoose.model('Meal', mealSchema);

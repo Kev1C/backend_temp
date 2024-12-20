@@ -82,71 +82,70 @@ const getDailyNutrition = asyncHandler(async (req, res) => {
 
   const { startDate, endDate } = parseDateRange(date);
 
-  try {
-    // Optimized aggregation pipeline with index hints
-    const pipeline = [
-      {
-        $match: {
-          userId: new mongoose.Types.ObjectId(userId),
-          createdAt: {
-            $gte: startDate,
-            $lte: endDate
-          }
+  // Optimized aggregation pipeline with index hints
+  const pipeline = [
+    {
+      $match: {
+        userId: new mongoose.Types.ObjectId(userId),
+        date: {
+          $gte: startDate,
+          $lte: endDate
         }
-      },
-      {
-        $group: {
-          _id: null,
-          totalCalories: { $sum: "$calories" },
-          totalProtein: { $sum: "$protein" },
-          totalCarbs: { $sum: "$carbs" },
-          totalFats: { $sum: "$fats" },
-          meals: { $push: "$$ROOT" }
-        }
-      },
-      {
-        $project: {
-          _id: 0,
-          totalCalories: 1,
-          totalProtein: 1,
-          totalCarbs: 1,
-          totalFats: 1,
-          meals: {
-            $map: {
-              input: "$meals",
-              as: "meal",
-              in: {
-                _id: "$$meal._id",
-                name: "$$meal.name",
-                image: "$$meal.image",
-                calories: "$$meal.calories",
-                protein: "$$meal.protein",
-                carbs: "$$meal.carbs",
-                fats: "$$meal.fats",
-                time: "$$meal.time",
-                createdAt: "$$meal.createdAt"
-              }
-            }
+      }
+    },
+    {
+      $group: {
+        _id: null,
+        totalCalories: { $sum: "$calories" },
+        totalProtein: { $sum: "$protein" },
+        totalCarbs: { $sum: "$carbs" },
+        totalFats: { $sum: "$fats" },
+        meals: {
+          $push: {
+            id: "$_id",
+            name: "$name",
+            calories: "$calories",
+            protein: "$protein",
+            carbs: "$carbs",
+            fats: "$fats",
+            image: "$image",
+            time: "$time",
+            date: "$date"
           }
         }
       }
-    ];
+    }
+  ];
 
-    const result = await Meal.aggregate(pipeline);
-    const dailyData = result[0] || {
-      totalCalories: 0,
-      totalProtein: 0,
-      totalCarbs: 0,
-      totalFats: 0,
-      meals: []
-    };
+  const [aggregateResult] = await Meal.aggregate(pipeline)
+    .hint({ userId: 1, date: 1 })
+    .exec();
 
-    setCacheWithTTL(cacheKey, dailyData);
-    res.json(dailyData);
-  } catch (error) {
-    console.error('Error in getDailyNutrition:', error);
-    res.status(500).json({ message: 'Error fetching nutrition data', error: error.message });
-  }
+  const result = aggregateResult ? {
+    calories: aggregateResult.totalCalories,
+    protein: aggregateResult.totalProtein,
+    carbs: aggregateResult.totalCarbs,
+    fats: aggregateResult.totalFats,
+    meals: aggregateResult.meals
+  } : {
+    calories: 0,
+    protein: 0,
+    carbs: 0,
+    fats: 0,
+    meals: []
+  };
+
+  // Cache the result
+  setCacheWithTTL(cacheKey, result);
+
+  // Set ETag for the new data
+  const etag = require('crypto')
+    .createHash('md5')
+    .update(JSON.stringify(result))
+    .digest('hex');
+  res.set('ETag', etag);
+  
+  res.json(result);
 });
 
 // @desc    Update daily nutrition data

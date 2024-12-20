@@ -34,21 +34,17 @@ router.post('/calculate', auth, calculateNutritionalNeeds);
 // Save meal and update daily nutrition
 router.post('/meals', auth, async (req, res) => {
   try {
-    const { name, image, calories, carbs, protein, fats, time } = req.body;
+    const { name, image, calories, carbs, protein, fats, time, date } = req.body;
     const userId = req.user.id;
+    const mealDate = new Date(date);
     
-    // Validate that image path exists
-    if (!image || !image.startsWith('file://')) {
-      return res.status(400).json({ message: 'Invalid image path. Image must be stored locally.' });
-    }
-
     // Start a session for transaction
     const session = await Meal.startSession();
     let savedMeal;
     
     try {
       await session.withTransaction(async () => {
-        // Create new meal entry with local image path
+        // Create new meal entry
         savedMeal = await Meal.create([{
           userId,
           name,
@@ -57,24 +53,36 @@ router.post('/meals', auth, async (req, res) => {
           carbs,
           protein,
           fats,
-          time
+          time,
+          date: mealDate
         }], { session });
-
-        // Update daily nutrition totals
+        
+        // Update or create daily nutrition
         await DailyNutrition.findOneAndUpdate(
-          { userId, date: new Date() },
-          {
-            $inc: {
-              totalCalories: calories,
-              totalProtein: protein,
-              totalCarbs: carbs,
-              totalFats: fats
+          { 
+            userId, 
+            date: {
+              $gte: new Date(mealDate.setHours(0, 0, 0, 0)),
+              $lt: new Date(mealDate.setHours(23, 59, 59, 999))
             }
           },
-          { upsert: true, new: true, session }
+          {
+            $inc: {
+              calories,
+              carbs,
+              protein,
+              fats
+            },
+            $push: { meals: savedMeal[0]._id }
+          },
+          { 
+            upsert: true,
+            new: true,
+            session 
+          }
         );
       });
-
+      
       await session.endSession();
       res.status(201).json(savedMeal[0]);
     } catch (error) {
@@ -83,7 +91,7 @@ router.post('/meals', auth, async (req, res) => {
     }
   } catch (error) {
     console.error('Error saving meal:', error);
-    res.status(500).json({ message: 'Error saving meal data' });
+    res.status(500).json({ message: 'Error saving meal', error: error.message });
   }
 });
 
