@@ -126,7 +126,7 @@ const styles = StyleSheet.create({
   },
   pandaLogo: {
     position: 'absolute',
-    top: 22,
+    top: 24,
     left: 20,
     width: 45,
     height: 45,
