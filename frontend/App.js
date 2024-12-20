@@ -1,14 +1,30 @@
 // App.js
 
 import 'react-native-gesture-handler'; // Must be at the very top
-import React from 'react';
+import React, { useEffect } from 'react';
 import { ThemeProvider, ThemeContext } from './context/ThemeContext';
 import { Provider as PaperProvider } from 'react-native-paper'; 
 import { StatusBar } from 'expo-status-bar';
 import { NavigationContainer } from '@react-navigation/native';
+import { useAuthStore } from './stores/authStore';
+import { useOnboardingStore } from './stores/onboardingStore';
 import AppNavigator from './navigation/AppNavigator';
 
 const App = () => {
+  const { initializeAuth } = useAuthStore();
+  const { loadOnboardingData } = useOnboardingStore();
+
+  useEffect(() => {
+    const initializeApp = async () => {
+      await Promise.all([
+        initializeAuth(),
+        loadOnboardingData()
+      ]);
+    };
+
+    initializeApp();
+  }, []);
+
   return (
     <ThemeProvider>
       <ThemeContext.Consumer>
