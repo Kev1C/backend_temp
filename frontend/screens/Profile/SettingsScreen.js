@@ -1,6 +1,6 @@
 // frontend/screens/Profile/SettingsScreen.js
 
-import React, { useContext } from 'react';
+import React, { useContext, useEffect } from 'react';
 import { View, Alert, ScrollView, TouchableOpacity, SafeAreaView, Platform, StatusBar } from 'react-native';
 import { Text, Button, Divider, Card } from 'react-native-paper';
 import { ThemeContext } from '../../context/ThemeContext';
@@ -11,9 +11,20 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 
 const SettingsScreen = () => {
   const { theme } = useContext(ThemeContext);
-  const { signOut, user } = useAuthStore();
+  const { signOut, user, updateUserData, loading } = useAuthStore();
   const navigation = useNavigation();
   const styles = getStyles(theme);
+
+  useEffect(() => {
+    const loadUserData = async () => {
+      try {
+        await updateUserData(true);
+      } catch (error) {
+        console.error('Error loading user data:', error);
+      }
+    };
+    loadUserData();
+  }, []);
 
   const handleLogout = () => {
     Alert.alert(
@@ -44,7 +55,9 @@ const SettingsScreen = () => {
         <MaterialCommunityIcons name={icon} size={24} color={theme.colors.primary} />
         <View style={styles.statTextContainer}>
           <Text style={styles.statLabel}>{label}</Text>
-          <Text style={styles.statValue}>{value}</Text>
+          <Text style={styles.statValue}>
+            {loading ? 'Loading...' : value}
+          </Text>
         </View>
       </Card.Content>
     </Card>

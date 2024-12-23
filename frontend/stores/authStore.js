@@ -197,7 +197,7 @@ const authStore = create((set, get) => ({
 
     try {
       set({ loading: true, error: null });
-      const response = await api.get('/user/profile');
+      const response = await api.get('/users/me');
       const userData = response.data;
 
       await SecureStore.setItemAsync(USER_DATA_KEY, JSON.stringify(userData));

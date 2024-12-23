@@ -21,6 +21,7 @@ const UserSchema = new mongoose.Schema({
     role: { type: String, enum: ['user', 'admin'], default: 'user' },
     // Onboarding information
     gender: { type: String, enum: ['male', 'female', 'other'] },
+    age: { type: Number }, // in years
     height: { type: Number }, // in cm
     weight: { type: Number }, // in kg
     fitnessGoal: { type: String, enum: ['lose_weight', 'get_fitter', 'gain_muscle'], default: 'get_fitter' },

@@ -20,6 +20,7 @@ const getUserData = async (req, res) => {
                 email: 'user_' + userId.substring(0, 6) + '@example.com',
                 password: 'defaultpassword',
                 gender: 'other',
+                age: 25, // Default age
                 height: 170,
                 weight: 70,
                 goal: 'get_fitter'
@@ -40,7 +41,7 @@ const getUserData = async (req, res) => {
 // Update user data
 const updateUserData = async (req, res) => {
     try {
-        const { gender, height, weight, goal } = req.body;
+        const { gender, age, height, weight, goal, isOnboardingComplete } = req.body;
         const userId = req.user.userId || req.user.id; // Support both for backward compatibility
         
         let user = await User.findById(userId);
@@ -50,11 +51,14 @@ const updateUserData = async (req, res) => {
 
         // Update user data
         if (gender) user.gender = gender;
+        if (age) user.age = age;
         if (height) user.height = height;
         if (weight) user.weight = weight;
-        if (goal) user.goal = goal;
+        if (goal) user.fitnessGoal = goal;
+        if (typeof isOnboardingComplete !== 'undefined') user.isOnboardingComplete = isOnboardingComplete;
 
         await user.save();
+        console.log('Updated user data:', user);
         res.json(user);
     } catch (error) {
         console.error('Error updating user data:', error);
