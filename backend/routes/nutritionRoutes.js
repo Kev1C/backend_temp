@@ -2,19 +2,24 @@
 const express = require('express');
 const router = express.Router();
 const auth = require('../middleware/auth');
-const { 
-  getDailyNutrition, 
+const {
+  getDailyNutrition,
   getNutritionCalculations,
   updateDailyNutrition,
   updateMacros,
   resetMacros,
-  calculateNutritionalNeeds
+  calculateNutritionalNeeds,
+  getNutritionHeatmapData, // From notworking
+  getMonthlyNutrition // From notworking
 } = require('../controllers/nutritionController');
 const Meal = require('../models/Meal');
 const DailyNutrition = require('../models/DailyNutrition');
 
 // Get daily nutrition
 router.get('/daily/:date', auth, getDailyNutrition);
+
+// Get monthly nutrition (from notworking)
+router.get('/monthly/:year/:month', auth, getMonthlyNutrition);
 
 // Update daily nutrition
 router.post('/daily/:date', auth, updateDailyNutrition);
@@ -31,17 +36,20 @@ router.post('/macros/reset', auth, resetMacros);
 // Calculate nutritional needs
 router.post('/calculate', auth, calculateNutritionalNeeds);
 
+// Get nutrition heatmap data (from notworking)
+router.get('/heatmap', auth, getNutritionHeatmapData);
+
 // Save meal and update daily nutrition
 router.post('/meals', auth, async (req, res) => {
   try {
     const { name, image, calories, carbs, protein, fats, time, date } = req.body;
     const userId = req.user.id;
     const mealDate = new Date(date);
-    
+
     // Start a session for transaction
     const session = await Meal.startSession();
     let savedMeal;
-    
+
     try {
       await session.withTransaction(async () => {
         // Create new meal entry
@@ -56,11 +64,11 @@ router.post('/meals', auth, async (req, res) => {
           time,
           date: mealDate
         }], { session });
-        
+
         // Update or create daily nutrition
         await DailyNutrition.findOneAndUpdate(
-          { 
-            userId, 
+          {
+            userId,
             date: {
               $gte: new Date(mealDate.setHours(0, 0, 0, 0)),
               $lt: new Date(mealDate.setHours(23, 59, 59, 999))
@@ -75,14 +83,14 @@ router.post('/meals', auth, async (req, res) => {
             },
             $push: { meals: savedMeal[0]._id }
           },
-          { 
+          {
             upsert: true,
             new: true,
-            session 
+            session
           }
         );
       });
-      
+
       await session.endSession();
       res.status(201).json(savedMeal[0]);
     } catch (error) {

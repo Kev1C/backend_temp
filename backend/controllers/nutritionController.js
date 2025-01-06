@@ -2,12 +2,13 @@
 const asyncHandler = require('express-async-handler');
 const mongoose = require('mongoose');
 const Meal = require('../models/Meal');
+const User = require('../models/User'); // Import User model
 
-// Optimized cache implementation with Map
+// Optimized cache implementation with Map (from notworking)
 const nutritionCache = new Map();
 const CACHE_TTL = 5 * 60 * 1000; // 5 minutes in milliseconds
 
-// Activity level multipliers
+// Activity level multipliers (from notworking)
 const ACTIVITY_MULTIPLIERS = {
   'sedentary': 1.2,
   'lightly_active': 1.375,
@@ -15,7 +16,7 @@ const ACTIVITY_MULTIPLIERS = {
   'very_active': 1.725
 };
 
-// Age ranges average values
+// Age ranges average values (from notworking)
 const AGE_RANGES = {
   '18_24': 21,
   '25_34': 29,
@@ -25,10 +26,10 @@ const AGE_RANGES = {
   '65_plus': 70
 };
 
-// Utility function to generate cache key
+// Utility function to generate cache key (from notworking)
 const generateCacheKey = (userId, date) => `nutrition:${userId}:${date}`;
 
-// Utility function to manage cache entries
+// Utility function to manage cache entries (from notworking)
 const setCacheWithTTL = (key, value) => {
   if (nutritionCache.has(key)) {
     clearTimeout(nutritionCache.get(key).timeout);
@@ -37,12 +38,13 @@ const setCacheWithTTL = (key, value) => {
   nutritionCache.set(key, { value, timeout });
 };
 
+// Utility function to get cached value (from notworking)
 const getCacheValue = (key) => {
   const entry = nutritionCache.get(key);
   return entry ? entry.value : null;
 };
 
-// Utility function to parse date
+// Utility function to parse date (from notworking)
 const parseDateRange = (dateStr) => {
   const [year, month, day] = dateStr.split('-').map(Number);
   const startDate = new Date(year, month - 1, day);
@@ -63,6 +65,7 @@ const getDailyNutrition = asyncHandler(async (req, res) => {
     return res.status(400).json({ message: 'Invalid user ID format' });
   }
 
+  // Check cache first (from notworking)
   const cacheKey = generateCacheKey(userId, date);
   const cachedData = getCacheValue(cacheKey);
 
@@ -71,18 +74,18 @@ const getDailyNutrition = asyncHandler(async (req, res) => {
       .createHash('md5')
       .update(JSON.stringify(cachedData))
       .digest('hex');
-    
+
     if (req.headers['if-none-match'] === etag) {
       return res.status(304).end();
     }
-    
+
     res.set('ETag', etag);
     return res.json(cachedData);
   }
 
   const { startDate, endDate } = parseDateRange(date);
 
-  // Optimized aggregation pipeline with index hints
+  // Optimized aggregation pipeline with index hints (from notworking)
   const pipeline = [
     {
       $match: {
@@ -118,7 +121,7 @@ const getDailyNutrition = asyncHandler(async (req, res) => {
   ];
 
   const [aggregateResult] = await Meal.aggregate(pipeline)
-    .hint({ userId: 1, date: 1 })
+    .hint({ userId: 1, date: 1 }) // Index hint (from notworking)
     .exec();
 
   const result = aggregateResult ? {
@@ -135,16 +138,16 @@ const getDailyNutrition = asyncHandler(async (req, res) => {
     meals: []
   };
 
-  // Cache the result
+  // Cache the result (from notworking)
   setCacheWithTTL(cacheKey, result);
 
-  // Set ETag for the new data
+  // Set ETag for the new data (from notworking)
   const etag = require('crypto')
     .createHash('md5')
     .update(JSON.stringify(result))
     .digest('hex');
   res.set('ETag', etag);
-  
+
   res.json(result);
 });
 
@@ -155,7 +158,9 @@ const updateDailyNutrition = asyncHandler(async (req, res) => {
   const { date } = req.params;
   const { meal } = req.body;
   const userId = req.user.userId || req.user._id;
-  const { startDate } = parseDateRange(date);
+
+  // Declare startDate and endDate
+  const { startDate, endDate } = parseDateRange(date);
 
   const session = await mongoose.startSession();
   try {
@@ -174,9 +179,51 @@ const updateDailyNutrition = asyncHandler(async (req, res) => {
         clearTimeout(nutritionCache.get(cacheKey).timeout);
         nutritionCache.delete(cacheKey);
       }
-    });
 
-    res.status(201).json({ message: 'Nutrition data updated successfully' });
+      // Fetch updated data within the transaction
+      const updatedMeals = await Meal.find({
+        userId,
+        date: { $gte: startDate, $lte: endDate }
+      }).session(session).sort({ date: 1 }); // Added .session(session)
+
+      const aggregateResult = await Meal.aggregate([
+        {
+          $match: {
+            userId: new mongoose.Types.ObjectId(userId),
+            date: { $gte: startDate, $lte: endDate }
+          }
+        },
+        {
+          $group: {
+            _id: null,
+            totalCalories: { $sum: "$calories" },
+            totalProtein: { $sum: "$protein" },
+            totalCarbs: { $sum: "$carbs" },
+            totalFats: { $sum: "$fats" },
+            meals: { $push: "$$ROOT" }
+          }
+        }
+      ]).session(session); // Added .session(session)
+
+      const result = aggregateResult[0] ? {
+        calories: aggregateResult[0].totalCalories,
+        protein: aggregateResult[0].totalProtein,
+        carbs: aggregateResult[0].totalCarbs,
+        fats: aggregateResult[0].totalFats,
+        meals: updatedMeals
+      } : {
+        calories: 0,
+        protein: 0,
+        carbs: 0,
+        fats: 0,
+        meals: updatedMeals
+      };
+
+      // Update cache with fresh data (moved inside the transaction block)
+      setCacheWithTTL(cacheKey, result);
+    }); // End of transaction block
+
+    res.status(201).json({ message: "Meal added and nutrition data updated!" });
   } catch (error) {
     console.error('Error in updateDailyNutrition:', error);
     res.status(500).json({ message: 'Error updating nutrition data' });
@@ -193,8 +240,8 @@ const getNutritionCalculations = asyncHandler(async (req, res) => {
 
   // Basic validation
   if (!gender || !weight || !height || !fitnessGoal) {
-    return res.status(400).json({ 
-      message: 'Missing required parameters: gender, weight, height, fitnessGoal' 
+    return res.status(400).json({
+      message: 'Missing required parameters: gender, weight, height, fitnessGoal'
     });
   }
 
@@ -261,7 +308,7 @@ const updateMacros = asyncHandler(async (req, res) => {
 const resetMacros = asyncHandler(async (req, res) => {
   const userId = req.user.userId || req.user._id;
   const cacheKey = `macros-${userId}`;
-  
+
   // Reset to zero
   const resetData = {
     calories: 0,
@@ -270,7 +317,7 @@ const resetMacros = asyncHandler(async (req, res) => {
     fats: 0,
     lastUpdated: new Date()
   };
-  
+
   setCacheWithTTL(cacheKey, resetData);
 
   res.json(resetData);
@@ -284,8 +331,8 @@ const calculateNutritionalNeeds = asyncHandler(async (req, res) => {
 
   // Basic validation
   if (!gender || !ageRange || !height || !weight || !activityLevel || !fitnessGoal) {
-    return res.status(400).json({ 
-      message: 'Missing required parameters' 
+    return res.status(400).json({
+      message: 'Missing required parameters'
     });
   }
 
@@ -351,11 +398,279 @@ const calculateNutritionalNeeds = asyncHandler(async (req, res) => {
   res.status(200).json(nutritionalNeeds);
 });
 
+// Helper function to get user's nutritional goals (from notworking)
+const getNutritionalGoals = async (userId) => {
+  const user = await User.findById(userId);
+  if (!user) {
+    throw new Error('User not found');
+  }
+
+  // Get the latest nutritional goals from the user's daily nutrition
+  const latestNutrition = await DailyNutrition.findOne({ userId })
+    .sort({ date: -1 })
+    .select('calories protein carbs fats')
+    .lean();
+
+  // If no goals are set, calculate default goals
+  if (!latestNutrition) {
+    const { gender, weight, height, fitnessGoal } = user;
+
+    // Calculate BMR using Harris-Benedict equation
+    let bmr;
+    if (gender === 'male') {
+      bmr = 88.362 + (13.397 * weight) + (4.799 * height) - (5.677 * 25);
+    } else {
+      bmr = 447.593 + (9.247 * weight) + (3.098 * height) - (4.330 * 25);
+    }
+
+    // Adjust calories based on fitness goal
+    let calorieMultiplier = 1.2; // Default to maintenance
+    if (fitnessGoal === 'lose_weight') {
+      calorieMultiplier = 0.8;
+    } else if (fitnessGoal === 'gain_muscle') {
+      calorieMultiplier = 1.4;
+    }
+
+    const calories = Math.round(bmr * calorieMultiplier);
+
+    return {
+      calories,
+      protein: Math.round(weight * 2), // 2g per kg of body weight
+      carbs: Math.round((calories * 0.4) / 4), // 40% of calories from carbs
+      fats: Math.round((calories * 0.25) / 9) // 25% of calories from fats
+    };
+  }
+
+  return latestNutrition;
+};
+
+// @desc    Get nutrition completion data for heatmap
+// @route   GET /api/nutrition/heatmap
+// @access  Private (from notworking)
+const getNutritionHeatmapData = asyncHandler(async (req, res) => {
+  const userId = req.user.userId || req.user._id;
+  const { startDate, endDate } = req.query;
+
+  try {
+    // Validate dates
+    const start = new Date(startDate);
+    const end = new Date(endDate);
+
+    if (isNaN(start.getTime()) || isNaN(end.getTime())) {
+      return res.status(400).json({ message: 'Invalid date format' });
+    }
+
+    // Set time to start/end of day in UTC
+    start.setUTCHours(0, 0, 0, 0);
+    end.setUTCHours(23, 59, 59, 999);
+
+    // Check cache first
+    const cacheKey = generateCacheKey(userId, `heatmap:${start.toISOString().split('T')[0]}-${end.toISOString().split('T')[0]}`);
+    const cachedData = getCacheValue(cacheKey);
+    if (cachedData) {
+      return res.json(cachedData);
+    }
+
+    // Use aggregation pipeline for better performance
+    const data = await DailyNutrition.aggregate([
+      {
+        $match: {
+          userId: new mongoose.Types.ObjectId(userId),
+          date: {
+            $gte: start,
+            $lte: end
+          }
+        }
+      },
+      {
+        $project: {
+          _id: 0,
+          date: 1,
+          value: "$calories",
+          goalMet: {
+            $gte: ["$calories", "$calorieGoal"]
+          }
+        }
+      }
+    ]).exec();
+
+    const formattedData = data.reduce((acc, item) => {
+      const dateStr = item.date.toISOString().split('T')[0];
+      acc[dateStr] = {
+        value: Math.round(item.value), // Round calories to whole numbers
+        goalMet: item.goalMet
+      };
+      return acc;
+    }, {});
+
+    // Cache the results
+    setCacheWithTTL(cacheKey, formattedData);
+
+    res.json(formattedData);
+  } catch (error) {
+    console.error('Heatmap data error:', error);
+    res.status(500).json({ message: 'Error fetching heatmap data', error: error.message });
+  }
+});
+
+// @desc    Get monthly nutrition data
+// @route   GET /api/nutrition/monthly/:year/:month
+// @access  Private (Modified from notworking)
+const getMonthlyNutrition = asyncHandler(async (req, res) => {
+  const { year, month } = req.params;
+  const userId = req.user.userId || req.user._id;
+
+  if (!mongoose.Types.ObjectId.isValid(userId)) {
+    return res.status(400).json({ message: 'Invalid user ID format' });
+  }
+
+  // Calculate start and end dates for the month
+  const startDate = new Date(year, month - 1, 1); // month is 0-based in Date constructor
+  const endDate = new Date(year, month, 0); // Last day of the month
+  endDate.setHours(23, 59, 59, 999);
+
+  const cacheKey = `monthly:${userId}:${year}-${month}`;
+  const cachedData = getCacheValue(cacheKey);
+
+  if (cachedData) {
+    const etag = require('crypto')
+      .createHash('md5')
+      .update(JSON.stringify(cachedData))
+      .digest('hex');
+
+    if (req.headers['if-none-match'] === etag) {
+      return res.status(304).end();
+    }
+
+    res.set('ETag', etag);
+    return res.json(cachedData);
+  }
+
+  // Aggregate monthly data (Optimized from notworking)
+  const monthlyData = await Meal.aggregate([
+    {
+      $match: {
+        userId: new mongoose.Types.ObjectId(userId),
+        date: {
+          $gte: startDate,
+          $lte: endDate
+        }
+      }
+    },
+    {
+      $group: {
+        _id: {
+          year: { $year: "$date" },
+          month: { $month: "$date" },
+          day: { $dayOfMonth: "$date" }
+        },
+        dailyCalories: { $sum: "$calories" },
+        dailyProtein: { $sum: "$protein" },
+        dailyCarbs: { $sum: "$carbs" },
+        dailyFats: { $sum: "$fats" },
+        mealCount: { $sum: 1 }
+      }
+    },
+    {
+      $group: {
+        _id: {
+          year: "$_id.year",
+          month: "$_id.month"
+        },
+        totalCalories: { $sum: "$dailyCalories" },
+        totalProtein: { $sum: "$dailyProtein" },
+        totalCarbs: { $sum: "$dailyCarbs" },
+        totalFats: { $sum: "$dailyFats" },
+        totalMeals: { $sum: "$mealCount" },
+        daysTracked: { $sum: 1 },
+        dailyAverages: {
+          $push: {
+            day: "$_id.day",
+            calories: "$dailyCalories",
+            protein: "$dailyProtein",
+            carbs: "$dailyCarbs",
+            fats: "$dailyFats",
+            mealCount: "$mealCount"
+          }
+        }
+      }
+    },
+    {
+      $project: {
+        _id: 0,
+        year: "$_id.year",
+        month: "$_id.month",
+        totalCalories: 1,
+        totalProtein: 1,
+        totalCarbs: 1,
+        totalFats: 1,
+        totalMeals: 1,
+        daysTracked: 1,
+        averageCalories: { $divide: ["$totalCalories", "$daysTracked"] },
+        averageProtein: { $divide: ["$totalProtein", "$daysTracked"] },
+        averageCarbs: { $divide: ["$totalCarbs", "$daysTracked"] },
+        averageFats: { $divide: ["$totalFats", "$daysTracked"] },
+        averageMealsPerDay: { $divide: ["$totalMeals", "$daysTracked"] },
+        dailyBreakdown: "$dailyAverages"
+      }
+    }
+  ]).hint({ userId: 1, date: 1 });
+
+  const result = monthlyData[0] || {
+    year: parseInt(year),
+    month: parseInt(month),
+    totalCalories: 0,
+    totalProtein: 0,
+    totalCarbs: 0,
+    totalFats: 0,
+    totalMeals: 0,
+    daysTracked: 0,
+    averageCalories: 0,
+    averageProtein: 0,
+    averageCarbs: 0,
+    averageFats: 0,
+    averageMealsPerDay: 0,
+    dailyBreakdown: []
+  };
+
+  // Add goals comparison (from notworking)
+  const goals = await getNutritionalGoals(userId);
+  result.goals = goals;
+  result.monthlyGoals = {
+    calories: goals.calories * result.daysTracked,
+    protein: goals.protein * result.daysTracked,
+    carbs: goals.carbs * result.daysTracked,
+    fats: goals.fats * result.daysTracked
+  };
+
+  // Calculate completion percentages (from notworking)
+  result.completion = {
+    calories: result.monthlyGoals.calories > 0 ? (result.totalCalories / result.monthlyGoals.calories) * 100 : 0,
+    protein: result.monthlyGoals.protein > 0 ? (result.totalProtein / result.monthlyGoals.protein) * 100 : 0,
+    carbs: result.monthlyGoals.carbs > 0 ? (result.totalCarbs / result.monthlyGoals.carbs) * 100 : 0,
+    fats: result.monthlyGoals.fats > 0 ? (result.totalFats / result.monthlyGoals.fats) * 100 : 0
+  };
+
+  // Cache the result
+  setCacheWithTTL(cacheKey, result);
+
+  // Set ETag for the new data
+  const etag = require('crypto')
+    .createHash('md5')
+    .update(JSON.stringify(result))
+    .digest('hex');
+  res.set('ETag', etag);
+
+  res.json(result);
+});
+
 module.exports = {
   getDailyNutrition,
   updateDailyNutrition,
   getNutritionCalculations,
   updateMacros,
   resetMacros,
-  calculateNutritionalNeeds
+  calculateNutritionalNeeds,
+  getNutritionHeatmapData, // From notworking
+  getMonthlyNutrition // Modified from notworking
 };
