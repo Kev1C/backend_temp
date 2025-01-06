@@ -37,9 +37,7 @@ const HomeScreen = () => {
   // State for recently eaten meals
   const [recentMeals, setRecentMeals] = useState([]);
   const [isLoadingMeals, setIsLoadingMeals] = useState(false);
-  const [selectedDate, setSelectedDate] = useState(new Date());  
-  const [prevAddMeal, setPrevAddMeal] = useState(null);
-  const [prevUpdateProgress, setPrevUpdateProgress] = useState(null);
+  const [selectedDate, setSelectedDate] = useState(new Date());
   const [meals, setMeals] = useState([]);
   const [isInitialized, setIsInitialized] = useState(false);
 
@@ -64,7 +62,7 @@ const HomeScreen = () => {
     initializeNutrients();
   }, [user, onboardingData, isOnboardingComplete, fetchCalculations, resetMacros]);
 
-  // Memoize date selection handler
+  // Optimize date selection handler
   const handleDateSelect = useCallback(async (date) => {
     if (!date) return;
     
@@ -73,50 +71,12 @@ const HomeScreen = () => {
     
     // If the selected date is the same as current and we have data, no need to fetch
     if (currentFormattedDate === newFormattedDate && dailyNutrition) {
-      console.log('Using existing data for:', newFormattedDate);
       return;
     }
     
-    console.log('Selecting new date:', newFormattedDate);
     setSelectedDate(date);
-
-    try {
-      // Check if we have data in the store first
-      const store = useNutritionStore.getState();
-      const hasData = store.dailyNutrition && store.currentDate === newFormattedDate;
-      let nutritionData;
-      
-      if (hasData) {
-        // Use existing data
-        nutritionData = store.dailyNutrition;
-        console.log('Using stored data for:', newFormattedDate);
-      } else {
-        // Fetch nutrition data only if we don't have it
-        nutritionData = await fetchDailyNutrition(date);
-      }
-      
-      if (nutritionData) {
-        // Update macros if data changed
-        if (!isEqual(nutritionData, dailyNutrition)) {
-          console.log('Updating macros for:', newFormattedDate);
-          resetMacros();
-          addMacros(
-            nutritionData.protein || 0,
-            nutritionData.carbs || 0,
-            nutritionData.fats || 0
-          );
-          if (addCalories) {
-            addCalories(nutritionData.calories || 0);
-          }
-        }
-        
-        // Always update meals state to ensure UI is in sync
-        setMeals(nutritionData.meals || []);
-      }
-    } catch (error) {
-      console.error('Error handling date selection:', error);
-    }
-  }, [fetchDailyNutrition, resetMacros, addMacros, addCalories, selectedDate, dailyNutrition]);
+    await fetchDailyNutrition(date);
+  }, [selectedDate, dailyNutrition, fetchDailyNutrition]);
 
   // Initialize selected date and load initial data only once
   useEffect(() => {
@@ -204,9 +164,8 @@ const HomeScreen = () => {
   // Handle navigation params when returning from camera
   useEffect(() => {
     const params = route.params;
-    if (params?.addMeal && params?.addMeal !== prevAddMeal) {
+    if (params?.addMeal) {
       const newMeal = params.addMeal;
-      setPrevAddMeal(newMeal);
       
       // Save meal and update nutrition
       (async () => {
@@ -219,8 +178,8 @@ const HomeScreen = () => {
           // Save to backend without triggering another fetch
           await saveMealToBackend(newMeal, selectedDate);
           
-          // Force a re-render of the meals list
-          setMeals(prev => [...prev, newMeal]);
+          // Force a refresh of daily nutrition data
+          await fetchDailyNutrition(selectedDate, true);
           
         } catch (error) {
           console.error('Error handling camera return:', error);
@@ -230,7 +189,32 @@ const HomeScreen = () => {
         }
       })();
     }
-  }, [route.params, prevAddMeal, selectedDate, saveMealToBackend, updateDailyNutrition]);
+  }, [route.params, selectedDate, saveMealToBackend, updateDailyNutrition, fetchDailyNutrition]);
+
+  // Add effect to handle nutrition updates
+  useEffect(() => {
+    if (dailyNutrition && selectedDate) {
+      const formattedDate = formatDate(selectedDate);
+      const nutritionDate = formatDate(new Date(dailyNutrition.date));
+      
+      if (formattedDate === nutritionDate) {
+        console.log('Updating UI with new nutrition data');
+        // Reset and update macros
+        resetMacros();
+        addMacros(
+          dailyNutrition.protein || 0,
+          dailyNutrition.carbs || 0,
+          dailyNutrition.fats || 0
+        );
+        if (addCalories) {
+          addCalories(dailyNutrition.calories || 0);
+        }
+        
+        // Update meals
+        setMeals(dailyNutrition.meals || []);
+      }
+    }
+  }, [dailyNutrition, selectedDate, resetMacros, addMacros, addCalories]);
 
   // Memoize nutrients data for display
   const nutrients = useMemo(() => {

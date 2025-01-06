@@ -12,6 +12,12 @@ const MacroCard = React.memo(({ label, value = 0, total = 0, color }) => {
   const percentage = useMemo(() => calculatePercentage(value, total), [value, total]);
   const left = useMemo(() => Math.max(0, total - value), [total, value]);
 
+  const renderPercentage = useCallback((fill) => (
+    <Text style={{ color: '#333', fontWeight: 'bold' }}>
+      {Math.round(fill)}%
+    </Text>
+  ), []);
+
   return (
     <View style={styles.macroCard}>
       <Text style={styles.macroLabel}>{label}</Text>
@@ -24,11 +30,7 @@ const MacroCard = React.memo(({ label, value = 0, total = 0, color }) => {
         backgroundColor={`${color}26`}
         rotation={0}
       >
-        {() => (
-          <Text style={{ color: '#333', fontWeight: 'bold' }}>
-            {Math.round(percentage)}%
-          </Text>
-        )}
+        {renderPercentage}
       </AnimatedCircularProgress>
       <View style={styles.macroValues}>
         <Text style={styles.macroValue}>{value}g / {total}g</Text>
@@ -49,9 +51,10 @@ const MacroCard = React.memo(({ label, value = 0, total = 0, color }) => {
 const CalorieProgress = React.memo(({ nutrients }) => {
   const theme = useTheme();
   
-  // Ensure we have valid data
-  const current = useMemo(() => nutrients?.current || {}, [nutrients?.current]);
-  const goals = useMemo(() => nutrients?.goals || {}, [nutrients?.goals]);
+  const { current, goals } = useMemo(() => ({
+    current: nutrients?.current || {},
+    goals: nutrients?.goals || {}
+  }), [nutrients]);
   
   const {
     calories = 0,
@@ -67,19 +70,24 @@ const CalorieProgress = React.memo(({ nutrients }) => {
     fats: fatsGoal = 0
   } = goals;
   
-  // Calculate calorie percentage
   const caloriePercentage = useMemo(() => 
     calculatePercentage(calories, caloriesGoal),
     [calories, caloriesGoal]
   );
   
-  // Calculate calories left
   const caloriesLeft = useMemo(() => 
     Math.max(0, caloriesGoal - calories),
     [calories, caloriesGoal]
   );
 
+  const renderCaloriePercentage = useCallback((fill) => (
+    <Text style={styles.caloriePercentage}>
+      {Math.round(fill)}%
+    </Text>
+  ), []);
+
   const macroCards = useMemo(() => ([
+
     {
       label: 'Carbs',
       value: carbs,
@@ -125,11 +133,7 @@ const CalorieProgress = React.memo(({ nutrients }) => {
             backgroundColor={`${theme.colors.primary}26`}
             rotation={0}
           >
-            {() => (
-              <Text style={{ color: '#333', fontWeight: 'bold', fontSize: 18 }}>
-                {Math.round(caloriePercentage)}%
-              </Text>
-            )}
+            {renderCaloriePercentage}
           </AnimatedCircularProgress>
         </View>
         <View style={styles.macroContainer}>
@@ -224,6 +228,19 @@ const styles = StyleSheet.create({
   macroLeft: {
     fontSize: 12,
     color: '#999',
+  },
+  calorieTextContainer: {
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  caloriePercentage: {
+    fontSize: 18,
+    color: '#333',
+    fontWeight: 'bold',
+  },
+  caloriesLeft: {
+    fontSize: 14,
+    color: '#666',
   },
 });
 

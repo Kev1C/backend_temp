@@ -18,20 +18,27 @@ const MealItem = memo(({ meal }) => {
     </View>
   ), [meal.calories, meal.carbs, meal.protein, meal.fats, styles, theme.colors.secondary]);
 
+  const mealImage = useMemo(() => (
+    meal.image ? (
+      <Image 
+        source={{ uri: meal.image }} 
+        style={styles.mealImage}
+      />
+    ) : (
+      <View style={styles.iconContainer}>
+        <MaterialCommunityIcons 
+          name="food" 
+          size={24} 
+          color={theme.colors.primary} 
+        />
+      </View>
+    )
+  ), [meal.image, styles.mealImage, styles.iconContainer, theme.colors.primary]);
+
   return (
     <Card style={styles.mealCard}>
       <Card.Content style={styles.mealContent}>
-        {meal.image ? (
-          <Image source={{ uri: meal.image }} style={styles.mealImage} />
-        ) : (
-          <View style={styles.iconContainer}>
-            <MaterialCommunityIcons 
-              name="food" 
-              size={24} 
-              color={theme.colors.primary} 
-            />
-          </View>
-        )}
+        {mealImage}
         <View style={styles.mealInfo}>
           <Text style={styles.mealName}>{meal.name}</Text>
           {nutritionInfo}
@@ -57,8 +64,8 @@ const RecentlyEaten = memo(({ meals = [], isLoading = false }) => {
 
   const getItem = useCallback((data, index) => data[index], []);
   const getItemCount = useCallback((data) => data.length, []);
-  const keyExtractor = useCallback((item, index) => 
-    item.id?.toString() || item._id?.toString() || index.toString()
+  const keyExtractor = useCallback((item) => 
+    item.id?.toString() || item._id?.toString() || item.name + item.time
   , []);
 
   const renderItem = useCallback(({ item }) => (
@@ -95,16 +102,11 @@ const RecentlyEaten = memo(({ meals = [], isLoading = false }) => {
         keyExtractor={keyExtractor}
         getItemCount={getItemCount}
         getItem={getItem}
-        initialNumToRender={5}
-        maxToRenderPerBatch={10}
-        windowSize={5}
+        initialNumToRender={3}
+        maxToRenderPerBatch={5}
+        windowSize={3}
+        removeClippedSubviews={true}
         contentContainerStyle={styles.listContent}
-        showsVerticalScrollIndicator={true}
-        getItemLayout={(data, index) => ({
-          length: 90,
-          offset: 90 * index,
-          index,
-        })}
       />
     </View>
   );

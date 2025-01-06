@@ -64,11 +64,6 @@ const SettingsScreen = () => {
   );
 
   const navigateToResources = () => navigation.navigate('Resources');
-  const navigateToConnect = () => navigation.navigate('Friends');
-  const navigateToCalculator = () => navigation.navigate('Calculator');
-  const navigateToCommunity = () => navigation.navigate('Community');
-  const navigateToExercises = () => navigation.navigate('Exercises');
-  const navigateToWorkoutHeatmap = () => navigation.navigate('WorkoutHeatmap');
 
   return (
     <SafeAreaView style={styles.safeArea}>
@@ -89,31 +84,6 @@ const SettingsScreen = () => {
         {/* Resources Button */}
         <TouchableOpacity style={styles.button} onPress={navigateToResources}>
           <Text style={styles.buttonText}>Resources</Text>
-        </TouchableOpacity>
-
-        {/* Connect Button */}
-        <TouchableOpacity style={styles.button} onPress={navigateToConnect}>
-          <Text style={styles.buttonText}>Connect</Text>
-        </TouchableOpacity>
-
-        {/* Calculator Button */}
-        <TouchableOpacity style={styles.button} onPress={navigateToCalculator}>
-          <Text style={styles.buttonText}>Calculator</Text>
-        </TouchableOpacity>
-
-        {/* Community Button */}
-        <TouchableOpacity style={styles.button} onPress={navigateToCommunity}>
-          <Text style={styles.buttonText}>Community</Text>
-        </TouchableOpacity>
-
-        {/* Exercises Button */}
-        <TouchableOpacity style={styles.button} onPress={navigateToExercises}>
-          <Text style={styles.buttonText}>Exercises</Text>
-        </TouchableOpacity>
-
-        {/* Workout Heatmap Button */}
-        <TouchableOpacity style={styles.button} onPress={navigateToWorkoutHeatmap}>
-          <Text style={styles.buttonText}>Workout Heatmap</Text>
         </TouchableOpacity>
 
         <Divider style={styles.divider} />

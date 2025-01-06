@@ -1,27 +1,48 @@
 // frontend/screens/Profile/ProfileScreen.js
 
-import React, { useCallback, useMemo } from 'react';
-import { View, StyleSheet, ActivityIndicator, TouchableOpacity, FlatList, Image } from 'react-native';
+import React, { useCallback, useMemo, useEffect, useState, lazy, Suspense } from 'react';
+import { View, StyleSheet, ActivityIndicator, TouchableOpacity, FlatList, Image, ScrollView, RefreshControl } from 'react-native';
 import { Title, Caption, Text } from 'react-native-paper';
 import { useAuthStore } from '../../stores/authStore';
 import { useTheme } from 'react-native-paper';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
-import MacroNutrientsChart from '../../Components/MacroNutrientsChart';
-import NutritionHeatmap from '../../Components/NutritionHeatmap';
-import useNutritionData from '../../hooks/useNutritionData';
+import { useNutritionStore } from '../../stores/nutritionStore';
+import { useCacheStore } from '../../stores/cacheStore';
+import { useFocusEffect } from '@react-navigation/native';
+
+// Lazy load heavy components
+const MacroNutrientsChart = lazy(() => import('../../Components/MacroNutrientsChart'));
+const NutritionHeatmap = lazy(() => import('../../Components/NutritionHeatmap'));
 
 const ProfileScreen = ({ navigation }) => {
   const { user, loading: userLoading } = useAuthStore();
-  const theme = useTheme(); // Access the current theme
-  const { macroData, calendarData, loading: nutritionLoading, error, refreshData } = useNutritionData();
+  const theme = useTheme();
+  const cache = useCacheStore();
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const [isDataReady, setIsDataReady] = useState(false);
+  
+  const { 
+    macroData, 
+    calendarData, 
+    loading: nutritionLoading,
+    heatmapData,
+    isLoadingHeatmap,
+    heatmapError,
+    fetchHeatmapData,
+    currentStreak
+  } = useNutritionStore();
 
-  const loading = userLoading || nutritionLoading;
+  const loading = userLoading || nutritionLoading || isLoadingHeatmap;
 
-  // Memoize the user info section
   const UserInfoSection = useMemo(() => (
     <View style={styles.userInfoSection}>
       <View style={styles.headerContainer}>
-        {user.name && (
+        <View style={styles.streakContainer}>
+          <Icon name="fire" size={24} color="#FF6B6B" />
+          <Text style={styles.streakText}>{currentStreak}</Text>
+          <Caption style={styles.streakCaption}>day{currentStreak !== 1 ? 's' : ''} streak</Caption>
+        </View>
+        {user?.name && (
           <Title style={[styles.title, { color: theme.colors.text }]}>{user.name}</Title>
         )}
       </View>
@@ -34,74 +55,127 @@ const ProfileScreen = ({ navigation }) => {
         <Icon name="menu" size={28} color={theme.colors.primary} />
       </TouchableOpacity>
     </View>
-  ), [user.name, theme.colors, navigation]);
+  ), [user?.name, theme.colors.text, theme.colors.primary, currentStreak, navigation]);
 
-  // Memoize the error section
-  const ErrorSection = useMemo(() => error && (
+  const ErrorSection = useMemo(() => heatmapError && (
     <View style={styles.errorContainer}>
       <Text style={[styles.errorText, { color: theme.colors.error }]}>
-        Error loading nutrition data
+        Error loading nutrition data: {heatmapError}
       </Text>
-      <TouchableOpacity onPress={refreshData} style={styles.retryButton}>
+      <TouchableOpacity onPress={onRefresh} style={styles.retryButton}>
         <Text style={[styles.retryText, { color: theme.colors.primary }]}>Retry</Text>
       </TouchableOpacity>
     </View>
-  ), [error, theme.colors, refreshData]);
+  ), [heatmapError, theme.colors.error, theme.colors.primary, onRefresh]);
 
-  const onRefresh = useCallback(() => {
-    refreshData();
-  }, [refreshData]);
+  const getDateRange = useCallback(() => {
+    const startDate = new Date();
+    startDate.setMonth(startDate.getMonth() - 3);
+    startDate.setUTCHours(0, 0, 0, 0);
+    
+    const endDate = new Date();
+    endDate.setUTCHours(23, 59, 59, 999);
+    
+    return { 
+      startDate: startDate.toISOString(), 
+      endDate: endDate.toISOString() 
+    };
+  }, []);
 
-  // Render item for FlatList
-  const renderItem = useCallback(({ item }) => {
-    if (item.type === 'heatmap') {
-      return (
-        <View style={styles.heatmapContainer}>
-          <Image 
-            source={require('../../assets/images/panda-looking-over.jpg')} 
-            style={styles.pandaLogo}
-          />
-          <NutritionHeatmap data={calendarData} />
-        </View>
-      );
-    } else if (item.type === 'chart') {
-      return <MacroNutrientsChart data={macroData} />;
+  const onRefresh = useCallback(async () => {
+    if (isRefreshing) return;
+    
+    setIsRefreshing(true);
+    try {
+      const { startDate, endDate } = getDateRange();
+      await fetchHeatmapData(startDate, endDate);
+    } catch (error) {
+      console.error('Error during refresh:', error);
+    } finally {
+      setIsRefreshing(false);
     }
-    return null;
-  }, [calendarData, macroData]);
+  }, [isRefreshing, getDateRange, fetchHeatmapData]);
 
-  // Memoize data for FlatList
-  const listData = useMemo(() => [
-    { id: '1', type: 'heatmap' },
-    { id: '2', type: 'chart' }
-  ], []);
+  // Prefetch data when the app starts
+  useFocusEffect(
+    useCallback(() => {
+      const prefetchData = async () => {
+        if (!isDataReady && !isLoadingHeatmap) {
+          const { startDate, endDate } = getDateRange();
+          const cacheKey = `heatmap_${startDate}_${endDate}`;
+          const cachedData = cache.get(cacheKey);
 
-  if (loading) {
-    return (
-      <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color={theme.colors.primary} />
-      </View>
-    );
-  }
+          if (cachedData) {
+            // Use cached data immediately
+            setIsDataReady(true);
+          } else {
+            // Fetch fresh data
+            await fetchHeatmapData(startDate, endDate);
+            setIsDataReady(true);
+          }
+        }
+      };
 
-  if (error) {
-    return ErrorSection;
-  }
+      prefetchData();
+    }, [isDataReady, isLoadingHeatmap])
+  );
+
+  useEffect(() => {
+    const initializeData = async () => {
+      if (!heatmapData || Object.keys(heatmapData).length === 0) {
+        const { startDate, endDate } = getDateRange();
+        const cacheKey = `heatmap_${startDate}_${endDate}`;
+        const cachedData = cache.get(cacheKey);
+
+        if (cachedData) {
+          return;
+        }
+
+        try {
+          await fetchHeatmapData(startDate, endDate);
+        } catch (error) {
+          console.error('Error fetching initial data:', error);
+        }
+      }
+    };
+
+    initializeData();
+  }, [getDateRange, fetchHeatmapData]);
 
   return (
-    <FlatList
-      data={listData}
-      renderItem={renderItem}
-      keyExtractor={item => item.id}
-      ListHeaderComponent={UserInfoSection}
-      contentContainerStyle={[styles.container, { backgroundColor: theme.colors.background }]}
-      refreshing={loading}
-      onRefresh={onRefresh}
-      initialNumToRender={1}
-      maxToRenderPerBatch={1}
-      windowSize={2}
-      removeClippedSubviews={true}
-    />
+    <ScrollView 
+      style={styles.container}
+      refreshControl={
+        <RefreshControl refreshing={isRefreshing} onRefresh={onRefresh} />
+      }
+    >
+      {UserInfoSection}
+      
+      {loading ? (
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color={theme.colors.primary} />
+        </View>
+      ) : (
+        <Suspense fallback={
+          <View style={styles.loadingContainer}>
+            <ActivityIndicator size="large" color={theme.colors.primary} />
+          </View>
+        }>
+          {isDataReady && (
+            <>
+              <View style={styles.section}>
+                <NutritionHeatmap data={heatmapData} />
+              </View>
+              <View style={styles.section}>
+                <MacroNutrientsChart data={macroData} />
+              </View>
+            </>
+          )}
+        </Suspense>
+      )}
+      
+      {ErrorSection}
+    </ScrollView>
   );
 };
 
@@ -118,19 +192,33 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
   },
   headerContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
     flex: 1,
   },
-  heatmapContainer: {
-    position: 'relative',
-    width: '100%',
+  streakContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginRight: 12,
   },
-  pandaLogo: {
-    position: 'absolute',
-    top: 24,
-    left: 20,
-    width: 45,
-    height: 45,
-
+  streakText: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    marginLeft: 4,
+    color: '#FF6B6B',
+  },
+  streakCaption: {
+    fontSize: 12,
+    marginLeft: 4,
+    color: '#FF6B6B',
+  },
+  section: {
+    marginBottom: 20,
+  },
+  sectionTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    marginBottom: 10,
   },
   title: {
     fontSize: 26,
@@ -144,6 +232,7 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
+    padding: 20,
   },
   nutritionSection: {
     marginTop: 8,

@@ -43,7 +43,7 @@ const CameraScreen = ({ navigation }) => {
   const bottomSheetRef = useRef(null);
   const isFocused = useIsFocused();
   const { authToken } = useAuthStore();
-  const { updateDailyNutrition } = useNutritionStore();
+  const updateDailyNutrition = useNutritionStore((state) => state.updateDailyNutrition);
   const theme = useTheme();
 
   const dynamicStyles = useMemo(() => ({
@@ -117,6 +117,7 @@ const CameraScreen = ({ navigation }) => {
       const { calories, carbs, protein, fats, healthScore, foodTitle } = response.data;
       setFoodAnalysis(response.data);
       setNutritionState(prev => ({
+
         ...prev,
         calories, carbs, protein, fats, healthScore,
         baseCalories: calories,
@@ -173,11 +174,12 @@ const CameraScreen = ({ navigation }) => {
         healthScore: parseFloat(foodAnalysis.healthScore) || 0,
       };
 
+      console.log('Sending nutrition data:', nutritionData);
       await updateDailyNutrition(today, nutritionData);
       setIsModalVisible(false);
       navigation.goBack();
     } catch (error) {
-      console.error('Error saving nutrition data:', error);
+      console.error('Error saving nutrition data:', error.response?.data || error.message);
       Alert.alert('Error', 'Failed to save nutrition data');
     }
   };
