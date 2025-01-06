@@ -8,6 +8,7 @@ import { api } from '../../services/api';
 const FoodAnalysisBottomSheet = ({
   bottomSheetRef,
   capturedImage,
+  setCapturedImage,
   isModalVisible,
   handleSheetChanges,
   foodAnalysis,
@@ -28,7 +29,7 @@ const FoodAnalysisBottomSheet = ({
     setNutritionState(prev => ({
       ...prev,
       [nutrientType]: value,
-      [`base${nutrientType.charAt(0).toUpperCase() + nutrientType.slice(1)}`]: 
+      [`base${nutrientType.charAt(0).toUpperCase() + nutrientType.slice(1)}`]:
         numValue > 0 ? (numValue / servings).toString() : prev[`base${nutrientType.charAt(0).toUpperCase() + nutrientType.slice(1)}`]
     }));
   };
@@ -92,9 +93,13 @@ const FoodAnalysisBottomSheet = ({
       handleStyle={styles.handleStyle}
       backgroundStyle={styles.modalContent}
       renderBackdrop={renderBackdrop}
+      onCloseEnd={() => {
+        // Reset the state after the bottom sheet is fully closed
+        setCapturedImage(null);
+      }}
     >
       <View style={styles.bottomSheetContent}>
-        <BottomSheetScrollView 
+        <BottomSheetScrollView
           contentContainerStyle={styles.scrollViewContent}
           showsVerticalScrollIndicator={false}
         >
@@ -109,29 +114,29 @@ const FoodAnalysisBottomSheet = ({
                 ) : (
                   <>
                     <View style={styles.headerContainer}>
-                      <Image 
-                        source={{ uri: capturedImage.uri }} 
+                      <Image
+                        source={{ uri: capturedImage.uri }}
                         style={styles.imagePreview}
                         resizeMode="cover"
                       />
-                      <Chip 
-                        mode="outlined" 
+                      <Chip
+                        mode="outlined"
                         style={[styles.mealTypeChip, { borderRadius: 25 }]}
                         textStyle={{ fontSize: 14 }}
                       >
                         {getMealType()}
                       </Chip>
                       {foodAnalysis.healthScore && (
-                        <Chip 
-                          mode="outlined" 
+                        <Chip
+                          mode="outlined"
                           style={[
-                            styles.healthScoreChip, 
-                            { 
+                            styles.healthScoreChip,
+                            {
                               borderRadius: 25,
                               borderColor: getHealthScoreColor(foodAnalysis.healthScore),
                             }
                           ]}
-                          textStyle={{ 
+                          textStyle={{
                             fontSize: 14,
                             color: getHealthScoreColor(foodAnalysis.healthScore)
                           }}

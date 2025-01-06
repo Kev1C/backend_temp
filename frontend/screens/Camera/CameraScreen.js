@@ -93,7 +93,7 @@ const CameraScreen = ({ navigation }) => {
 
       setCapturedImage(image);
       setIsModalVisible(true);
-      
+
       // Automatically trigger analysis after capturing
       await analyzeImage(image);
 
@@ -113,7 +113,7 @@ const CameraScreen = ({ navigation }) => {
     try {
       const response = await api.post('/food-analysis/analyze', { imageBase64: image.base64 });
       if (!response?.data) throw new Error('No analysis data received');
-      
+
       const { calories, carbs, protein, fats, healthScore, foodTitle } = response.data;
       setFoodAnalysis(response.data);
       setNutritionState(prev => ({
@@ -134,8 +134,11 @@ const CameraScreen = ({ navigation }) => {
   };
 
   const handleRetake = () => {
-    setIsModalVisible(false);
-    setCapturedImage(null);
+    // Use bottomSheetRef.current.close() to properly close the sheet
+    if (bottomSheetRef.current) {
+      bottomSheetRef.current.close();
+    }
+    // The state will be reset in onCloseEnd of the BottomSheet
   };
 
   const getMealType = () => {
@@ -154,12 +157,12 @@ const CameraScreen = ({ navigation }) => {
     try {
       const mealType = getMealType();
       const today = new Date();
-      const currentTime = new Date().toLocaleTimeString('en-US', { 
-        hour: '2-digit', 
+      const currentTime = new Date().toLocaleTimeString('en-US', {
+        hour: '2-digit',
         minute: '2-digit',
-        hour12: true 
+        hour12: true
       });
-      
+
       const nutritionData = {
         name: foodTitle,
         image: capturedImage?.uri || '',
@@ -261,6 +264,7 @@ const CameraScreen = ({ navigation }) => {
         <FoodAnalysisBottomSheet
           bottomSheetRef={bottomSheetRef}
           capturedImage={capturedImage}
+          setCapturedImage={setCapturedImage}
           isModalVisible={isModalVisible}
           handleSheetChanges={handleSheetChanges}
           foodAnalysis={foodAnalysis}
