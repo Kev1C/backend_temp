@@ -60,7 +60,6 @@ const DateItem = memo(({ date, isToday, isSelected, onSelect, theme }) => {
 
 const WeekCalendar = memo(({ onDateSelect, selectedDate }) => {
   const { theme } = useContext(ThemeContext);
-  const [visibleDates, setVisibleDates] = useState([]);
   
   const dates = useMemo(() => {
     const today = new Date();
@@ -68,11 +67,10 @@ const WeekCalendar = memo(({ onDateSelect, selectedDate }) => {
     
     // Show 2 weeks back
     const startDate = new Date(today);
-    startDate.setDate(startDate.getDate() - 14); // 14 days = 2 weeks back
+    startDate.setDate(startDate.getDate() - 14); // 2 weeks back
     
-    // Show 1 day forward
     const endDate = new Date(today);
-    endDate.setDate(endDate.getDate() + 1); // 1 day forward
+    endDate.setDate(endDate.getDate() + 1);
     
     let currentDate = new Date(startDate);
     
@@ -109,7 +107,7 @@ const WeekCalendar = memo(({ onDateSelect, selectedDate }) => {
       onSelect={handleDateSelect}
       theme={theme}
     />
-  ), [theme, handleDateSelect]);
+  ), [handleDateSelect, theme]);
 
   const keyExtractor = useCallback((item) => item.date.toISOString(), []);
 
@@ -140,7 +138,8 @@ const WeekCalendar = memo(({ onDateSelect, selectedDate }) => {
 const styles = StyleSheet.create({
   container: {
     marginHorizontal: 8,
-    marginVertical: 8,
+    marginTop: 16,
+    marginBottom: 8,
   },
   scrollContainer: {
     paddingHorizontal: 8,
