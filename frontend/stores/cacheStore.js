@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 
-const DEFAULT_TTL = 5 * 60 * 1000; // 5 minutes
+const DEFAULT_TTL = 30 * 24 * 60 * 60 * 1000; // 30 days
 
 export const cacheStore = create((set, get) => ({
   data: new Map(),
