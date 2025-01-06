@@ -3,6 +3,7 @@ const asyncHandler = require('express-async-handler');
 const mongoose = require('mongoose');
 const Meal = require('../models/Meal');
 const User = require('../models/User'); // Import User model
+const DailyNutrition = require('../models/DailyNutrition'); // Import DailyNutrition model
 
 // Optimized cache implementation with Map (from notworking)
 const nutritionCache = new Map();
@@ -472,7 +473,7 @@ const getNutritionHeatmapData = asyncHandler(async (req, res) => {
     }
 
     // Use aggregation pipeline for better performance
-    const data = await DailyNutrition.aggregate([
+    const data = await Meal.aggregate([
       {
         $match: {
           userId: new mongoose.Types.ObjectId(userId),
@@ -483,12 +484,49 @@ const getNutritionHeatmapData = asyncHandler(async (req, res) => {
         }
       },
       {
+        $group: {
+            _id: "$date",
+            totalCalories: { $sum: "$calories" }
+        }
+      },
+      {
+        $lookup: {
+          from: "dailynutritions",
+          let: { userId: "$userId", date: "$_id" },
+          pipeline: [
+            {
+              $match: {
+                $expr: {
+                  $and: [
+                    { $eq: ["$userId", "$$userId"] },
+                    { $eq: ["$date", "$$date"] }
+                  ]
+                }
+              }
+            },
+            {
+              $project: {
+                _id: 0,
+                calorieGoal: "$calories"
+              }
+            }
+          ],
+          as: "dailyGoal"
+        }
+      },
+      {
+        $unwind: {
+            path: "$dailyGoal",
+            preserveNullAndEmptyArrays: true
+        }
+      },
+      {
         $project: {
           _id: 0,
-          date: 1,
-          value: "$calories",
+          date: "$_id",
+          value: "$totalCalories",
           goalMet: {
-            $gte: ["$calories", "$calorieGoal"]
+            $gte: ["$totalCalories", { $ifNull: ["$dailyGoal.calorieGoal", 0] }]
           }
         }
       }
