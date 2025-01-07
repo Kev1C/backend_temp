@@ -220,20 +220,24 @@ const FoodAnalysisBottomSheet = ({
                     </View>
 
                     <View style={styles.fabContainer}>
-                      <FAB
+                      <Button
                         icon="refresh"
-                        label="Retake"
+                        mode="contained-tonal"
                         onPress={onRetake}
-                        style={[styles.fab, styles.retakeFab]}
-                        color="white"
-                      />
-                      <FAB
+                        style={styles.retakeButton}
+                        labelStyle={styles.buttonLabel}
+                      >
+                        Retake
+                      </Button>
+                      <Button
                         icon="check"
-                        label="Confirm"
+                        mode="contained"
                         onPress={onConfirm}
-                        style={[styles.fab, { backgroundColor: theme.colors.primary }]}
-                        color="white"
-                      />
+                        style={styles.confirmButton}
+                        labelStyle={styles.buttonLabel}
+                      >
+                        Confirm
+                      </Button>
                     </View>
                   </>
                 )}
@@ -367,13 +371,16 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginTop: 16,
   },
-  fab: {
-    borderRadius: 50,
-    padding: 10,
-    elevation: 5,
+  retakeButton: {
+    flex: 1,
+    marginRight: 10,
   },
-  retakeFab: {
-    backgroundColor: '#e0e0e0',
+  confirmButton: {
+    flex: 1,
+    marginLeft: 10,
+  },
+  buttonLabel: {
+    fontSize: 16,
   },
   loadingContainer: {
     alignItems: 'center',
