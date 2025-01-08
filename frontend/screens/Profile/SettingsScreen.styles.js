@@ -11,16 +11,20 @@ const getStyles = (theme) =>
     },
     container: {
       flex: 1,
-      paddingHorizontal: 16,
       backgroundColor: theme.colors.background,
+    },
+    headerContainer: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      paddingHorizontal: 16,
+      marginTop: Platform.OS === 'ios' ? 50 : 20,
+      marginBottom: 24,
     },
     header: {
       fontSize: 28,
-      marginTop: Platform.OS === 'ios' ? 50 : 20,
-      marginBottom: 24,
       color: theme.colors.text,
       fontWeight: 'bold',
-      paddingHorizontal: 16,
     },
     statsContainer: {
       flexDirection: 'row',
@@ -111,6 +115,20 @@ const getStyles = (theme) =>
       fontWeight: '500',
       letterSpacing: 0.5,
       textAlign: 'center',
+    },
+    coinContainer: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      backgroundColor: 'rgba(255, 215, 0, 0.1)',
+      padding: 8,
+      borderRadius: 20,
+      marginRight: 8,
+    },
+    coinText: {
+      marginLeft: 4,
+      color: theme.colors.text,
+      fontWeight: 'bold',
+      fontSize: 16,
     },
   });
 

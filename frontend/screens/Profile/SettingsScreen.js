@@ -69,7 +69,17 @@ const SettingsScreen = () => {
     <SafeAreaView style={styles.safeArea}>
       <ScrollView style={styles.container}>
         {/* Settings Header */}
-        <Text style={styles.header}>Settings</Text>
+        <View style={styles.headerContainer}>
+          <Text style={styles.header}>Settings</Text>
+          <View style={styles.coinContainer}>
+            <MaterialCommunityIcons 
+              name="cash" 
+              size={24} 
+              color="#FFD700" 
+            />
+            <Text style={styles.coinText}>100</Text>
+          </View>
+        </View>
 
         {/* User Stats Section */}
         <View style={styles.statsContainer}>
