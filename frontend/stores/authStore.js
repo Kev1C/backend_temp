@@ -6,6 +6,7 @@ import jwtDecode from 'jwt-decode';
 import { api, eventEmitter } from '../services/api';
 import { auth, signInAsGuest } from '../firebaseConfig';
 import { GoogleAuthProvider, signInWithCredential } from '@firebase/auth';
+import { useOnboardingStore } from './onboardingStore';
 
 const SIGNIN_KEY = 'authToken';
 const REFRESH_TOKEN_KEY = 'refreshToken';
@@ -69,7 +70,25 @@ const authStore = create((set, get) => ({
         throw new Error('Failed to authenticate with backend.');
       }
 
-      const { token: backendToken, refreshToken, user: userData } = response.data;
+      let { token: backendToken, refreshToken, user: userData } = response.data;
+
+      // Check if onboarding data needs to be synced and if the user was updated
+      const { userUpdated } = await useOnboardingStore.getState().loadOnboardingData();
+
+      if (userUpdated) {
+        // Regenerate the token after successful onboarding data update
+        const regenerateResponse = await api.post('/auth/verify-token', {
+          firebaseToken: fbToken
+        });
+
+        if (regenerateResponse.status !== 200) {
+          throw new Error('Failed to regenerate token after onboarding update.');
+        }
+
+        backendToken = regenerateResponse.data.token;
+        refreshToken = regenerateResponse.data.refreshToken;
+        userData = regenerateResponse.data.user;
+      }
 
       // Ensure all values stored in SecureStore are strings
       await Promise.all([

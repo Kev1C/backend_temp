@@ -1,4 +1,3 @@
-// frontend/stores/onboardingStore.js
 import { create } from 'zustand';
 import * as SecureStore from 'expo-secure-store';
 import { api } from '../services/api';
@@ -34,12 +33,12 @@ export const useOnboardingStore = create((set, get) => ({
 
   saveOnboardingData: async (data) => {
     batchedUpdate(set, { loading: true, error: null });
-    
+
     try {
       const currentData = get().onboardingData || {};
       const updatedData = { ...currentData, ...data };
       const isComplete = checkOnboardingComplete(updatedData);
-      
+
       // Save both the data and completion status
       await Promise.all([
         SecureStore.setItemAsync(ONBOARDING_DATA_KEY, JSON.stringify(updatedData)),
@@ -62,7 +61,7 @@ export const useOnboardingStore = create((set, get) => ({
 
   loadOnboardingData: async () => {
     batchedUpdate(set, { loading: true, error: null });
-    
+
     try {
       // Load local data
       const [storedData, storedComplete] = await Promise.all([
@@ -72,6 +71,7 @@ export const useOnboardingStore = create((set, get) => ({
 
       const localData = storedData ? JSON.parse(storedData) : null;
       const isComplete = storedComplete ? JSON.parse(storedComplete) : false;
+      let userUpdated = false;
 
       // If we have local data and it's marked complete, sync it with backend
       if (localData && isComplete) {
@@ -84,6 +84,7 @@ export const useOnboardingStore = create((set, get) => ({
             goal: localData.fitnessGoal || localData.goal,
             isOnboardingComplete: true
           });
+          userUpdated = true;
         } catch (error) {
           console.error('Failed to sync onboarding data with backend:', error);
         }
@@ -95,13 +96,13 @@ export const useOnboardingStore = create((set, get) => ({
         loading: false
       });
 
-      return { onboardingData: localData, isComplete };
+      return { onboardingData: localData, isComplete, userUpdated };
     } catch (error) {
       batchedUpdate(set, {
         error: 'Failed to load onboarding data',
         loading: false
       });
-      return { onboardingData: null, isComplete: false };
+      return { onboardingData: null, isComplete: false, userUpdated: false };
     }
   },
 
@@ -125,10 +126,11 @@ export const useOnboardingStore = create((set, get) => ({
       });
     }
   },
+
   completeOnboarding: async () => {
     try {
       const { onboardingData } = get();
-      
+
       // Update user data in backend
       await api.put('/users/me', {
         gender: onboardingData.gender,
@@ -140,7 +142,7 @@ export const useOnboardingStore = create((set, get) => ({
 
       // Save completion status
       await SecureStore.setItemAsync(ONBOARDING_COMPLETE_KEY, JSON.stringify(true));
-      
+
       set({ isOnboardingComplete: true });
     } catch (error) {
       console.error('Error completing onboarding:', error);

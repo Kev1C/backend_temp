@@ -8,12 +8,12 @@ router.post('/authenticate', firebaseAuth, async (req, res) => {
     try {
         // Find or create user in your database
         let user = await User.findOne({ firebaseUid: req.user.firebaseUid });
-        
+
         if (!user) {
             user = new User({
                 firebaseUid: req.user.firebaseUid,
                 email: req.user.email,
-                // Add any other initial user properties
+                isOnboardingComplete: false
             });
             await user.save();
         }
