@@ -553,30 +553,37 @@ const getNutritionHeatmapData = asyncHandler(async (req, res) => {
 
 // @desc    Get monthly nutrition data
 // @route   GET /api/nutrition/monthly/:year/:month
-// @access  Private (Modified from notworking)
+// @access  Private
 const getMonthlyNutrition = asyncHandler(async (req, res) => {
   const { year, month } = req.params;
   const userId = req.user.userId || req.user._id;
 
+  //console.log(`Fetching monthly nutrition for user: ${userId}, year: ${year}, month: ${month}`);
+
   if (!mongoose.Types.ObjectId.isValid(userId)) {
+    console.error('Invalid user ID format');
     return res.status(400).json({ message: 'Invalid user ID format' });
   }
 
-  // Calculate start and end dates for the month
-  const startDate = new Date(year, month - 1, 1); // month is 0-based in Date constructor
-  const endDate = new Date(year, month, 0); // Last day of the month
-  endDate.setHours(23, 59, 59, 999);
+  // Calculate start and end dates for the month in UTC
+  const startDate = new Date(Date.UTC(year, month - 1, 1)); // month is 0-based
+  const endDate = new Date(Date.UTC(year, month, 0, 23, 59, 59, 999)); // Last day of the month
+
+  //console.log('Start Date (UTC):', startDate);
+  //console.log('End Date (UTC):', endDate);
 
   const cacheKey = `monthly:${userId}:${year}-${month}`;
   const cachedData = getCacheValue(cacheKey);
 
   if (cachedData) {
+    //console.log('Returning cached data for key:', cacheKey);
     const etag = require('crypto')
       .createHash('md5')
       .update(JSON.stringify(cachedData))
       .digest('hex');
 
     if (req.headers['if-none-match'] === etag) {
+      console.log('ETag match, returning 304');
       return res.status(304).end();
     }
 
@@ -584,75 +591,83 @@ const getMonthlyNutrition = asyncHandler(async (req, res) => {
     return res.json(cachedData);
   }
 
-  // Aggregate monthly data (Optimized from notworking)
-  const monthlyData = await Meal.aggregate([
-    {
-      $match: {
-        userId: new mongoose.Types.ObjectId(userId),
-        date: {
-          $gte: startDate,
-          $lte: endDate
-        }
-      }
-    },
-    {
-      $group: {
-        _id: {
-          year: { $year: "$date" },
-          month: { $month: "$date" },
-          day: { $dayOfMonth: "$date" }
-        },
-        dailyCalories: { $sum: "$calories" },
-        dailyProtein: { $sum: "$protein" },
-        dailyCarbs: { $sum: "$carbs" },
-        dailyFats: { $sum: "$fats" },
-        mealCount: { $sum: 1 }
-      }
-    },
-    {
-      $group: {
-        _id: {
-          year: "$_id.year",
-          month: "$_id.month"
-        },
-        totalCalories: { $sum: "$dailyCalories" },
-        totalProtein: { $sum: "$dailyProtein" },
-        totalCarbs: { $sum: "$dailyCarbs" },
-        totalFats: { $sum: "$dailyFats" },
-        totalMeals: { $sum: "$mealCount" },
-        daysTracked: { $sum: 1 },
-        dailyAverages: {
-          $push: {
-            day: "$_id.day",
-            calories: "$dailyCalories",
-            protein: "$dailyProtein",
-            carbs: "$dailyCarbs",
-            fats: "$dailyFats",
-            mealCount: "$mealCount"
+  // Aggregate monthly data
+  let monthlyData;
+  try {
+    monthlyData = await Meal.aggregate([
+      {
+        $match: {
+          userId: new mongoose.Types.ObjectId(userId),
+          date: {
+            $gte: startDate,
+            $lte: endDate
           }
         }
+      },
+      {
+        $group: {
+          _id: {
+            year: { $year: "$date" },
+            month: { $month: "$date" },
+            day: { $dayOfMonth: "$date" }
+          },
+          dailyCalories: { $sum: "$calories" },
+          dailyProtein: { $sum: "$protein" },
+          dailyCarbs: { $sum: "$carbs" },
+          dailyFats: { $sum: "$fats" },
+          mealCount: { $sum: 1 }
+        }
+      },
+      {
+        $group: {
+          _id: {
+            year: "$_id.year",
+            month: "$_id.month"
+          },
+          totalCalories: { $sum: "$dailyCalories" },
+          totalProtein: { $sum: "$dailyProtein" },
+          totalCarbs: { $sum: "$dailyCarbs" },
+          totalFats: { $sum: "$dailyFats" },
+          totalMeals: { $sum: "$mealCount" },
+          daysTracked: { $addToSet: "$_id.day" }, // Use $addToSet to get unique days
+          dailyAverages: {
+            $push: {
+              day: "$_id.day",
+              calories: "$dailyCalories",
+              protein: "$dailyProtein",
+              carbs: "$dailyCarbs",
+              fats: "$dailyFats",
+              mealCount: "$mealCount"
+            }
+          }
+        }
+      },
+      {
+        $project: {
+          _id: 0,
+          year: "$_id.year",
+          month: "$_id.month",
+          totalCalories: 1,
+          totalProtein: 1,
+          totalCarbs: 1,
+          totalFats: 1,
+          totalMeals: 1,
+          daysTracked: { $size: "$daysTracked" }, // Count the unique days
+          averageCalories: { $divide: ["$totalCalories", { $size: "$daysTracked" }] },
+          averageProtein: { $divide: ["$totalProtein", { $size: "$daysTracked" }] },
+          averageCarbs: { $divide: ["$totalCarbs", { $size: "$daysTracked" }] },
+          averageFats: { $divide: ["$totalFats", { $size: "$daysTracked" }] },
+          averageMealsPerDay: { $divide: ["$totalMeals", { $size: "$daysTracked" }] },
+          dailyBreakdown: "$dailyAverages"
+        }
       }
-    },
-    {
-      $project: {
-        _id: 0,
-        year: "$_id.year",
-        month: "$_id.month",
-        totalCalories: 1,
-        totalProtein: 1,
-        totalCarbs: 1,
-        totalFats: 1,
-        totalMeals: 1,
-        daysTracked: 1,
-        averageCalories: { $divide: ["$totalCalories", "$daysTracked"] },
-        averageProtein: { $divide: ["$totalProtein", "$daysTracked"] },
-        averageCarbs: { $divide: ["$totalCarbs", "$daysTracked"] },
-        averageFats: { $divide: ["$totalFats", "$daysTracked"] },
-        averageMealsPerDay: { $divide: ["$totalMeals", "$daysTracked"] },
-        dailyBreakdown: "$dailyAverages"
-      }
-    }
-  ]).hint({ userId: 1, date: 1 });
+    ]).hint({ userId: 1, date: 1 });
+
+    //console.log('Aggregation result:', JSON.stringify(monthlyData, null, 2));
+  } catch (error) {
+    console.error('Error during aggregation:', error);
+    return res.status(500).json({ message: 'Error during data aggregation' });
+  }
 
   const result = monthlyData[0] || {
     year: parseInt(year),
@@ -671,26 +686,31 @@ const getMonthlyNutrition = asyncHandler(async (req, res) => {
     dailyBreakdown: []
   };
 
-  // Add goals comparison (from notworking)
-  const goals = await getNutritionalGoals(userId);
-  result.goals = goals;
-  result.monthlyGoals = {
-    calories: goals.calories * result.daysTracked,
-    protein: goals.protein * result.daysTracked,
-    carbs: goals.carbs * result.daysTracked,
-    fats: goals.fats * result.daysTracked
-  };
+  // Add goals comparison
+  try {
+    const goals = await getNutritionalGoals(userId);
+    result.goals = goals;
+    result.monthlyGoals = {
+      calories: goals.calories * result.daysTracked,
+      protein: goals.protein * result.daysTracked,
+      carbs: goals.carbs * result.daysTracked,
+      fats: goals.fats * result.daysTracked
+    };
 
-  // Calculate completion percentages (from notworking)
-  result.completion = {
-    calories: result.monthlyGoals.calories > 0 ? (result.totalCalories / result.monthlyGoals.calories) * 100 : 0,
-    protein: result.monthlyGoals.protein > 0 ? (result.totalProtein / result.monthlyGoals.protein) * 100 : 0,
-    carbs: result.monthlyGoals.carbs > 0 ? (result.totalCarbs / result.monthlyGoals.carbs) * 100 : 0,
-    fats: result.monthlyGoals.fats > 0 ? (result.totalFats / result.monthlyGoals.fats) * 100 : 0
-  };
+    // Calculate completion percentages
+    result.completion = {
+      calories: result.monthlyGoals.calories > 0 ? (result.totalCalories / result.monthlyGoals.calories) * 100 : 0,
+      protein: result.monthlyGoals.protein > 0 ? (result.totalProtein / result.monthlyGoals.protein) * 100 : 0,
+      carbs: result.monthlyGoals.carbs > 0 ? (result.totalCarbs / result.monthlyGoals.carbs) * 100 : 0,
+      fats: result.monthlyGoals.fats > 0 ? (result.totalFats / result.monthlyGoals.fats) * 100 : 0
+    };
+  } catch (error) {
+    console.error('Error fetching nutritional goals:', error);
+  }
 
   // Cache the result
   setCacheWithTTL(cacheKey, result);
+  //console.log('Caching data for key:', cacheKey);
 
   // Set ETag for the new data
   const etag = require('crypto')
@@ -699,6 +719,7 @@ const getMonthlyNutrition = asyncHandler(async (req, res) => {
     .digest('hex');
   res.set('ETag', etag);
 
+  //console.log('Returning data:', JSON.stringify(result, null, 2));
   res.json(result);
 });
 
