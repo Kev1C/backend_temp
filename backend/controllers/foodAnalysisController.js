@@ -1,38 +1,55 @@
+// backend/controllers/foodAnalysisController.js
 const { GoogleGenerativeAI } = require('@google/generative-ai');
 require('dotenv').config();
+const Coin = require('../models/Coin');
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 
 const analyzeFood = async (req, res) => {
     try {
         console.log('Received food analysis request');
-        
+
         // Validate environment variables
         if (!process.env.GEMINI_API_KEY) {
             console.error('GEMINI_API_KEY not found in environment variables');
-            return res.status(500).json({ 
-                success: false, 
-                message: 'Server configuration error' 
+            return res.status(500).json({
+                success: false,
+                message: 'Server configuration error'
             });
         }
 
         if (!req.body) {
             console.error('No request body received');
-            return res.status(400).json({ 
-                success: false, 
-                message: 'No request body provided' 
+            return res.status(400).json({
+                success: false,
+                message: 'No request body provided'
             });
         }
 
         const { imageBase64 } = req.body;
-        
+
         if (!imageBase64) {
             console.error('No image data in request');
-            return res.status(400).json({ 
-                success: false, 
-                message: 'No image data provided' 
+            return res.status(400).json({
+                success: false,
+                message: 'No image data provided'
             });
         }
+
+        // Check if the user has enough coins
+        const userId = req.user.userId;
+        const coin = await Coin.findOne({ user: userId });
+        const analysisCost = 5; // Example: Each analysis costs 5 coins
+
+        if (!coin || coin.balance < analysisCost) {
+            return res.status(400).json({
+                success: false,
+                message: 'Insufficient coins to perform analysis',
+            });
+        }
+        // Deduct coins
+        coin.balance -= analysisCost;
+        await coin.save();
 
         console.log('Image size:', Math.round(imageBase64.length / 1024), 'KB');
         console.log('Image data received, analyzing with Gemini...');
@@ -72,7 +89,7 @@ const analyzeFood = async (req, res) => {
             const result = await model.generateContent([prompt, imageData]);
             const response = await result.response;
             const text = response.text();
-            
+
             console.log('Raw response from Gemini:', text);
 
             // Enhanced cleaning of the response text
@@ -90,14 +107,14 @@ const analyzeFood = async (req, res) => {
             }
 
             console.log('Cleaned response text:', cleanedText);
-            
+
             // Validate JSON structure before parsing
             if (!cleanedText.startsWith('{') || !cleanedText.endsWith('}')) {
                 console.error('Invalid JSON structure. Raw text:', text);
                 console.error('Cleaned text:', cleanedText);
                 throw new Error('Invalid JSON structure in response');
             }
-            
+
             // Parse the cleaned JSON response
             let nutritionData;
             try {
@@ -105,13 +122,13 @@ const analyzeFood = async (req, res) => {
             } catch (parseError) {
                 console.error('JSON parsing error:', parseError);
                 console.error('Problematic text:', cleanedText);
-                
+
                 // Attempt to fix common JSON issues
                 cleanedText = cleanedText
                     .replace(/(['"'])?([a-zA-Z0-9_]+)(['"'])?\\s*:/g, '"$2": ') // Fix unquoted keys
                     .replace(/:\\s*'([^']*)']/g, ': "$1"')  // Replace single quotes with double quotes
                     .replace(/,\\s*}/g, '}');  // Remove trailing commas
-                
+
                 try {
                     nutritionData = JSON.parse(cleanedText);
                     console.log('Successfully parsed JSON after fixes');
@@ -120,14 +137,14 @@ const analyzeFood = async (req, res) => {
                     throw new Error(`Failed to parse nutrition data: ${parseError.message}`);
                 }
             }
-            
+
             // Validate required fields
             const requiredFields = ['foodTitle', 'calories', 'carbs', 'protein', 'fats', 'healthScore'];
             const missingFields = requiredFields.filter(field => !nutritionData[field]);
             if (missingFields.length > 0) {
                 throw new Error(`Missing required fields: ${missingFields.join(', ')}`);
             }
-            
+
             console.log('Sending successful response:', nutritionData);
             res.status(200).json({
                 success: true,
@@ -136,8 +153,8 @@ const analyzeFood = async (req, res) => {
 
         } catch (geminiError) {
             console.error('Gemini API error:', geminiError);
-            res.status(500).json({ 
-                success: false, 
+            res.status(500).json({
+                success: false,
                 message: 'Error processing image with Gemini API',
                 error: geminiError.message
             });
@@ -146,8 +163,8 @@ const analyzeFood = async (req, res) => {
     } catch (error) {
         console.error('Food analysis error:', error);
         console.error('Error stack:', error.stack);
-        res.status(500).json({ 
-            success: false, 
+        res.status(500).json({
+            success: false,
             message: 'Error analyzing food',
             error: error.message,
             stack: process.env.NODE_ENV === 'development' ? error.stack : undefined
