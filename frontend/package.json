@@ -60,6 +60,7 @@
     "react-native-config": "^1.5.3",
     "react-native-countdown-circle-timer": "^3.2.1",
     "react-native-gesture-handler": "~2.20.2",
+    "react-native-google-mobile-ads": "^14.8.0",
     "react-native-modal": "^13.0.1",
     "react-native-multiple-select": "^0.5.12",
     "react-native-paper": "^5.12.5",

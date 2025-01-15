@@ -8,6 +8,8 @@ import { useAuthStore } from '../../stores/authStore';
 import { api } from '../../services/api';
 import { useNutritionStore, formatDate } from '../../stores/nutritionStore';
 import FoodAnalysisBottomSheet from './FoodAnalysisBottomSheet';
+import { useDiamondStore } from '../../stores/diamondStore'; // Updated import
+import AdComponent from '../../Components/AdComponent';
 
 const CameraScreen = ({ navigation }) => {
   const [facing, setFacing] = useState('back');
@@ -38,6 +40,7 @@ const CameraScreen = ({ navigation }) => {
     healthScore: '',
   });
   const [analysisLoading, setAnalysisLoading] = useState(false);
+  const [showAdComponent, setShowAdComponent] = useState(false);
 
   const cameraRef = useRef(null);
   const bottomSheetRef = useRef(null);
@@ -45,6 +48,8 @@ const CameraScreen = ({ navigation }) => {
   const { authToken } = useAuthStore();
   const updateDailyNutrition = useNutritionStore((state) => state.updateDailyNutrition);
   const theme = useTheme();
+
+  const { balance, fetchBalance, addDiamonds, deductDiamonds } = useDiamondStore(); // Updated
 
   const dynamicStyles = useMemo(() => ({
     confirmFab: {
@@ -54,7 +59,10 @@ const CameraScreen = ({ navigation }) => {
 
   useEffect(() => {
     requestPermission();
-  }, []);
+    if (authToken) {
+      fetchBalance(authToken);
+    }
+  }, [authToken]);
 
   const handleCameraReady = () => {
     setIsCameraReady(true);
@@ -148,13 +156,35 @@ const CameraScreen = ({ navigation }) => {
     return 'Dinner';
   };
 
+  const handleAdWatched = async (reward) => {
+    // Assuming 1 rewarded video view = 5 diamonds
+    const diamondsToAdd = 5;
+    try {
+      await addDiamonds(diamondsToAdd, authToken);
+      Alert.alert('Success', `You've earned ${diamondsToAdd} diamonds!`);
+      setShowAdComponent(false); // Hide the AdComponent after successfully adding diamonds
+    } catch (error) {
+      console.error('Error adding diamonds:', error);
+      Alert.alert('Error', 'Failed to add diamonds. Please try again.');
+    }
+  };
+
   const handleConfirm = async () => {
     if (!foodTitle) {
       Alert.alert('Error', 'Please enter a food name');
       return;
     }
 
+    const analysisCost = 5;
+    if (balance < analysisCost) {
+      // Show option to watch ad
+      setShowAdComponent(true);
+      Alert.alert('Insufficient Diamonds', 'You do not have enough diamonds to analyze. Please watch an ad to earn more.');
+      return;
+    }
+
     try {
+      await deductDiamonds(analysisCost, authToken);
       const mealType = getMealType();
       const today = new Date();
       const currentTime = new Date().toLocaleTimeString('en-US', {
@@ -259,6 +289,14 @@ const CameraScreen = ({ navigation }) => {
               <View style={{ width: 30 }} />
             </View>
           </CameraView>
+        )}
+
+        {/* Diamond Balance and Ad */}
+        <View style={styles.diamondBalanceContainer}>
+          <Text style={styles.diamondBalanceText}>Diamonds: {balance}</Text>
+        </View>
+        {showAdComponent && (
+          <AdComponent onAdWatched={handleAdWatched} />
         )}
 
         <FoodAnalysisBottomSheet
@@ -367,6 +405,18 @@ const styles = StyleSheet.create({
     fontSize: 20,
     fontWeight: '600',
     textAlign: 'center',
+  },
+  diamondBalanceContainer: {
+    position: 'absolute',
+    top: 80,
+    right: 20,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    padding: 10,
+    borderRadius: 5,
+  },
+  diamondBalanceText: {
+    color: 'white',
+    fontSize: 16,
   },
 });
 

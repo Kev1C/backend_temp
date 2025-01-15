@@ -1,6 +1,4 @@
-// frontend/screens/Profile/SettingsScreen.js
-
-import React, { useContext, useEffect } from 'react';
+import React, { useContext, useEffect, useState } from 'react';
 import { View, Alert, ScrollView, TouchableOpacity, SafeAreaView, Platform, StatusBar } from 'react-native';
 import { Text, Button, Divider, Card } from 'react-native-paper';
 import { ThemeContext } from '../../context/ThemeContext';
@@ -8,12 +6,18 @@ import { useAuthStore } from '../../stores/authStore';
 import getStyles from './SettingsScreen.styles';
 import { useNavigation } from '@react-navigation/native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { useDiamondStore } from '../../stores/diamondStore'; // Updated import
+import AdComponent from '../../Components/AdComponent';
 
 const SettingsScreen = () => {
   const { theme } = useContext(ThemeContext);
   const { signOut, user, updateUserData, loading } = useAuthStore();
   const navigation = useNavigation();
   const styles = getStyles(theme);
+
+  const { balance, fetchBalance, addDiamonds } = useDiamondStore(); // Updated
+  const { authToken } = useAuthStore();
+  const [showAdComponent, setShowAdComponent] = useState(false);
 
   useEffect(() => {
     const loadUserData = async () => {
@@ -24,7 +28,11 @@ const SettingsScreen = () => {
       }
     };
     loadUserData();
-  }, []);
+
+    if (authToken) {
+      fetchBalance(authToken);
+    }
+  }, [authToken]);
 
   const handleLogout = () => {
     Alert.alert(
@@ -49,6 +57,19 @@ const SettingsScreen = () => {
     );
   };
 
+  const handleAdWatched = async (reward) => {
+    // Assuming 1 rewarded video view = 5 diamonds
+    const diamondsToAdd = 5;
+    try {
+      await addDiamonds(diamondsToAdd, authToken);
+      Alert.alert('Success', `You've earned ${diamondsToAdd} diamonds!`);
+      setShowAdComponent(false); // Hide the AdComponent after successfully adding diamonds
+    } catch (error) {
+      console.error('Error adding diamonds:', error);
+      Alert.alert('Error', 'Failed to add diamonds. Please try again.');
+    }
+  };
+
   const renderUserStat = (label, value, icon) => (
     <Card style={styles.statCard}>
       <Card.Content style={styles.statContent}>
@@ -71,13 +92,13 @@ const SettingsScreen = () => {
         {/* Settings Header */}
         <View style={styles.headerContainer}>
           <Text style={styles.header}>Settings</Text>
-          <View style={styles.coinContainer}>
-            <MaterialCommunityIcons 
-              name="cash" 
-              size={24} 
-              color="#FFD700" 
+          <View style={styles.diamondContainer}>
+            <MaterialCommunityIcons
+              name="diamond-stone" // Changed icon to diamond
+              size={24}
+              color="#FFD700"
             />
-            <Text style={styles.coinText}>100</Text>
+            <Text style={styles.diamondText}>{balance}</Text>
           </View>
         </View>
 
@@ -98,14 +119,26 @@ const SettingsScreen = () => {
 
         <Divider style={styles.divider} />
 
+        {/* Watch Ad Button */}
+        <TouchableOpacity style={styles.button} onPress={() => setShowAdComponent(true)}>
+          <Text style={styles.buttonText}>Watch Ad to Earn Diamonds</Text>
+        </TouchableOpacity>
+
+        {/* Display the AdComponent when showAdComponent is true */}
+        {showAdComponent && (
+          <AdComponent onAdWatched={handleAdWatched} />
+        )}
+
+        <Divider style={styles.divider} />
+
         {/* Logout Button */}
         <View style={styles.logoutContainer}>
           <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
             <View style={styles.logoutContent}>
-              <MaterialCommunityIcons 
-                name="logout" 
-                size={20} 
-                color={theme.colors.text} 
+              <MaterialCommunityIcons
+                name="logout"
+                size={20}
+                color={theme.colors.text}
                 style={styles.logoutIcon}
               />
               <Text style={styles.logoutButtonText}>Logout</Text>
