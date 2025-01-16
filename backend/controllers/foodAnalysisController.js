@@ -1,7 +1,7 @@
 // backend/controllers/foodAnalysisController.js
 const { GoogleGenerativeAI } = require('@google/generative-ai');
 require('dotenv').config();
-const Coin = require('../models/Coin');
+const Diamond = require('../models/Diamond'); // Import Diamond model
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 
@@ -36,26 +36,26 @@ const analyzeFood = async (req, res) => {
             });
         }
 
-        // Check if the user has enough coins
+        // Check if the user has enough diamonds
         const userId = req.user.userId;
-        const coin = await Coin.findOne({ user: userId });
-        const analysisCost = 5; // Example: Each analysis costs 5 coins
+        const diamond = await Diamond.findOne({ user: userId }); // Find diamond balance
+        const analysisCost = 5; // Example: Each analysis costs 5 diamonds
 
-        if (!coin || coin.balance < analysisCost) {
+        if (!diamond || diamond.balance < analysisCost) {
             return res.status(400).json({
                 success: false,
-                message: 'Insufficient coins to perform analysis',
+                message: 'Insufficient diamonds to perform analysis', // Updated message
             });
         }
-        // Deduct coins
-        coin.balance -= analysisCost;
-        await coin.save();
+        // Deduct diamonds
+        diamond.balance -= analysisCost;
+        await diamond.save();
 
         console.log('Image size:', Math.round(imageBase64.length / 1024), 'KB');
         console.log('Image data received, analyzing with Gemini...');
 
-        // Initialize the model
-        const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash-exp" });
+        // Initialize the model (Updated the model name to the currently recommended one)
+        const model = genAI.getGenerativeModel({ model: "gemini-1.0-pro-vision-latest" });
 
         // Prepare the image data
         const imageData = {
