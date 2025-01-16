@@ -54,8 +54,8 @@ const analyzeFood = async (req, res) => {
         console.log('Image size:', Math.round(imageBase64.length / 1024), 'KB');
         console.log('Image data received, analyzing with Gemini...');
 
-        // Initialize the model (Updated the model name to the currently recommended one)
-        const model = genAI.getGenerativeModel({ model: "gemini-1.0-pro-vision-latest" });
+        // Initialize the model
+        const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash-exp" });
 
         // Prepare the image data
         const imageData = {
