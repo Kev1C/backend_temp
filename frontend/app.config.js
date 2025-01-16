@@ -17,8 +17,8 @@ export default ({ config }) => ({
     [
       "react-native-google-mobile-ads",
       {
-        android_app_id: "ca-app-pub-2191904332416469~4553503462",
-        ios_app_id: "ca-app-pub-xxxxxxxxxxxxxxxx~yyyyyyyyyy", // Replace with your iOS app ID
+        android_app_id: process.env.GOOGLE_ADMOB_ANDROID_APP_ID,
+        ios_app_id: process.env.GOOGLE_ADMOB_IOS_APP_ID,
         // Optional: Configure test devices
         testDeviceIdentifiers: ["EMULATOR"],
       }
