@@ -9,8 +9,6 @@ import { NavigationContainer } from '@react-navigation/native';
 import { useAuthStore } from './stores/authStore';
 import { useOnboardingStore } from './stores/onboardingStore';
 import AppNavigator from './navigation/AppNavigator';
-import mobileAds from 'react-native-google-mobile-ads';
-import { Platform } from 'react-native';
 
 const App = () => {
   const { initializeAuth } = useAuthStore();
@@ -18,17 +16,6 @@ const App = () => {
 
   useEffect(() => {
     const initializeApp = async () => {
-      // Initialize mobile ads
-      await mobileAds().initialize({
-        requestConfig: {
-          // Initialize with your app IDs
-          applicationId: Platform.select({
-            android: 'ca-app-pub-2191904332416469~4553503462',
-            ios: 'ca-app-pub-xxxxxxxxxxxxxxxx~yyyyyyyyyy',
-          }),
-        },
-      });
-
       await Promise.all([
         initializeAuth(),
         loadOnboardingData()
