@@ -73,7 +73,8 @@
     "react-native-svg": "^15.8.0",
     "react-native-wheel-scrollview-picker": "^2.0.6",
     "victory-native": "^36.9.1",
-    "zustand": "^5.0.2"
+    "zustand": "^5.0.2",
+    "expo-build-properties": "~0.13.2"
   },
   "devDependencies": {
     "@babel/core": "^7.20.0",
