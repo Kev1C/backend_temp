@@ -1,11 +1,8 @@
-import 'dotenv/config';
+// frontend/app.config.js
 
 export default ({ config }) => ({
   ...config,
   extra: {
-    apiBaseUrl: process.env.API_BASE_URL || 'http://10.0.0.203:5000',
-  },
-  experiments: {
-    tsconfigPaths: true,
+    apiBaseUrl: 'http://10.0.0.203:5000', // Use development machine's IP address
   },
 });
