@@ -5,8 +5,8 @@
   "main": "node_modules/expo/AppEntry.js",
   "scripts": {
     "start": "expo start",
-    "android": "expo start --android",
-    "ios": "expo start --ios",
+    "android": "expo run:android",
+    "ios": "expo run:ios",
     "web": "expo start --web",
     "postinstall": "patch-package"
   },
@@ -34,6 +34,7 @@
     "expo-apple-authentication": "~7.1.2",
     "expo-auth-session": "~6.0.1",
     "expo-av": "~15.0.1",
+    "expo-build-properties": "^0.13.2",
     "expo-camera": "~16.0.9",
     "expo-constants": "~17.0.3",
     "expo-linear-gradient": "~14.0.1",
