@@ -1,3 +1,5 @@
+// SettingsScreen.js
+
 import React, { useContext, useEffect, useState } from 'react';
 import { View, Alert, ScrollView, TouchableOpacity, SafeAreaView, Platform, StatusBar } from 'react-native';
 import { Text, Button, Divider, Card } from 'react-native-paper';
@@ -96,7 +98,7 @@ const SettingsScreen = () => {
             <MaterialCommunityIcons
               name="diamond-stone" // Changed icon to diamond
               size={24}
-              color="#FFD700"
+              color="#00FFFF" // Changed to blue
             />
             <Text style={styles.diamondText}>{balance}</Text>
           </View>
