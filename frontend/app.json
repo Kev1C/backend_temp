@@ -19,7 +19,8 @@
       "adaptiveIcon": {
         "foregroundImage": "./assets/images/adaptive-icon.png",
         "backgroundColor": "#ffffff"
-      }
+      },
+      "package": "com.devmode_77.frontend"
     },
     "web": {
       "bundler": "metro",
@@ -32,9 +33,5 @@
     "experiments": {
       "typedRoutes": true
     }
-  },
-  "react-native-google-mobile-ads": {
-    "android_app_id": "ca-app-pub-2191904332416469~4553503462",
-    "ios_app_id": "ca-app-pub-xxxxxxxx~xxxxxxxx"
   }
 }
