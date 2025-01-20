@@ -90,22 +90,24 @@ const NativeAdComponent = () => {
 
   return (
     <NativeAdView style={styles.adContainer} nativeAd={nativeAd}>
-      <Card style={styles.adCard}>
-        <Card.Content style={styles.adContent}>
-          {nativeAd.icon && (
-            <NativeAsset assetType={NativeAssetType.ICON}>
-              <Image source={{ uri: nativeAd.icon.url }} style={styles.icon} />
-            </NativeAsset>
-          )}
-          <View style={styles.textContent}>
-            <NativeAsset assetType={NativeAssetType.HEADLINE}>
-              <Text style={styles.headline}>{nativeAd.headline}</Text>
-            </NativeAsset>
-            <Text style={styles.sponsoredText}>Sponsored</Text>
-          </View>
-          <NativeMediaView style={styles.mediaView} />
-        </Card.Content>
-      </Card>
+      <NativeAsset assetType={NativeAssetType.CALL_TO_ACTION}>
+        <Card style={styles.adCard}>
+          <Card.Content style={styles.adContent}>
+            {nativeAd.icon && (
+              <NativeAsset assetType={NativeAssetType.ICON}>
+                <Image source={{ uri: nativeAd.icon.url }} style={styles.icon} />
+              </NativeAsset>
+            )}
+            <View style={styles.textContent}>
+              <NativeAsset assetType={NativeAssetType.HEADLINE}>
+                <Text style={styles.headline}>{nativeAd.headline}</Text>
+              </NativeAsset>
+              <Text style={styles.sponsoredText}>Sponsored</Text>
+            </View>
+            <NativeMediaView style={styles.mediaView} />
+          </Card.Content>
+        </Card>
+      </NativeAsset>
     </NativeAdView>
   );
 };
