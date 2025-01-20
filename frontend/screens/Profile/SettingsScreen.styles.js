@@ -116,19 +116,21 @@ const getStyles = (theme) =>
       letterSpacing: 0.5,
       textAlign: 'center',
     },
-    coinContainer: {
+    diamondContainer: {
       flexDirection: 'row',
       alignItems: 'center',
-      backgroundColor: 'rgba(255, 215, 0, 0.1)',
+      justifyContent: 'center',
+      backgroundColor: 'rgba(0, 255, 255, 0.1)',
       padding: 8,
       borderRadius: 20,
       marginRight: 8,
     },
-    coinText: {
+    diamondText: {
       marginLeft: 4,
       color: theme.colors.text,
       fontWeight: 'bold',
       fontSize: 16,
+      alignSelf: 'center',
     },
   });
 
