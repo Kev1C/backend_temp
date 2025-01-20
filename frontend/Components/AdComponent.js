@@ -7,65 +7,85 @@ import {
     RewardedAdEventType,
     TestIds,
     AdEventType,
-    InterstitialAd
 } from 'react-native-google-mobile-ads';
-import { GOOGLE_ADMOB_ANDROID_REWARDED, GOOGLE_ADMOB_IOS_REWARDED } from '@env';
 
-const adUnitId = Platform.OS === 'ios' ? GOOGLE_ADMOB_IOS_REWARDED : GOOGLE_ADMOB_ANDROID_REWARDED;
-
+// Use test IDs during development
+//const adUnitId = __DEV__ ? TestIds.REWARDED : (Platform.OS === 'ios' ? 'YOUR_IOS_REWARDED_AD_UNIT_ID' : 'YOUR_ANDROID_REWARDED_AD_UNIT_ID');
+const adUnitId = false ? TestIds.REWARDED : (Platform.OS === 'ios' ? 'YOUR_IOS_REWARDED_AD_UNIT_ID' : 'ca-app-pub-2191904332416469/1723427624');
 const AdComponent = ({ onAdWatched }) => {
     const { user } = useAuthStore();
     const [adReady, setAdReady] = useState(false);
-    const [rewarded, setRewarded] = useState(null);
+    const [rewardedAd, setRewardedAd] = useState(null);
 
     useEffect(() => {
+        // Create a new rewarded ad instance
         const rewarded = RewardedAd.createForAdRequest(adUnitId, {
-            requestNonPersonalizedAdsOnly: true,
+            //requestNonPersonalizedAdsOnly: true,
+            keywords: ['fitness', 'health', 'workout'],
         });
 
+        setRewardedAd(rewarded);
+
         const unsubscribeLoaded = rewarded.addAdEventListener(RewardedAdEventType.LOADED, () => {
+            console.log('Ad loaded');
             setAdReady(true);
         });
+
         const unsubscribeEarned = rewarded.addAdEventListener(
             RewardedAdEventType.EARNED_REWARD,
             reward => {
                 console.log('User earned reward of ', reward);
-                setRewarded(reward);
-                onAdWatched(reward)
+                onAdWatched(reward);
             },
         );
+
         const unsubscribeClosed = rewarded.addAdEventListener(AdEventType.CLOSED, () => {
             console.log('User closed ad');
             setAdReady(false);
+            // Load a new ad when the current one is closed
             rewarded.load();
         });
+
+        const unsubscribeError = rewarded.addAdEventListener(AdEventType.ERROR, (error) => {
+            console.error('Ad error:', error);
+            setAdReady(false);
+            // Retry loading after error
+            setTimeout(() => rewarded.load(), 5000);
+        });
+
         // Start loading the rewarded ad straight away
         rewarded.load();
+
         // Unsubscribe from events on unmount
         return () => {
             unsubscribeLoaded();
             unsubscribeEarned();
             unsubscribeClosed();
+            unsubscribeError();
         };
     }, []);
 
     const showRewardedAd = async () => {
-        if (adReady) {
-            try {
-                await rewarded.show();
-            } catch (error) {
-                console.error('Error showing rewarded ad:', error);
-                Alert.alert('Error', 'Failed to show ad. Please try again.');
-            }
-        } else {
+        if (!rewardedAd || !adReady) {
             Alert.alert('Ad not ready', 'Please wait for the ad to load.');
+            return;
+        }
+
+        try {
+            await rewardedAd.show();
+        } catch (error) {
+            console.error('Error showing rewarded ad:', error);
+            Alert.alert('Error', 'Failed to show ad. Please try again.');
+            setAdReady(false);
+            // Retry loading after error
+            rewardedAd.load();
         }
     };
 
     return (
         <View style={styles.container}>
             <Button
-                title="Watch Ad to Earn Diamonds"
+                title={adReady ? "Watch Ad to Earn Diamonds" : "Loading Ad..."}
                 onPress={showRewardedAd}
                 disabled={!adReady}
             />

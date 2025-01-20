@@ -60,10 +60,11 @@ const SettingsScreen = () => {
   };
 
   const handleAdWatched = async (reward) => {
-    // Assuming 1 rewarded video view = 5 diamonds
-    const diamondsToAdd = 5;
+    const diamondsToAdd = reward.amount || 10; // Use the reward amount from the ad, fallback to 10
     try {
       await addDiamonds(diamondsToAdd, authToken);
+      // Refresh the balance after adding diamonds
+      await fetchBalance(authToken);
       Alert.alert('Success', `You've earned ${diamondsToAdd} diamonds!`);
       setShowAdComponent(false); // Hide the AdComponent after successfully adding diamonds
     } catch (error) {
