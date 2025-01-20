@@ -132,6 +132,22 @@ const getStyles = (theme) =>
       fontSize: 16,
       alignSelf: 'center',
     },
+    resourcesButton: {
+      backgroundColor: theme.colors.primary,
+      marginHorizontal: 16,
+      padding: 12,
+      borderRadius: 8,
+      alignItems: 'center',
+      flexDirection: 'row',
+      justifyContent: 'center',
+      elevation: 2,
+    },
+    resourcesButtonText: {
+      color: theme.colors.surface,
+      fontSize: 16,
+      fontWeight: '600',
+      marginLeft: 8,
+    },
   });
 
 export default getStyles;

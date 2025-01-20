@@ -123,8 +123,13 @@ const SettingsScreen = () => {
         <Divider style={styles.divider} />
 
         {/* Resources Button */}
-        <TouchableOpacity style={styles.button} onPress={navigateToResources}>
-          <Text style={styles.buttonText}>Resources</Text>
+        <TouchableOpacity style={styles.resourcesButton} onPress={navigateToResources}>
+          <MaterialCommunityIcons
+            name="book-open-variant"
+            size={20}
+            color={theme.colors.surface}
+          />
+          <Text style={styles.resourcesButtonText}>Resources</Text>
         </TouchableOpacity>
 
         <Divider style={styles.divider} />
