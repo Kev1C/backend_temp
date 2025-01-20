@@ -39,7 +39,7 @@ const analyzeFood = async (req, res) => {
         // Check if the user has enough diamonds
         const userId = req.user.userId;
         const diamond = await Diamond.findOne({ user: userId }); // Find diamond balance
-        const analysisCost = 5; // Example: Each analysis costs 5 diamonds
+        const analysisCost = 150; // Example: Each analysis costs 5 diamonds
 
         if (!diamond || diamond.balance < analysisCost) {
             return res.status(400).json({
