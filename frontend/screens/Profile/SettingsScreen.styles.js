@@ -28,27 +28,27 @@ const getStyles = (theme) =>
     },
     statsContainer: {
       flexDirection: 'row',
+      flexWrap: 'wrap',
       justifyContent: 'space-between',
-      marginBottom: 24,
+      marginBottom: 20,
       paddingHorizontal: 16,
+      gap: 8,
     },
     statCard: {
-      flex: 1,
-      marginHorizontal: 4,
+      width: '48%',
       elevation: 2,
       backgroundColor: theme.colors.surface,
       borderRadius: 12,
+      marginBottom: 6,
     },
     statContent: {
-      alignItems: 'center',
       padding: 12,
     },
     statTextContainer: {
-      alignItems: 'center',
       marginTop: 8,
     },
     statLabel: {
-      fontSize: 14,
+      fontSize: 12,
       color: theme.colors.text,
       opacity: 0.7,
       marginBottom: 4,

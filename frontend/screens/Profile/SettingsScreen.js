@@ -81,12 +81,14 @@ const SettingsScreen = () => {
   const renderUserStat = (label, value, icon) => (
     <Card style={styles.statCard}>
       <Card.Content style={styles.statContent}>
-        <MaterialCommunityIcons name={icon} size={24} color={theme.colors.primary} />
-        <View style={styles.statTextContainer}>
-          <Text style={styles.statLabel}>{label}</Text>
-          <Text style={styles.statValue}>
-            {loading ? 'Loading...' : value}
-          </Text>
+        <View>
+          <MaterialCommunityIcons name={icon} size={28} color={theme.colors.primary} />
+          <View style={styles.statTextContainer}>
+            <Text style={styles.statValue}>
+              {loading ? 'Loading...' : value}
+            </Text>
+            <Text style={styles.statLabel}>{label}</Text>
+          </View>
         </View>
       </Card.Content>
     </Card>
