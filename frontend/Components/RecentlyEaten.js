@@ -4,6 +4,7 @@ import { View, Image, VirtualizedList, Dimensions } from 'react-native';
 import { Text, Card, useTheme, ActivityIndicator } from 'react-native-paper';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { StyleSheet } from 'react-native';
+import NativeAdComponent from './NativeAdComponent';
 
 const MealItem = memo(({ meal }) => {
   const theme = useTheme();
@@ -62,15 +63,27 @@ const RecentlyEaten = memo(({ meals = [], isLoading = false }) => {
   const theme = useTheme();
   const styles = useMemo(() => getStyles(theme), [theme]);
 
-  const getItem = useCallback((data, index) => data[index], []);
-  const getItemCount = useCallback((data) => data.length, []);
+  const getItem = useCallback((data, index) => {
+    // If it's the first item, return a special ad object
+    if (index === 0) {
+      return { id: 'ad', type: 'ad' };
+    }
+    // Adjust index to account for the ad
+    return data[index - 1];
+  }, []);
+
+  const getItemCount = useCallback(data => (data?.length || 0) + 1, []); // Add 1 for the ad
+
   const keyExtractor = useCallback((item) => 
     item.id?.toString() || item._id?.toString() || item.name + item.time
   , []);
 
-  const renderItem = useCallback(({ item }) => (
-    <MealItem meal={item} />
-  ), []);
+  const renderItem = useCallback(({ item }) => {
+    if (item.type === 'ad') {
+      return <NativeAdComponent />;
+    }
+    return <MealItem meal={item} />;
+  }, []);
 
   if (isLoading) {
     return (
