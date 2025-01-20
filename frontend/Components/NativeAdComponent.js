@@ -41,19 +41,19 @@ const NativeAdComponent = () => {
     },
     adCard: {
       backgroundColor: theme.colors.surface,
+      marginBottom: 12,
       borderRadius: 12,
       elevation: 2,
-      marginHorizontal: 0,
     },
     adContent: {
       flexDirection: 'row',
       alignItems: 'center',
       padding: 12,
-      height: 84,
+      height: 96,
     },
     headline: {
-      fontWeight: 'bold',
-      fontSize: 14,
+      fontWeight: '600',
+      fontSize: 16,
       marginBottom: 4,
       flex: 1,
     },
@@ -63,20 +63,15 @@ const NativeAdComponent = () => {
       marginBottom: 2,
     },
     icon: {
-      width: 50,
-      height: 50,
+      width: 64,
+      height: 64,
       borderRadius: 8,
     },
     mediaView: {
-      width: 50,
-      height: 50,
+      width: 84,
+      height: 84,
       borderRadius: 8,
       marginLeft: 12,
-    },
-    leftContent: {
-      flex: 1,
-      flexDirection: 'row',
-      alignItems: 'center',
     },
     textContent: {
       flex: 1,
@@ -90,9 +85,10 @@ const NativeAdComponent = () => {
 
   return (
     <NativeAdView style={styles.adContainer} nativeAd={nativeAd}>
-      <NativeAsset assetType={NativeAssetType.CALL_TO_ACTION}>
-        <Card style={styles.adCard}>
-          <Card.Content style={styles.adContent}>
+      <Card style={styles.adCard}>
+        <NativeAsset assetType={NativeAssetType.CALL_TO_ACTION}>
+          {/* Use View instead of Card.Content */}
+          <View style={styles.adContent}>
             {nativeAd.icon && (
               <NativeAsset assetType={NativeAssetType.ICON}>
                 <Image source={{ uri: nativeAd.icon.url }} style={styles.icon} />
@@ -105,9 +101,9 @@ const NativeAdComponent = () => {
               <Text style={styles.sponsoredText}>Sponsored</Text>
             </View>
             <NativeMediaView style={styles.mediaView} />
-          </Card.Content>
-        </Card>
-      </NativeAsset>
+          </View>
+        </NativeAsset>
+      </Card>
     </NativeAdView>
   );
 };
