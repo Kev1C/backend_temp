@@ -35,7 +35,10 @@ const AdComponent = ({ onAdWatched }) => {
             RewardedAdEventType.EARNED_REWARD,
             reward => {
                 console.log('User earned reward of ', reward);
-                onAdWatched(reward);
+                // Make sure to call onAdWatched before closing the ad
+                if (onAdWatched) {
+                    onAdWatched(reward);
+                }
             },
         );
 
@@ -49,21 +52,23 @@ const AdComponent = ({ onAdWatched }) => {
         const unsubscribeError = rewarded.addAdEventListener(AdEventType.ERROR, (error) => {
             console.error('Ad error:', error);
             setAdReady(false);
-            // Retry loading after error
-            setTimeout(() => rewarded.load(), 5000);
+            // Try to load a new ad after error
+            setTimeout(() => {
+                rewarded.load();
+            }, 1000);
         });
 
-        // Start loading the rewarded ad straight away
+        // Initial ad load
         rewarded.load();
 
-        // Unsubscribe from events on unmount
+        // Cleanup
         return () => {
             unsubscribeLoaded();
             unsubscribeEarned();
             unsubscribeClosed();
             unsubscribeError();
         };
-    }, []);
+    }, [onAdWatched]);
 
     const showRewardedAd = async () => {
         if (!rewardedAd || !adReady) {

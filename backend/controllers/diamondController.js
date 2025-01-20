@@ -1,7 +1,7 @@
 // backend/controllers/diamondController.js
 const Diamond = require('../models/Diamond');
 const User = require('../models/User');
-const Transaction = require('../models/Transaction');
+const Transaction = require('../models/Transactions');
 const asyncHandler = require('express-async-handler');
 
 // @desc    Get user's diamond balance
@@ -10,11 +10,15 @@ const asyncHandler = require('express-async-handler');
 const getDiamondBalance = asyncHandler(async (req, res) => {
     const userId = req.user.userId;
 
-    const diamond = await Diamond.findOne({ user: userId });
+    let diamond = await Diamond.findOne({ user: userId });
 
     if (!diamond) {
-        res.status(404);
-        throw new Error('Diamond balance not found for user');
+        // Create a new diamond record if it doesn't exist
+        diamond = await Diamond.create({
+            user: userId,
+            balance: 0
+        });
+        console.log('Created new diamond record for user:', userId);
     }
 
     res.status(200).json({ balance: diamond.balance });
@@ -32,13 +36,18 @@ const addDiamonds = asyncHandler(async (req, res) => {
         throw new Error('Invalid amount');
     }
 
-    const diamond = await Diamond.findOne({ user: userId });
+    let diamond = await Diamond.findOne({ user: userId });
     if (!diamond) {
-        res.status(404).json({ message: 'User not found' });
+        // Create new diamond record if it doesn't exist
+        diamond = await Diamond.create({
+            user: userId,
+            balance: amount
+        });
+    } else {
+        // Update existing balance
+        diamond.balance += amount;
+        await diamond.save();
     }
-
-    diamond.balance += amount;
-    await diamond.save();
 
     // Create a transaction record
     await Transaction.create({
@@ -49,7 +58,12 @@ const addDiamonds = asyncHandler(async (req, res) => {
         balanceAfter: diamond.balance,
     });
 
-    res.status(200).json({ message: `${amount} diamonds added`, newBalance: diamond.balance });
+    // Send both the new balance and the amount added
+    res.status(200).json({
+        newBalance: diamond.balance,
+        added: amount,
+        message: 'Diamonds added successfully'
+    });
 });
 
 // @desc    Deduct diamonds from user's balance

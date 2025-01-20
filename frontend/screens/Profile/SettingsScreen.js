@@ -62,9 +62,14 @@ const SettingsScreen = () => {
   const handleAdWatched = async (reward) => {
     const diamondsToAdd = reward.amount || 10; // Use the reward amount from the ad, fallback to 10
     try {
+      console.log('Adding diamonds:', diamondsToAdd);
       await addDiamonds(diamondsToAdd, authToken);
-      // Refresh the balance after adding diamonds
+      console.log('Diamonds added successfully');
+      
+      // Refresh the balance immediately after adding diamonds
       await fetchBalance(authToken);
+      console.log('Balance refreshed:', balance);
+      
       Alert.alert('Success', `You've earned ${diamondsToAdd} diamonds!`);
       setShowAdComponent(false); // Hide the AdComponent after successfully adding diamonds
     } catch (error) {
@@ -122,15 +127,8 @@ const SettingsScreen = () => {
 
         <Divider style={styles.divider} />
 
-        {/* Watch Ad Button */}
-        <TouchableOpacity style={styles.button} onPress={() => setShowAdComponent(true)}>
-          <Text style={styles.buttonText}>Watch Ad to Earn Diamonds</Text>
-        </TouchableOpacity>
-
-        {/* Display the AdComponent when showAdComponent is true */}
-        {showAdComponent && (
-          <AdComponent onAdWatched={handleAdWatched} />
-        )}
+        {/* Ad Component */}
+        <AdComponent onAdWatched={handleAdWatched} />
 
         <Divider style={styles.divider} />
 
