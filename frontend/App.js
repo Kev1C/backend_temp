@@ -10,6 +10,15 @@ import { useAuthStore } from './stores/authStore';
 import { useOnboardingStore } from './stores/onboardingStore';
 import AppNavigator from './navigation/AppNavigator';
 
+// Preload heavy components
+const preloadComponents = () => {
+  const promises = [
+    import('./Components/MacroNutrientsChart'),
+    import('./Components/NutritionHeatmap')
+  ];
+  return Promise.all(promises);
+};
+
 const App = () => {
   const { initializeAuth } = useAuthStore();
   const { loadOnboardingData } = useOnboardingStore();
@@ -18,7 +27,8 @@ const App = () => {
     const initializeApp = async () => {
       await Promise.all([
         initializeAuth(),
-        loadOnboardingData()
+        loadOnboardingData(),
+        preloadComponents()
       ]);
     };
 
