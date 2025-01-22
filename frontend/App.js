@@ -9,6 +9,22 @@ import { NavigationContainer } from '@react-navigation/native';
 import { useAuthStore } from './stores/authStore';
 import { useOnboardingStore } from './stores/onboardingStore';
 import AppNavigator from './navigation/AppNavigator';
+import { api, cachedGet } from './services/api';
+
+// Preload API data
+const preloadApiData = async () => {
+  try {
+    // Get today's date in ISO format for the meals endpoint
+    const today = new Date().toISOString().split('T')[0];
+    const promises = [
+      cachedGet('/meals/recent', { params: { date: today } })  // Fetch recently eaten meals for today
+    ];
+    await Promise.all(promises);
+  } catch (error) {
+    console.warn('Error preloading data:', error);
+    // Don't throw error to prevent app initialization from failing
+  }
+};
 
 // Preload heavy components
 const preloadComponents = () => {
@@ -28,7 +44,8 @@ const App = () => {
       await Promise.all([
         initializeAuth(),
         loadOnboardingData(),
-        preloadComponents()
+        preloadComponents(),
+        preloadApiData()
       ]);
     };
 
