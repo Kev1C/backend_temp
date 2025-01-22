@@ -176,7 +176,7 @@ const CameraScreen = ({ navigation }) => {
       return;
     }
 
-    const analysisCost = 150;
+    const analysisCost = 0;
     if (balance < analysisCost) {
       // Show option to watch ad
       setShowAdComponent(true);
