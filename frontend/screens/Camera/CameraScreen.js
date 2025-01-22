@@ -10,6 +10,7 @@ import { useNutritionStore, formatDate } from '../../stores/nutritionStore';
 import FoodAnalysisBottomSheet from './FoodAnalysisBottomSheet';
 import { useDiamondStore } from '../../stores/diamondStore'; // Updated import
 import AdComponent from '../../Components/AdComponent';
+import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
 
 const CameraScreen = ({ navigation }) => {
   const [facing, setFacing] = useState('back');
@@ -175,7 +176,7 @@ const CameraScreen = ({ navigation }) => {
       return;
     }
 
-    const analysisCost = 5;
+    const analysisCost = 150;
     if (balance < analysisCost) {
       // Show option to watch ad
       setShowAdComponent(true);
@@ -293,7 +294,14 @@ const CameraScreen = ({ navigation }) => {
 
         {/* Diamond Balance and Ad */}
         <View style={styles.diamondBalanceContainer}>
-          <Text style={styles.diamondBalanceText}>Diamonds: {balance}</Text>
+          <View style={styles.diamondContainer}>
+            <MaterialCommunityIcons
+              name="diamond-stone"
+              size={24}
+              color="#00FFFF"
+            />
+            <Text style={styles.diamondText}>{balance}</Text>
+          </View>
         </View>
         {showAdComponent && (
           <AdComponent onAdWatched={handleAdWatched} />
@@ -406,17 +414,28 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     textAlign: 'center',
   },
+  diamondContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(0, 255, 255, 0.1)',
+    padding: 8,
+    borderRadius: 20,
+    marginRight: 8,
+  },
+  diamondText: {
+    marginLeft: 4,
+    color: '#fff',
+    fontWeight: 'bold',
+    fontSize: 16,
+    alignSelf: 'center',
+  },
   diamondBalanceContainer: {
     position: 'absolute',
     top: 80,
-    right: 20,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    right: 10,
     padding: 10,
     borderRadius: 5,
-  },
-  diamondBalanceText: {
-    color: 'white',
-    fontSize: 16,
   },
 });
 

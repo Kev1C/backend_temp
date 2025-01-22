@@ -21,7 +21,7 @@ const AdComponent = ({ onAdWatched }) => {
         // Create a new rewarded ad instance
         const rewarded = RewardedAd.createForAdRequest(adUnitId, {
             //requestNonPersonalizedAdsOnly: true,
-            keywords: ['fitness', 'health', 'workout'],
+            keywords: ['fitness', 'health', 'workout', 'exercise', 'bodybuilding', 'muscle', 'weight loss', 'strong', 'build muscle'],
         });
 
         setRewardedAd(rewarded);
