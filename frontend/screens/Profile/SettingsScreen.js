@@ -24,7 +24,7 @@ const SettingsScreen = () => {
   useEffect(() => {
     const loadUserData = async () => {
       try {
-        await updateUserData(true);
+        await updateUserData();
       } catch (error) {
         console.error('Error loading user data:', error);
       }
