@@ -68,8 +68,8 @@ const TabNavigator = () => {
           borderTopWidth: 0,
           elevation: 0,
           height: 60,
-          paddingTop: 8,
-          paddingBottom: 8,
+          paddingTop: 5,
+          paddingBottom: 5,
           shadowColor: theme.colors.shadow,
           shadowOffset: {
             width: 0,
@@ -81,10 +81,10 @@ const TabNavigator = () => {
         tabBarLabelStyle: {
           fontSize: 12,
           fontWeight: '500',
-          marginTop: 2,
+          marginTop: 0,
         },
         tabBarItemStyle: {
-          paddingVertical: 4,
+          paddingVertical: 2,
         },
         headerShown: false,
       })}
