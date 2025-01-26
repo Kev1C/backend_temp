@@ -72,7 +72,7 @@ const authStore = create((set, get) => ({
 
       let { token: backendToken, refreshToken, user: userData } = response.data;
 
-      console.log('Backend token received:', backendToken); // Debugging line
+      //console.log('Backend token received:', backendToken); // Debugging line
 
       // Ensure all values stored in SecureStore are strings
       await Promise.all([
@@ -212,7 +212,7 @@ const authStore = create((set, get) => ({
   },
 
   updateUserData: async (force = false) => {
-    console.log("Sending authToken:", get().authToken); // Debugging line
+    //console.log("Sending authToken:", get().authToken); // Debugging line
     const { lastUserFetch } = get();
     if (!force && lastUserFetch && Date.now() - lastUserFetch < USER_FETCH_INTERVAL) {
       return;
