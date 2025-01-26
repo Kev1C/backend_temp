@@ -32,21 +32,24 @@ export default function SocialAuthScreen({ navigation }) {
       setLoading(true);
       setError(null);
       const result = await googlePromptAsync();
-      
+
       if (result?.type === 'success') {
         const { id_token } = result.params;
         const credential = GoogleAuthProvider.credential(id_token);
         const userCredential = await signInWithCredential(auth, credential);
-        
+
         // Get backend JWT using Firebase token
         await signInAnonymously(userCredential);
-        
+
+        // Load the latest onboarding data AFTER signing in
+        await useOnboardingStore.getState().loadOnboardingData();
+
         // Check if all required onboarding data is present
-        const hasAllData = onboardingData?.gender && 
-                         onboardingData?.height && 
-                         onboardingData?.weight && 
+        const hasAllData = onboardingData?.gender &&
+                         onboardingData?.height &&
+                         onboardingData?.weight &&
                          (onboardingData?.goal || onboardingData?.fitnessGoal);
-        
+
         if (hasAllData && !isOnboardingComplete) {
           await completeOnboarding();
           navigation.replace('Tabs');
@@ -68,19 +71,19 @@ export default function SocialAuthScreen({ navigation }) {
     try {
       setLoading(true);
       setError(null);
-      
-      // Load the latest onboarding data
-      await useOnboardingStore.getState().loadOnboardingData();
-      
-      // Get the fresh data after loading
-      const { onboardingData, isOnboardingComplete } = useOnboardingStore.getState();
-      
-      console.log('Current onboarding data:', onboardingData);
-      console.log('Is onboarding complete?', isOnboardingComplete);
-      
+
       // Sign in as guest using Firebase
       await signInAnonymously();
-      
+
+      // Load the latest onboarding data AFTER signing in
+      await useOnboardingStore.getState().loadOnboardingData();
+
+      // Get the fresh data after loading
+      const { onboardingData, isOnboardingComplete } = useOnboardingStore.getState();
+
+      console.log('Current onboarding data:', onboardingData);
+      console.log('Is onboarding complete?', isOnboardingComplete);
+
       // Check if all required onboarding data is present
       const hasAllData = Boolean(
         onboardingData?.gender &&
@@ -88,7 +91,7 @@ export default function SocialAuthScreen({ navigation }) {
         onboardingData?.weight &&
         (onboardingData?.goal || onboardingData?.fitnessGoal)
       );
-      
+
       console.log('Has all required data?', hasAllData);
       console.log('Required fields:', {
         gender: Boolean(onboardingData?.gender),
@@ -96,7 +99,7 @@ export default function SocialAuthScreen({ navigation }) {
         weight: Boolean(onboardingData?.weight),
         goal: Boolean(onboardingData?.goal || onboardingData?.fitnessGoal)
       });
-      
+
       if (hasAllData && !isOnboardingComplete) {
         console.log('Attempting to complete onboarding...');
         await completeOnboarding();
@@ -140,9 +143,9 @@ export default function SocialAuthScreen({ navigation }) {
         </View>
 
         <View style={styles.buttonsContainer}>
-          <TouchableOpacity 
+          <TouchableOpacity
             style={[
-              styles.socialButton, 
+              styles.socialButton,
               styles.googleButton,
               loading && styles.disabledButton
             ]}
@@ -155,9 +158,9 @@ export default function SocialAuthScreen({ navigation }) {
             </Text>
           </TouchableOpacity>
 
-          <TouchableOpacity 
+          <TouchableOpacity
             style={[
-              styles.socialButton, 
+              styles.socialButton,
               styles.guestButton,
               loading && styles.disabledButton
             ]}
