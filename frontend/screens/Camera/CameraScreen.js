@@ -8,7 +8,7 @@ import { useAuthStore } from '../../stores/authStore';
 import { api } from '../../services/api';
 import { useNutritionStore, formatDate } from '../../stores/nutritionStore';
 import FoodAnalysisBottomSheet from './FoodAnalysisBottomSheet';
-import { useDiamondStore } from '../../stores/diamondStore'; // Updated import
+import { useDiamondStore } from '../../stores/diamondStore';
 import AdComponent from '../../Components/AdComponent';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
 
@@ -50,7 +50,7 @@ const CameraScreen = ({ navigation }) => {
   const updateDailyNutrition = useNutritionStore((state) => state.updateDailyNutrition);
   const theme = useTheme();
 
-  const { balance, fetchBalance, addDiamonds, deductDiamonds } = useDiamondStore(); // Updated
+  const { balance, fetchBalance, addDiamonds, deductDiamonds } = useDiamondStore();
 
   const dynamicStyles = useMemo(() => ({
     confirmFab: {
@@ -170,53 +170,61 @@ const CameraScreen = ({ navigation }) => {
     }
   };
 
-  const handleConfirm = async () => {
+const handleConfirm = async () => {
     if (!foodTitle) {
-      Alert.alert('Error', 'Please enter a food name');
-      return;
+        Alert.alert('Error', 'Please enter a food name');
+        return;
     }
 
-    const analysisCost = 0;
+    // The analysis cost is now handled on the backend
+    const analysisCost = 5;
+
     if (balance < analysisCost) {
-      // Show option to watch ad
-      setShowAdComponent(true);
-      Alert.alert('Insufficient Diamonds', 'You do not have enough diamonds to analyze. Please watch an ad to earn more.');
-      return;
+        // Show option to watch ad
+        setShowAdComponent(true);
+        Alert.alert('Insufficient Diamonds', 'You do not have enough diamonds to analyze. Please watch an ad to earn more.');
+        return;
     }
 
     try {
-      await deductDiamonds(analysisCost, authToken);
-      const mealType = getMealType();
-      const today = new Date();
-      const currentTime = new Date().toLocaleTimeString('en-US', {
-        hour: '2-digit',
-        minute: '2-digit',
-        hour12: true
-      });
+        // Deduct diamonds - the backend handles the actual cost
+        await deductDiamonds(analysisCost, authToken);
 
-      const nutritionData = {
-        name: foodTitle,
-        image: capturedImage?.uri || '',
-        time: currentTime,
-        mealType,
-        foodName: foodTitle,
-        servings,
-        calories: parseFloat(nutritionState.calories) || 0,
-        carbs: parseFloat(nutritionState.carbs) || 0,
-        protein: parseFloat(nutritionState.protein) || 0,
-        fats: parseFloat(nutritionState.fats) || 0,
-        healthScore: parseFloat(foodAnalysis.healthScore) || 0,
-      };
+        const mealType = getMealType();
+        const today = new Date();
+        const currentTime = new Date().toLocaleTimeString('en-US', {
+            hour: '2-digit',
+            minute: '2-digit',
+            hour12: true
+        });
 
-      console.log('Sending nutrition data:', nutritionData);
-      await updateDailyNutrition(today, nutritionData);
-      setIsModalVisible(false);
-      navigation.goBack();
+        const nutritionData = {
+            name: foodTitle,
+            image: capturedImage?.uri || '',
+            time: currentTime,
+            mealType,
+            foodName: foodTitle,
+            servings,
+            calories: parseFloat(nutritionState.calories) || 0,
+            carbs: parseFloat(nutritionState.carbs) || 0,
+            protein: parseFloat(nutritionState.protein) || 0,
+            fats: parseFloat(nutritionState.fats) || 0,
+            healthScore: parseFloat(foodAnalysis.healthScore) || 0,
+        };
+
+        console.log('Sending nutrition data:', nutritionData);
+        await updateDailyNutrition(today, nutritionData);
+        setIsModalVisible(false);
+        navigation.goBack();
     } catch (error) {
-      console.error('Error saving nutrition data:', error.response?.data || error.message);
-      Alert.alert('Error', 'Failed to save nutrition data');
+        console.error('Error saving nutrition data:', error.response?.data || error.message);
+        if (error.response?.data?.message === 'Insufficient diamonds to perform analysis') {
+            Alert.alert('Error', 'Insufficient diamonds to perform analysis');
+        } else {
+            Alert.alert('Error', 'Failed to save nutrition data');
+        }
     }
-  };
+};
 
   const toggleCameraFacing = () => {
     setFacing(current => (current === 'back' ? 'front' : 'back'));
