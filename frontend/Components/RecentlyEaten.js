@@ -62,13 +62,15 @@ const RecentlyEaten = memo(({ meals = [], isLoading = false }) => {
   const theme = useTheme();
   const styles = useMemo(() => getStyles(theme), [theme]);
 
+  const getItem = useCallback((data, index) => data[index], []);
+  const getItemCount = useCallback((data) => data.length, []);
   const keyExtractor = useCallback((item) => 
     item.id?.toString() || item._id?.toString() || item.name + item.time
   , []);
 
-  const renderItem = useCallback(({ item }) => {
-    return <MealItem meal={item} />;
-  }, []);
+  const renderItem = useCallback(({ item }) => (
+    <MealItem meal={item} />
+  ), []);
 
   if (isLoading) {
     return (
@@ -98,6 +100,8 @@ const RecentlyEaten = memo(({ meals = [], isLoading = false }) => {
         data={meals}
         renderItem={renderItem}
         keyExtractor={keyExtractor}
+        getItemCount={getItemCount}
+        getItem={getItem}
         initialNumToRender={3}
         maxToRenderPerBatch={5}
         windowSize={3}
