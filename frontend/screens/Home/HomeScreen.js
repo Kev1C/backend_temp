@@ -10,6 +10,7 @@ import { useCalorieStore } from '../../hooks/useCalorieTracker';
 import useMacroStore from '../../hooks/useMacroTracker';
 import useNutrientCalculations from '../../hooks/useNutrientCalculations';
 import { MemoizedWeekCalendar, MemoizedCalorieProgress, MemoizedRecentlyEaten } from './MemoizedComponents';
+import NativeAdComponent from '../../Components/NativeAdComponent';
 import { api } from '../../services/api';
 import isEqual from 'lodash/isEqual';
 import createStyles from './HomeScreenStyles';
@@ -255,6 +256,8 @@ const HomeScreen = () => {
       </View>
       <View style={styles.mealsContainer}>
         <Text style={styles.sectionTitle}>Recently Eaten</Text>
+        {/* NativeAdComponent placed here */}
+        <NativeAdComponent />
         <MemoizedRecentlyEaten {...mealsData} />
       </View>
       <FAB
