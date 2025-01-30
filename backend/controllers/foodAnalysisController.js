@@ -86,24 +86,56 @@ const analyzeFood = asyncHandler(async (req, res) => {
         }
     };
 
-    // Create the prompt for food analysis
-    const prompt = `Analyze this food image and provide the following information in a JSON format:
-    1. Food name/title
-    2. Estimated calories per serving
-    3. Estimated macronutrients (carbs, protein, fats) in grams
-    4. A health score from 0-100 based on nutritional value
-    
-    Format the response exactly like this example:
+    // **Enhanced Prompt for Food Analysis**
+    const prompt = `You are a highly advanced AI nutritionist. Analyze the food item(s) in this image with extreme precision.
+
+    Consider these factors:
+    1. **Visual Identification:** Identify every food item visible in the image. Be as specific as possible (e.g., "grilled salmon fillet" instead of "fish"). If you see packaging try and extract relevant information.
+    2. **Portion Size:** Estimate the portion size of each food item, taking into account the typical serving size and the visual cues in the image. If the item is packaged provide the portion size on the package.
+    3. **Preparation Method:** Infer the likely cooking or preparation method (e.g., fried, baked, raw, steamed).
+    4. **Ingredients:** If multiple ingredients are discernible, list them.
+    5. **Nutritional Database Comparison:**  Based on your identification, portion estimation, and preparation method, cross-reference with extensive nutritional databases to provide the most accurate values.
+
+    Provide the following information in a JSON format:
+    1. **foodTitle:**  The most accurate and descriptive name of the food item(s).
+    2. **calories:** Estimated total calories for the portion shown.
+    3. **carbs:** Estimated total carbohydrates in grams for the portion shown.
+    4. **protein:** Estimated total protein in grams for the portion shown.
+    5. **fats:** Estimated total fats in grams for the portion shown.
+    6. **healthScore:** An overall health score from 0-100, where 0 is extremely unhealthy and 100 is extremely healthy. This score should consider the nutritional balance, presence of beneficial nutrients, and potential downsides (e.g., high saturated fat, processed ingredients). If the item is packaged base this score on the nutritional label.
+
+    **Example of ideal response (for a single, identifiable food item):**
+    \`\`\`json
     {
-        "foodTitle": "Food Name",
-        "calories": "123",
-        "carbs": "45",
-        "protein": "67",
-        "fats": "89",
-        "healthScore": "75"
+        "foodTitle": "Grilled Salmon with Asparagus and Quinoa",
+        "calories": "450",
+        "carbs": "30",
+        "protein": "40",
+        "fats": "20",
+        "healthScore": "85"
     }
+    \`\`\`
     
-    Only respond with the JSON, no other text.`;
+    **Example of ideal response (for a packaged food item):**
+    \`\`\`json
+    {
+        "foodTitle": "Kellogg's Special K Cereal",
+        "calories": "120",
+        "carbs": "24",
+        "protein": "6",
+        "fats": "1",
+        "healthScore": "65"
+    }
+    \`\`\`
+
+    **Important:**
+    *   Respond with the JSON **and nothing else**.
+    *   **Do not** add any conversational text before or after the JSON.
+    *   If you are unsure about an aspect, provide your best estimate based on available information and consider indicating the uncertainty in your reasoning (though not in the final JSON output).
+    *   If the image contains multiple food items, provide an analysis for the most prominent or central item.
+    *   If the image is not of food, return an empty JSON object \`\`\`json {} \`\`\`
+    *   Assume the photo was taken with a standard phone camera.
+    `;
 
     try {
         // Generate content using Gemini
