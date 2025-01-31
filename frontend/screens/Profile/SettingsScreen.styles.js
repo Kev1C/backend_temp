@@ -26,65 +26,37 @@ const getStyles = (theme) =>
       color: theme.colors.text,
       fontWeight: 'bold',
     },
-    statsContainer: {
-      flexDirection: 'row',
-      flexWrap: 'wrap',
-      justifyContent: 'space-between',
-      marginBottom: 20,
+    settingsContainer: {
       paddingHorizontal: 16,
-      gap: 8,
     },
-    statCard: {
-      width: '48%',
-      elevation: 2,
-      backgroundColor: theme.colors.surface,
-      borderRadius: 12,
-      marginBottom: 6,
-    },
-    statContent: {
-      padding: 12,
-    },
-    statTextContainer: {
-      marginTop: 8,
-    },
-    statLabel: {
-      fontSize: 12,
-      color: theme.colors.text,
-      opacity: 0.7,
-      marginBottom: 4,
-    },
-    statValue: {
-      fontSize: 16,
-      fontWeight: 'bold',
-      color: theme.colors.text,
-    },
-    themeOption: {
+    settingOption: {
       flexDirection: 'row',
       justifyContent: 'space-between',
       alignItems: 'center',
-      paddingVertical: 12,
-      paddingHorizontal: 16,
-      borderWidth: 1,
-      borderRadius: 8,
-      marginVertical: 6,
-      borderColor: theme.colors.border,
-      backgroundColor: theme.colors.surface,
+      paddingVertical: 16,
+      borderBottomWidth: 1,
+      borderBottomColor: theme.colors.border,
     },
-    selectedThemeOption: {
-      borderColor: theme.colors.accent,
-      backgroundColor: theme.colors.accentLight, // Define in your theme
-    },
-    themeText: {
-      fontSize: 18,
-      color: theme.colors.text,
-    },
-    selectedText: {
+    settingLabel: {
       fontSize: 16,
-      color: theme.colors.accent,
+      fontWeight: '700',
+      color: theme.colors.text,
+      marginBottom: 4,
     },
-    divider: {
-      backgroundColor: theme.colors.border,
-      marginVertical: 20,
+    settingValue: {
+      fontSize: 14,
+      color: theme.colors.text,
+      opacity: 0.7,
+    },
+    sectionContainer: {
+      paddingHorizontal: 16,
+      marginBottom: 16,
+    },
+    sectionTitle: {
+      fontSize: 20,
+      fontWeight: 'bold',
+      color: theme.colors.text,
+      marginBottom: 16,
     },
     logoutContainer: {
       marginTop: 20,
@@ -147,6 +119,58 @@ const getStyles = (theme) =>
       fontSize: 16,
       fontWeight: '600',
       marginLeft: 8,
+    },
+    modalContainer: {
+      flex: 1,
+      backgroundColor: 'rgba(0, 0, 0, 0.5)',
+      justifyContent: 'center',
+      padding: 16,
+    },
+    modalContent: {
+      backgroundColor: theme.colors.background,
+      borderRadius: 12,
+      maxHeight: '80%',
+    },
+    modalHeader: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      padding: 16,
+      borderBottomWidth: 1,
+      borderBottomColor: theme.colors.border,
+    },
+    modalTitle: {
+      fontSize: 20,
+      fontWeight: '700',
+      color: theme.colors.text,
+    },
+    modalOption: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      padding: 16,
+      borderBottomWidth: 1,
+      borderBottomColor: theme.colors.border,
+    },
+    selectedModalOption: {
+      backgroundColor: theme.colors.primary,
+    },
+    modalOptionText: {
+      marginLeft: 12,
+      flex: 1,
+    },
+    modalOptionTitle: {
+      fontSize: 16,
+      fontWeight: '600',
+      color: theme.colors.text,
+      marginBottom: 4,
+    },
+    modalOptionSubtitle: {
+      fontSize: 14,
+      color: theme.colors.text,
+      opacity: 0.7,
+    },
+    selectedModalText: {
+      color: theme.colors.surface,
     },
   });
 
