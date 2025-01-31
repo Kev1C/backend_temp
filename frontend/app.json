@@ -3,7 +3,7 @@
   "slug": "Pangu",
   "version": "1.0.0",
   "orientation": "portrait",
-  "icon": "./assets/images/icon.png",
+  "icon": "./assets/images/pangu.jpg",
   "scheme": "pangu",
   "userInterfaceStyle": "automatic",
   "splash": {
