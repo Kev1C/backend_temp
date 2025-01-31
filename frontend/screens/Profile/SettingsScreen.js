@@ -385,7 +385,7 @@ const SettingsScreen = () => {
         <Divider style={styles.divider} />
 
         {/* Logout Button */}
-        <View style={[styles.logoutContainer, { paddingBottom: insets.bottom }]}>
+        {/* <View style={[styles.logoutContainer, { paddingBottom: insets.bottom }]}>
           <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
             <View style={styles.logoutContent}>
               <MaterialCommunityIcons
@@ -397,7 +397,7 @@ const SettingsScreen = () => {
               <Text style={styles.logoutButtonText}>Logout</Text>
             </View>
           </TouchableOpacity>
-        </View>
+        </View> */}
       </ScrollView>
     </View>
   );
