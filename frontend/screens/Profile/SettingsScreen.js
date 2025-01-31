@@ -1,15 +1,16 @@
 // SettingsScreen.js
 
 import React, { useContext, useEffect, useState } from 'react';
-import { View, Alert, ScrollView, TouchableOpacity, SafeAreaView, Platform, StatusBar } from 'react-native';
+import { View, Alert, ScrollView, TouchableOpacity, Platform } from 'react-native';
 import { Text, Button, Divider, Card } from 'react-native-paper';
 import { ThemeContext } from '../../context/ThemeContext';
 import { useAuthStore } from '../../stores/authStore';
 import getStyles from './SettingsScreen.styles';
 import { useNavigation } from '@react-navigation/native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { useDiamondStore } from '../../stores/diamondStore'; // Updated import
+import { useDiamondStore } from '../../stores/diamondStore';
 import AdComponent from '../../Components/AdComponent';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 const SettingsScreen = () => {
   const { theme } = useContext(ThemeContext);
@@ -17,9 +18,10 @@ const SettingsScreen = () => {
   const navigation = useNavigation();
   const styles = getStyles(theme);
 
-  const { balance, fetchBalance, addDiamonds } = useDiamondStore(); // Updated
+  const { balance, fetchBalance, addDiamonds } = useDiamondStore();
   const { authToken } = useAuthStore();
   const [showAdComponent, setShowAdComponent] = useState(false);
+  const insets = useSafeAreaInsets();
 
   useEffect(() => {
     const loadUserData = async () => {
@@ -47,7 +49,6 @@ const SettingsScreen = () => {
           style: 'destructive',
           onPress: async () => {
             await signOut();
-            // Reset navigation to the root
             navigation.reset({
               index: 0,
               routes: [{ name: 'GenderSelection' }],
@@ -60,18 +61,17 @@ const SettingsScreen = () => {
   };
 
   const handleAdWatched = async (reward) => {
-    const diamondsToAdd = reward.amount || 10; // Use the reward amount from the ad, fallback to 10
+    const diamondsToAdd = reward.amount || 10;
     try {
       console.log('Adding diamonds:', diamondsToAdd);
       await addDiamonds(diamondsToAdd, authToken);
       console.log('Diamonds added successfully');
       
-      // Refresh the balance immediately after adding diamonds
       await fetchBalance(authToken);
       console.log('Balance refreshed:', balance);
       
       Alert.alert('Success', `You've earned ${diamondsToAdd} diamonds!`);
-      setShowAdComponent(false); // Hide the AdComponent after successfully adding diamonds
+      setShowAdComponent(false);
     } catch (error) {
       console.error('Error adding diamonds:', error);
       Alert.alert('Error', 'Failed to add diamonds. Please try again.');
@@ -97,16 +97,16 @@ const SettingsScreen = () => {
   const navigateToResources = () => navigation.navigate('Resources');
 
   return (
-    <SafeAreaView style={styles.safeArea}>
+    <View style={[styles.safeArea, { paddingTop: insets.top }]}>
       <ScrollView style={styles.container}>
         {/* Settings Header */}
-        <View style={styles.headerContainer}>
+        <View style={[styles.headerContainer, { marginTop: Platform.OS === 'ios' ? 0 : 20 }]}>
           <Text style={styles.header}>Settings</Text>
           <View style={styles.diamondContainer}>
             <MaterialCommunityIcons
-              name="diamond-stone" // Changed icon to diamond
+              name="diamond-stone"
               size={24}
-              color="#00FFFF" // Changed to blue
+              color="#00FFFF"
             />
             <Text style={styles.diamondText}>{balance}</Text>
           </View>
@@ -140,7 +140,7 @@ const SettingsScreen = () => {
         <Divider style={styles.divider} />
 
         {/* Logout Button */}
-        <View style={styles.logoutContainer}>
+        <View style={[styles.logoutContainer, { paddingBottom: insets.bottom }]}>
           <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
             <View style={styles.logoutContent}>
               <MaterialCommunityIcons
@@ -154,7 +154,7 @@ const SettingsScreen = () => {
           </TouchableOpacity>
         </View>
       </ScrollView>
-    </SafeAreaView>
+    </View>
   );
 };
 

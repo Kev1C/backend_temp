@@ -11,6 +11,7 @@ import FoodAnalysisBottomSheet from './FoodAnalysisBottomSheet';
 import { useDiamondStore } from '../../stores/diamondStore';
 import AdComponent from '../../Components/AdComponent';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 const CameraScreen = ({ navigation }) => {
   const [facing, setFacing] = useState('back');
@@ -49,6 +50,7 @@ const CameraScreen = ({ navigation }) => {
   const { authToken } = useAuthStore();
   const updateDailyNutrition = useNutritionStore((state) => state.updateDailyNutrition);
   const theme = useTheme();
+  const insets = useSafeAreaInsets();
 
   const { balance, fetchBalance, addDiamonds, deductDiamonds } = useDiamondStore();
 
@@ -246,7 +248,7 @@ const handleConfirm = async () => {
   }
 
   return (
-    <GestureHandlerRootView style={styles.container}>
+    <GestureHandlerRootView style={[styles.container, { paddingTop: insets.top }]}>
       <View style={styles.container}>
         {isFocused && (
           <CameraView
@@ -256,7 +258,7 @@ const handleConfirm = async () => {
             onCameraReady={handleCameraReady}
           >
             {/* Top Bar */}
-            <View style={styles.topBar}>
+            <View style={[styles.topBar, { paddingTop: insets.top }]}>
               <IconButton
                 icon="arrow-left"
                 size={30}
@@ -279,7 +281,7 @@ const handleConfirm = async () => {
             </View>
 
             {/* Bottom Controls */}
-            <View style={styles.buttonContainer}>
+            <View style={[styles.buttonContainer, { paddingBottom: insets.bottom }]}>
               <IconButton
                 icon="camera-flip"
                 iconColor={MD3Colors.neutral100}
@@ -301,7 +303,7 @@ const handleConfirm = async () => {
         )}
 
         {/* Diamond Balance and Ad */}
-        <View style={styles.diamondBalanceContainer}>
+        <View style={[styles.diamondBalanceContainer, { paddingTop: insets.top }]}>
           <View style={styles.diamondContainer}>
             <MaterialCommunityIcons
               name="diamond-stone"

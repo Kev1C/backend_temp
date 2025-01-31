@@ -1,6 +1,6 @@
 // frontend/screens/Home/HomeScreen.js
 import React, { useMemo, useState, useEffect, useCallback } from 'react';
-import { Text, SafeAreaView, View, Image, FlatList, StyleSheet, Alert } from 'react-native';
+import { Text, View, Image, FlatList, StyleSheet, Alert } from 'react-native';
 import { useTheme, FAB } from 'react-native-paper';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { useAuthStore } from '../../stores/authStore';
@@ -14,6 +14,7 @@ import NativeAdComponent from '../../Components/NativeAdComponent';
 import { api } from '../../services/api';
 import isEqual from 'lodash/isEqual';
 import createStyles from './HomeScreenStyles';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 const HomeScreen = () => {
   const { user, authToken, isGuest } = useAuthStore();
@@ -27,6 +28,7 @@ const HomeScreen = () => {
   const navigation = useNavigation();
   const route = useRoute();
   const styles = useMemo(() => createStyles(theme), [theme]);
+  const insets = useSafeAreaInsets();
 
   // Add loading state indicators
   const [loadingStates, setLoadingStates] = useState({
@@ -246,7 +248,7 @@ const HomeScreen = () => {
   }), [dailyNutrition?.meals, isLoadingNutrition, loadingStates.saving]);
 
   return (
-    <SafeAreaView style={styles.container}>
+    <View style={[styles.container, { paddingTop: insets.top }]}>
       <View style={styles.header}>
         <MemoizedWeekCalendar 
           onDateSelect={handleDateSelect} 
@@ -254,18 +256,17 @@ const HomeScreen = () => {
         />
         <MemoizedCalorieProgress nutrients={nutrients} />
       </View>
-      <View style={styles.mealsContainer}>
+      <View style={[styles.mealsContainer, { paddingBottom: insets.bottom }]}>
         <Text style={styles.sectionTitle}>Recently Eaten</Text>
-        {/* NativeAdComponent placed here */}
         <NativeAdComponent />
         <MemoizedRecentlyEaten {...mealsData} />
       </View>
       <FAB
         icon="plus"
-        style={[styles.fab, { backgroundColor: theme.colors.primary }]}
+        style={[styles.fab, { backgroundColor: theme.colors.primary, bottom: insets.bottom + 16 }]}
         onPress={() => navigation.navigate('Camera')}
       />
-    </SafeAreaView>
+    </View>
   );
 };
 

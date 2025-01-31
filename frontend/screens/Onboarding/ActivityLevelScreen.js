@@ -1,7 +1,7 @@
 import React, { useCallback, useMemo } from 'react';
 import { View, Text, TouchableOpacity, Alert } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import styles from './ActivityLevel.styles';
 import Button from '../../Components/Button';
 import OnboardingProgress from '../../Components/OnboardingProgress';
@@ -59,6 +59,7 @@ const ActivityCard = React.memo(({ id, icon, title, subtitle, isSelected, onSele
 const ActivityLevelScreen = ({ navigation }) => {
   const [selectedLevel, setSelectedLevel] = React.useState('lightly_active');
   const { saveOnboardingData } = useOnboardingStore();
+  const insets = useSafeAreaInsets();
 
   const handleActivitySelection = useCallback((levelId) => {
     setSelectedLevel(levelId);
@@ -91,7 +92,7 @@ const ActivityLevelScreen = ({ navigation }) => {
   , [selectedLevel, handleActivitySelection]);
 
   return (
-    <SafeAreaView edges={['top']} style={sharedStyles.container}>
+    <View style={[sharedStyles.container, { paddingTop: insets.top }]}>
       <OnboardingProgress currentScreen="ActivityLevel" />
       <View style={sharedStyles.header}>
         <TouchableOpacity 
@@ -111,7 +112,7 @@ const ActivityLevelScreen = ({ navigation }) => {
         </View>
       </View>
 
-      <View style={sharedStyles.footer}>
+      <View style={[sharedStyles.footer, { paddingBottom: insets.bottom }]}>
         <Button
           title="Continue"
           onPress={handleContinue}
@@ -119,7 +120,7 @@ const ActivityLevelScreen = ({ navigation }) => {
           style={{ backgroundColor: selectedLevel ? '#2196F3' : '#ccc' }}
         />
       </View>
-    </SafeAreaView>
+    </View>
   );
 };
 

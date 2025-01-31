@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { View, Text, TouchableOpacity, Alert, StyleSheet } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import ScrollPicker from 'react-native-wheel-scrollview-picker';
 import Button from '../../Components/Button';
@@ -38,6 +38,7 @@ const HeightWeightScreen = ({ navigation, route }) => {
   });
 
   const { heightCm, heightFt, heightIn, weight } = measurements;
+  const insets = useSafeAreaInsets();
 
   // Memoize ranges to prevent recalculation
   const ranges = useMemo(() => ({
@@ -113,7 +114,7 @@ const HeightWeightScreen = ({ navigation, route }) => {
   }, [heightCm, weight, saveOnboardingData, navigation]);
 
   return (
-    <SafeAreaView edges={['top']} style={sharedStyles.container}>
+    <View style={[sharedStyles.container, { paddingTop: insets.top }]}>
       <OnboardingProgress currentScreen="HeightWeight" />
       <View style={sharedStyles.header}>
         <TouchableOpacity 
@@ -221,14 +222,14 @@ const HeightWeightScreen = ({ navigation, route }) => {
         </View>
       </View>
 
-      <View style={sharedStyles.footer}>
+      <View style={[sharedStyles.footer, { paddingBottom: insets.bottom }]}>
         <Button
           title="Continue"
           onPress={handleContinue}
           style={{ backgroundColor: '#2196F3' }}
         />
       </View>
-    </SafeAreaView>
+    </View>
   );
 };
 

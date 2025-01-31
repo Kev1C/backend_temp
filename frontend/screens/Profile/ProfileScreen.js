@@ -1,7 +1,7 @@
 // frontend/screens/Profile/ProfileScreen.js
 
 import React, { useCallback, useMemo, useEffect, useState, lazy, Suspense } from 'react';
-import { View, StyleSheet, ActivityIndicator, TouchableOpacity, FlatList, Image, ScrollView, RefreshControl } from 'react-native';
+import { View, StyleSheet, ActivityIndicator, TouchableOpacity, ScrollView, RefreshControl } from 'react-native';
 import { Title, Caption, Text } from 'react-native-paper';
 import { useAuthStore } from '../../stores/authStore';
 import { useTheme } from 'react-native-paper';
@@ -9,6 +9,7 @@ import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import { useNutritionStore } from '../../stores/nutritionStore';
 import { useCacheStore } from '../../stores/cacheStore';
 import { useFocusEffect } from '@react-navigation/native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 // Lazy load heavy components
 const MacroNutrientsChart = lazy(() => import('../../Components/MacroNutrientsChart'));
@@ -20,10 +21,11 @@ const ProfileScreen = ({ navigation }) => {
   const cache = useCacheStore();
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [isDataReady, setIsDataReady] = useState(false);
-  
-  const { 
-    macroData, 
-    calendarData, 
+  const insets = useSafeAreaInsets();
+
+  const {
+    macroData,
+    calendarData,
     loading: nutritionLoading,
     heatmapData,
     isLoadingHeatmap,
@@ -72,19 +74,19 @@ const ProfileScreen = ({ navigation }) => {
     const startDate = new Date();
     startDate.setMonth(startDate.getMonth() - 3);
     startDate.setUTCHours(0, 0, 0, 0);
-    
+
     const endDate = new Date();
     endDate.setUTCHours(23, 59, 59, 999);
-    
-    return { 
-      startDate: startDate.toISOString(), 
-      endDate: endDate.toISOString() 
+
+    return {
+      startDate: startDate.toISOString(),
+      endDate: endDate.toISOString()
     };
   }, []);
 
   const onRefresh = useCallback(async () => {
     if (isRefreshing) return;
-    
+
     setIsRefreshing(true);
     try {
       const { startDate, endDate } = getDateRange();
@@ -117,7 +119,7 @@ const ProfileScreen = ({ navigation }) => {
       };
 
       prefetchData();
-    }, [isDataReady, isLoadingHeatmap])
+    }, [isDataReady, isLoadingHeatmap, getDateRange, fetchHeatmapData])
   );
 
   useEffect(() => {
@@ -143,14 +145,14 @@ const ProfileScreen = ({ navigation }) => {
   }, [getDateRange, fetchHeatmapData]);
 
   return (
-    <ScrollView 
-      style={styles.container}
+    <ScrollView
+      style={[styles.container, { paddingTop: insets.top }]}
       refreshControl={
         <RefreshControl refreshing={isRefreshing} onRefresh={onRefresh} />
       }
     >
       {UserInfoSection}
-      
+
       {loading ? (
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color={theme.colors.primary} />
@@ -173,7 +175,7 @@ const ProfileScreen = ({ navigation }) => {
           )}
         </Suspense>
       )}
-      
+
       {ErrorSection}
     </ScrollView>
   );

@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { View, Text, TouchableOpacity, Alert } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as WebBrowser from 'expo-web-browser';
 import * as Google from 'expo-auth-session/providers/google';
 import { AntDesign, MaterialCommunityIcons } from '@expo/vector-icons';
@@ -19,6 +19,7 @@ export default function SocialAuthScreen({ navigation }) {
   const { signInAnonymously } = useAuthStore();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+  const insets = useSafeAreaInsets();
 
   const [, googleResponse, googlePromptAsync] = Google.useAuthRequest({
     clientId: 'YOUR_GOOGLE_CLIENT_ID',
@@ -124,7 +125,7 @@ export default function SocialAuthScreen({ navigation }) {
   };
 
   return (
-    <SafeAreaView edges={['top']} style={sharedStyles.container}>
+    <View style={[sharedStyles.container, { paddingTop: insets.top }]}>
       <OnboardingProgress currentScreen="SocialAuth" />
       <View style={sharedStyles.header}>
         <TouchableOpacity
@@ -174,10 +175,10 @@ export default function SocialAuthScreen({ navigation }) {
           </TouchableOpacity>
         </View>
 
-        <Text style={styles.termsText}>
+        <Text style={[styles.termsText, { paddingBottom: insets.bottom }]}>
           By continuing, you agree to our Terms of Service and Privacy Policy
         </Text>
       </View>
-    </SafeAreaView>
+    </View>
   );
 }

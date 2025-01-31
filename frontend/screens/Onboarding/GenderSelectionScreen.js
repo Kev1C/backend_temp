@@ -1,7 +1,7 @@
 // screens/onboarding/GenderSelectionScreen.js
 import React, { useState } from 'react';
 import { View, Text, TouchableOpacity, Alert } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import styles from './GenderSelection.styles';
 import Button from '../../Components/Button';
@@ -12,6 +12,7 @@ import { useOnboardingStore } from '../../stores/onboardingStore';
 const GenderSelectionScreen = ({ navigation }) => {
   const { saveOnboardingData } = useOnboardingStore();
   const [selectedGender, setSelectedGender] = useState(null);
+  const insets = useSafeAreaInsets();
 
   const handleNext = async () => {
     try {
@@ -27,7 +28,7 @@ const GenderSelectionScreen = ({ navigation }) => {
   };
 
   return (
-    <SafeAreaView edges={['top']} style={sharedStyles.container}>
+    <View style={[sharedStyles.container, { paddingTop: insets.top }]}>
       <OnboardingProgress currentScreen="GenderSelection" />
       <View style={sharedStyles.content}>
         <Text style={styles.title}>What is your gender?</Text>
@@ -76,14 +77,14 @@ const GenderSelectionScreen = ({ navigation }) => {
         </View>
       </View>
 
-      <View style={sharedStyles.footer}>
+      <View style={[sharedStyles.footer, { paddingBottom: insets.bottom }]}>
         <Button
           title="Continue"
           onPress={handleNext}
           disabled={!selectedGender}
         />
       </View>
-    </SafeAreaView>
+    </View>
   );
 };
 
