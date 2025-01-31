@@ -1,10 +1,10 @@
 {
-  "name": "frontend",
-  "slug": "frontend",
+  "name": "Pangu",
+  "slug": "Pangu",
   "version": "1.0.0",
   "orientation": "portrait",
   "icon": "./assets/images/icon.png",
-  "scheme": "myapp",
+  "scheme": "pangu",
   "userInterfaceStyle": "automatic",
   "splash": {
     "image": "./assets/images/splash.png",
@@ -19,7 +19,7 @@
       "foregroundImage": "./assets/images/adaptive-icon.png",
       "backgroundColor": "#ffffff"
     },
-    "package": "com.devmode_77.frontend"
+    "package": "com.ego.pangu"
   },
   "web": {
     "bundler": "metro",
