@@ -1,6 +1,6 @@
 // frontend/screens/Home/HomeScreen.js
 import React, { useMemo, useState, useEffect, useCallback } from 'react';
-import { Text, View, Image, FlatList, StyleSheet, Alert, Modal } from 'react-native';
+import { Text, View, Image, FlatList, StyleSheet, Alert, Modal, TouchableOpacity } from 'react-native';
 import { useTheme, FAB } from 'react-native-paper';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { useAuthStore } from '../../stores/authStore';
@@ -15,6 +15,7 @@ import { api } from '../../services/api';
 import isEqual from 'lodash/isEqual';
 import createStyles from './HomeScreenStyles';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import DiamondChest from '../../assets/images/test2.png';
 
 const HomeScreen = () => {
   const { user, authToken, isGuest } = useAuthStore();
@@ -278,7 +279,10 @@ const HomeScreen = () => {
         </View>
         <View style={[styles.mealsContainer, { paddingBottom: insets.bottom }]}>
           <Text style={styles.sectionTitle}>Recently Eaten</Text>
-          <NativeAdComponent />
+          <TouchableOpacity style={styles.diamondButton} onPress={() => { /* TODO: implement diamond button action */ }}>
+            <Image source={DiamondChest} style={styles.diamondImage} />
+          </TouchableOpacity>
+          {/* <NativeAdComponent /> */}
           <MemoizedRecentlyEaten {...mealsData} />
         </View>
         <FAB
@@ -375,6 +379,17 @@ const getStyles = (theme) => StyleSheet.create({
     margin: 16,
     right: 0,
     bottom: 0,
+  },
+  diamondButton: {
+    marginLeft: 'auto',
+    marginRight: 10,
+    justifyContent: 'center',
+    alignItems: 'center'
+  },
+  diamondImage: {
+    width: 10,
+    height: 10,
+    resizeMode: 'contain'
   },
 });
 
