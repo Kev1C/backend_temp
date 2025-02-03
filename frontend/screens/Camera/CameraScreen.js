@@ -6,7 +6,7 @@ import { IconButton, FAB, useTheme, Text, Button, MD3Colors } from 'react-native
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { useAuthStore } from '../../stores/authStore';
 import { api } from '../../services/api';
-import { useNutritionStore, formatDate } from '../../stores/nutritionStore';
+import { useNutritionStore, formatDate, fetchHeatmapData } from '../../stores/nutritionStore';
 import FoodAnalysisBottomSheet from './FoodAnalysisBottomSheet';
 import { useDiamondStore } from '../../stores/diamondStore';
 import AdComponent from '../../Components/AdComponent';
@@ -49,6 +49,7 @@ const CameraScreen = ({ navigation }) => {
   const isFocused = useIsFocused();
   const { authToken } = useAuthStore();
   const updateDailyNutrition = useNutritionStore((state) => state.updateDailyNutrition);
+  const fetchHeatmapData = useNutritionStore((state) => state.fetchHeatmapData);
   const theme = useTheme();
   const insets = useSafeAreaInsets();
 
@@ -216,6 +217,15 @@ const handleConfirm = async () => {
 
         console.log('Sending nutrition data:', nutritionData);
         await updateDailyNutrition(today, nutritionData);
+
+        // Refresh heatmap data
+        const startDate = new Date();
+        startDate.setMonth(startDate.getMonth() - 3);
+        startDate.setUTCHours(0, 0, 0, 0);
+        const endDate = new Date();
+        endDate.setUTCHours(23, 59, 59, 999);
+        await fetchHeatmapData(startDate.toISOString(), endDate.toISOString());
+
         setIsModalVisible(false);
         navigation.goBack();
     } catch (error) {
