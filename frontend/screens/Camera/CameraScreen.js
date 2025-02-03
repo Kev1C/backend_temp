@@ -258,7 +258,7 @@ const handleConfirm = async () => {
   }
 
   return (
-    <GestureHandlerRootView style={[styles.container, { paddingTop: insets.top }]}>
+    <GestureHandlerRootView style={styles.container}>
       <View style={styles.container}>
         {isFocused && (
           <CameraView
@@ -268,7 +268,7 @@ const handleConfirm = async () => {
             onCameraReady={handleCameraReady}
           >
             {/* Top Bar */}
-            <View style={[styles.topBar, { paddingTop: insets.top }]}>
+            <View style={[styles.topBar, { marginTop: insets.top }]}>
               <IconButton
                 icon="arrow-left"
                 size={30}
