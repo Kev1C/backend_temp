@@ -4,6 +4,7 @@ import { api } from '../services/api';
 
 const ONBOARDING_DATA_KEY = 'onboardingData';
 const ONBOARDING_COMPLETE_KEY = 'onboardingComplete';
+const NEW_USER_KEY = 'isNewUser';
 
 // Helper function to check if all required fields are present
 const checkOnboardingComplete = (data) => {
@@ -28,6 +29,7 @@ const batchedUpdate = (set, updates) => {
 export const useOnboardingStore = create((set, get) => ({
   onboardingData: null,
   isOnboardingComplete: false,
+  isNewUser: true,
   loading: false,
   error: null,
 
@@ -64,13 +66,15 @@ export const useOnboardingStore = create((set, get) => ({
 
     try {
       // Load local data
-      const [storedData, storedComplete] = await Promise.all([
+      const [storedData, storedComplete, storedNewUser] = await Promise.all([
         SecureStore.getItemAsync(ONBOARDING_DATA_KEY),
-        SecureStore.getItemAsync(ONBOARDING_COMPLETE_KEY)
+        SecureStore.getItemAsync(ONBOARDING_COMPLETE_KEY),
+        SecureStore.getItemAsync(NEW_USER_KEY)
       ]);
 
       const localData = storedData ? JSON.parse(storedData) : null;
       const isComplete = storedComplete ? JSON.parse(storedComplete) : false;
+      const isNew = storedNewUser ? JSON.parse(storedNewUser) : true;
       let userUpdated = false;
 
       // If we have local data and it's marked complete, sync it with backend
@@ -93,6 +97,7 @@ export const useOnboardingStore = create((set, get) => ({
       batchedUpdate(set, {
         onboardingData: localData,
         isOnboardingComplete: isComplete,
+        isNewUser: isNew,
         loading: false
       });
 
@@ -110,12 +115,14 @@ export const useOnboardingStore = create((set, get) => ({
     try {
       await Promise.all([
         SecureStore.deleteItemAsync(ONBOARDING_DATA_KEY),
-        SecureStore.deleteItemAsync(ONBOARDING_COMPLETE_KEY)
+        SecureStore.deleteItemAsync(ONBOARDING_COMPLETE_KEY),
+        SecureStore.deleteItemAsync(NEW_USER_KEY)
       ]);
 
       batchedUpdate(set, {
         onboardingData: null,
         isOnboardingComplete: false,
+        isNewUser: true,
         loading: false,
         error: null
       });
@@ -141,12 +148,24 @@ export const useOnboardingStore = create((set, get) => ({
       });
 
       // Save completion status
-      await SecureStore.setItemAsync(ONBOARDING_COMPLETE_KEY, JSON.stringify(true));
+      await Promise.all([
+        SecureStore.setItemAsync(ONBOARDING_COMPLETE_KEY, JSON.stringify(true)),
+        SecureStore.setItemAsync(NEW_USER_KEY, JSON.stringify(true))
+      ]);
 
-      set({ isOnboardingComplete: true });
+      set({ isOnboardingComplete: true, isNewUser: true });
     } catch (error) {
       console.error('Error completing onboarding:', error);
       throw error;
+    }
+  },
+
+  markUserAsSeen: async () => {
+    try {
+      await SecureStore.setItemAsync(NEW_USER_KEY, JSON.stringify(false));
+      set({ isNewUser: false });
+    } catch (error) {
+      console.error('Error marking user as seen:', error);
     }
   }
 }));
