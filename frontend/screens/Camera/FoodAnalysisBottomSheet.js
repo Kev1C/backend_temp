@@ -133,11 +133,19 @@ const FoodAnalysisBottomSheet = ({
                             styles.healthScoreChip,
                             {
                               borderRadius: 25,
+                              backgroundColor: 'white',
+                              elevation: 2,
+                              shadowColor: '#000',
+                              shadowOffset: { width: 0, height: 1 },
+                              shadowOpacity: 0.2,
+                              shadowRadius: 2,
                               borderColor: getHealthScoreColor(foodAnalysis.healthScore),
+                              borderWidth: 1.5,
                             }
                           ]}
                           textStyle={{
-                            fontSize: 14,
+                            fontSize: 16,
+                            fontWeight: '900',
                             color: getHealthScoreColor(foodAnalysis.healthScore)
                           }}
                         >
