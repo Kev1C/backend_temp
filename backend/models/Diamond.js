@@ -1,6 +1,8 @@
 // backend/models/Diamond.js
 const mongoose = require('mongoose');
 
+const startingBalance = parseInt(process.env.STARTING_BALANCE, 10);
+
 const diamondSchema = new mongoose.Schema({
   user: {
     type: mongoose.Schema.Types.ObjectId,
@@ -10,7 +12,7 @@ const diamondSchema = new mongoose.Schema({
   },
   balance: {
     type: Number,
-    default: 0, // Start with 0 diamonds
+    default: startingBalance, // Start with environment variable defined diamonds
     min: 0     // Prevent negative balances
   }
 }, { timestamps: true });

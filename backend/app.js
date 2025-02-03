@@ -1,4 +1,5 @@
 // backend/app.js
+require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
 const morgan = require('morgan');
@@ -7,7 +8,6 @@ const connectDB = require('./config/db');
 const admin = require('firebase-admin');
 
 // Load environment variables from .env file
-require('dotenv').config();
 
 // Initialize Firebase Admin SDK
 try {

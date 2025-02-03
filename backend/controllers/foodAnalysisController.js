@@ -41,7 +41,7 @@ const analyzeFood = asyncHandler(async (req, res) => {
 
     // **Diamond Deduction Logic**
     const userId = req.user.userId;
-    const analysisCost = ANALYSIS_COST; // Use the defined constant
+    const analysisCost = parseInt(process.env.ANALYSIS_COST, 10); // Use the defined constant
 
     const diamond = await Diamond.findOne({ user: userId });
     if (!diamond) {
@@ -75,7 +75,8 @@ const analyzeFood = asyncHandler(async (req, res) => {
     console.log('Image data received, analyzing with Gemini...');
 
     // Initialize the model
-    const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash-exp" });
+    //const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash-exp" });
+    const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash-thinking-exp-01-21" });
 
     // Prepare the image data
     const imageData = {

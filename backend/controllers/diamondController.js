@@ -15,8 +15,7 @@ const getDiamondBalance = asyncHandler(async (req, res) => {
     if (!diamond) {
         // Create a new diamond record if it doesn't exist
         diamond = await Diamond.create({
-            user: userId,
-            balance: 0
+            user: userId
         });
         console.log('Created new diamond record for user:', userId);
     }
