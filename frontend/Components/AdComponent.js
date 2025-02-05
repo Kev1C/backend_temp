@@ -10,12 +10,15 @@ import {
 } from 'react-native-google-mobile-ads';
 
 // Use test IDs during development
-//const adUnitId = __DEV__ ? TestIds.REWARDED : (Platform.OS === 'ios' ? 'YOUR_IOS_REWARDED_AD_UNIT_ID' : 'YOUR_ANDROID_REWARDED_AD_UNIT_ID');
-const adUnitId = false ? TestIds.REWARDED : (Platform.OS === 'ios' ? 'YOUR_IOS_REWARDED_AD_UNIT_ID' : 'ca-app-pub-2191904332416469/1723427624');
+// const adUnitId = __DEV__ ? TestIds.REWARDED : (Platform.OS === 'ios' ? 'YOUR_IOS_REWARDED_AD_UNIT_ID' : 'YOUR_ANDROID_REWARDED_AD_UNIT_ID');
+//const adUnitId = false ? TestIds.REWARDED : (Platform.OS === 'ios' ? 'YOUR_IOS_REWARDED_AD_UNIT_ID' : process.env.GOOGLE_ADMOB_ANDROID_REWARDED_SettingScreen);
+
 const AdComponent = ({ onAdWatched }) => {
     const { user } = useAuthStore();
     const [adReady, setAdReady] = useState(false);
     const [rewardedAd, setRewardedAd] = useState(null);
+
+    const adUnitId = false ? TestIds.REWARDED : (Platform.OS === 'ios' ? 'YOUR_IOS_REWARDED_AD_UNIT_ID' : process.env.GOOGLE_ADMOB_ANDROID_REWARDED_SettingScreen);
 
     useEffect(() => {
         // Create a new rewarded ad instance
@@ -68,7 +71,8 @@ const AdComponent = ({ onAdWatched }) => {
             unsubscribeClosed();
             unsubscribeError();
         };
-    }, [onAdWatched]);
+    }, [onAdWatched, adUnitId]); // Add adUnitId to the dependency array
+
 
     const showRewardedAd = async () => {
         if (!rewardedAd || !adReady) {
