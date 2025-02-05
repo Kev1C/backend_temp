@@ -9,7 +9,7 @@ import { api } from '../../services/api';
 import { useNutritionStore, formatDate, fetchHeatmapData } from '../../stores/nutritionStore';
 import FoodAnalysisBottomSheet from './FoodAnalysisBottomSheet';
 import { useDiamondStore } from '../../stores/diamondStore';
-import AdComponent from '../../Components/AdComponent';
+import AdComponent from '../../Components/SettingScreenAdComponent';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 

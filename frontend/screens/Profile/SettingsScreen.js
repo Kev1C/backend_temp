@@ -10,7 +10,7 @@ import getStyles from './SettingsScreen.styles';
 import { useNavigation } from '@react-navigation/native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useDiamondStore } from '../../stores/diamondStore';
-import AdComponent from '../../Components/AdComponent';
+import AdComponent from '../../Components/SettingScreenAdComponent';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { FlashList } from "@shopify/flash-list";
 
