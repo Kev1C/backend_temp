@@ -16,6 +16,7 @@ import isEqual from 'lodash/isEqual';
 import createStyles from './HomeScreenStyles';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import DiamondChest from '../../assets/images/cropped.png';
+import HomescreenAdComponent from '../../Components/HomescreenAdComponent'; // Import the ad component
 
 const HomeScreen = () => {
   const { user, authToken, isGuest } = useAuthStore();
@@ -48,6 +49,9 @@ const HomeScreen = () => {
   // State to control display of the welcome modal
   const [showModal, setShowModal] = useState(false);
 
+    // State to control display of the ad modal
+    const [showAdModal, setShowAdModal] = useState(false);
+
   // Add new state variable for managing read more toggle
   const [expanded, setExpanded] = useState(false);
 
@@ -63,6 +67,16 @@ const HomeScreen = () => {
     // Update the flag so that the modal does not display again
     markUserAsSeen();
   };
+    // Function to open the ad modal
+    const handleOpenAdModal = () => {
+      setShowAdModal(true);
+    };
+  
+    // Function to close the ad modal
+    const handleCloseAdModal = () => {
+      setShowAdModal(false);
+    };
+  
 
   // Fetch nutrient calculations when user and onboarding data are available
   useEffect(() => {
@@ -279,7 +293,7 @@ const HomeScreen = () => {
         </View>
         <View style={{ flexDirection: 'row', alignItems: 'center',justifyContent: 'space-between', marginVertical: 8 }}>
           <Text style={styles.sectionTitle}>Recently Eaten</Text>
-          <TouchableOpacity style={{ marginLeft: 100 }} onPress={() => { /* TODO: implement diamond button action */ }}>
+          <TouchableOpacity style={{ marginLeft: 100 }} onPress={handleOpenAdModal}>
             <Image source={DiamondChest} style={{ width: 58, height: 58,resizeMode: 'contain' }} />
           </TouchableOpacity>
           {/* <NativeAdComponent /> */}
@@ -350,6 +364,20 @@ const HomeScreen = () => {
             >Got it!</Text>
           </View>
         </View>
+      </Modal>
+            {/* Ad Modal */}
+            <Modal
+        visible={showAdModal}
+        transparent={true}
+        onRequestClose={handleCloseAdModal}
+      >
+        <TouchableOpacity
+          style={{ flex: 1 }}
+          activeOpacity={1}
+          onPressOut={handleCloseAdModal} // Close the modal when tapping outside
+        >
+          <HomescreenAdComponent />
+        </TouchableOpacity>
       </Modal>
     </>
   );
