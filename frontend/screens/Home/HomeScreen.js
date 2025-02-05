@@ -15,7 +15,7 @@ import { api } from '../../services/api';
 import isEqual from 'lodash/isEqual';
 import createStyles from './HomeScreenStyles';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import DiamondChest from '../../assets/images/test2.png';
+import DiamondChest from '../../assets/images/cropped.png';
 
 const HomeScreen = () => {
   const { user, authToken, isGuest } = useAuthStore();
@@ -277,14 +277,14 @@ const HomeScreen = () => {
           />
           <MemoizedCalorieProgress nutrients={nutrients} />
         </View>
-        <View style={[styles.mealsContainer, { paddingBottom: insets.bottom }]}>
+        <View style={{ flexDirection: 'row', alignItems: 'center',justifyContent: 'space-between', marginVertical: 8 }}>
           <Text style={styles.sectionTitle}>Recently Eaten</Text>
-          <TouchableOpacity style={styles.diamondButton} onPress={() => { /* TODO: implement diamond button action */ }}>
-            <Image source={DiamondChest} style={styles.diamondImage} />
+          <TouchableOpacity style={{ marginLeft: 100 }} onPress={() => { /* TODO: implement diamond button action */ }}>
+            <Image source={DiamondChest} style={{ width: 50, height: 50,resizeMode: 'contain' }} />
           </TouchableOpacity>
           {/* <NativeAdComponent /> */}
-          <MemoizedRecentlyEaten {...mealsData} />
         </View>
+        <MemoizedRecentlyEaten {...mealsData} />
         <FAB
           icon="plus"
           style={[styles.fab, { backgroundColor: theme.colors.primary, bottom: insets.bottom + 16 }]}
@@ -354,43 +354,5 @@ const HomeScreen = () => {
     </>
   );
 };
-
-const getStyles = (theme) => StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: theme.colors.background,
-  },
-  header: {
-    paddingHorizontal: 16,
-    paddingTop: 16,
-  },
-  mealsContainer: {
-    flex: 1,
-    paddingHorizontal: 16,
-  },
-  sectionTitle: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    marginVertical: 8,
-    color: theme.colors.onSurface,
-  },
-  fab: {
-    position: 'absolute',
-    margin: 16,
-    right: 0,
-    bottom: 0,
-  },
-  diamondButton: {
-    marginLeft: 'auto',
-    marginRight: 10,
-    justifyContent: 'center',
-    alignItems: 'center'
-  },
-  diamondImage: {
-    width: 10,
-    height: 10,
-    resizeMode: 'contain'
-  },
-});
 
 export default HomeScreen;
