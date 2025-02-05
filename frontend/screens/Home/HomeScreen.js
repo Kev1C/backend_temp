@@ -280,7 +280,7 @@ const HomeScreen = () => {
         <View style={{ flexDirection: 'row', alignItems: 'center',justifyContent: 'space-between', marginVertical: 8 }}>
           <Text style={styles.sectionTitle}>Recently Eaten</Text>
           <TouchableOpacity style={{ marginLeft: 100 }} onPress={() => { /* TODO: implement diamond button action */ }}>
-            <Image source={DiamondChest} style={{ width: 50, height: 50,resizeMode: 'contain' }} />
+            <Image source={DiamondChest} style={{ width: 58, height: 58,resizeMode: 'contain' }} />
           </TouchableOpacity>
           {/* <NativeAdComponent /> */}
         </View>

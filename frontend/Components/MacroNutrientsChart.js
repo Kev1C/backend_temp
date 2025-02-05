@@ -17,7 +17,7 @@ const MacroNutrientsChart = () => {
     calories: theme.colors.primary,
     carbs: '#8A2BE2',      // BlueViolet for carbs
     protein: theme.colors.secondary,
-    fats: '#FFD700'        // Gold for fats
+    fats: '#FFA500'        // Gold for fats
   }), [theme.colors]);
 
   useEffect(() => {
