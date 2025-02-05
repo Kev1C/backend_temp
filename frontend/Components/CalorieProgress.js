@@ -104,7 +104,7 @@ const CalorieProgress = React.memo(({ nutrients }) => {
       label: 'Fats',
       value: fats,
       total: fatsGoal,
-      color: '#FFD700'
+      color: '#FFA500'
     }
   ]), [carbs, carbsGoal, protein, proteinGoal, fats, fatsGoal, theme.colors.secondary]);
 

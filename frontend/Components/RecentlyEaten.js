@@ -1,9 +1,9 @@
 // frontend/Components/RecentlyEaten.js
 import React, { memo, useMemo, useCallback } from 'react';
-import { View, Image, VirtualizedList, Dimensions } from 'react-native';
+import { View, Image, StyleSheet } from 'react-native';
 import { Text, Card, useTheme, ActivityIndicator } from 'react-native-paper';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { StyleSheet } from 'react-native';
+import { FlashList } from "@shopify/flash-list";
 
 const MealItem = memo(({ meal }) => {
   const theme = useTheme();
@@ -14,7 +14,7 @@ const MealItem = memo(({ meal }) => {
       <Text style={styles.mealCalories}>{meal.calories} cal</Text>
       <Text style={[styles.macroText, { color: '#8A2BE2' }]}>{meal.carbs}g</Text>
       <Text style={[styles.macroText, { color: theme.colors.secondary }]}>{meal.protein}g</Text>
-      <Text style={[styles.macroText, { color: '#FFD700' }]}>{meal.fats}g</Text>
+      <Text style={[styles.macroText, { color: '#FFA500' }]}>{meal.fats}g</Text>
     </View>
   ), [meal.calories, meal.carbs, meal.protein, meal.fats, styles, theme.colors.secondary]);
 
@@ -48,7 +48,6 @@ const MealItem = memo(({ meal }) => {
     </Card>
   );
 }, (prevProps, nextProps) => {
-  // Custom comparison function to prevent unnecessary re-renders
   return (
     prevProps.meal.id === nextProps.meal.id &&
     prevProps.meal.calories === nextProps.meal.calories &&
@@ -62,15 +61,13 @@ const RecentlyEaten = memo(({ meals = [], isLoading = false }) => {
   const theme = useTheme();
   const styles = useMemo(() => getStyles(theme), [theme]);
 
-  const getItem = useCallback((data, index) => data[index], []);
-  const getItemCount = useCallback((data) => data.length, []);
-  const keyExtractor = useCallback((item) => 
-    item.id?.toString() || item._id?.toString() || item.name + item.time
-  , []);
-
   const renderItem = useCallback(({ item }) => (
     <MealItem meal={item} />
   ), []);
+
+  const keyExtractor = useCallback((item) => 
+  item.id?.toString() || item._id?.toString() || item.name + item.time
+, []);
 
   if (isLoading) {
     return (
@@ -96,31 +93,24 @@ const RecentlyEaten = memo(({ meals = [], isLoading = false }) => {
 
   return (
     <View style={styles.container}>
-      <VirtualizedList
+      <FlashList
         data={meals}
         renderItem={renderItem}
+        estimatedItemSize={84} 
         keyExtractor={keyExtractor}
-        getItemCount={getItemCount}
-        getItem={getItem}
-        initialNumToRender={3}
-        maxToRenderPerBatch={5}
-        windowSize={3}
-        removeClippedSubviews={true}
         contentContainerStyle={styles.listContent}
       />
     </View>
   );
 }, (prevProps, nextProps) => {
-  // Deep comparison of meals array
   if (prevProps.isLoading !== nextProps.isLoading) return false;
   if (prevProps.meals.length !== nextProps.meals.length) return false;
-  
-  // Compare only the last meal (most recently added)
+
   const prevLastMeal = prevProps.meals[prevProps.meals.length - 1];
   const nextLastMeal = nextProps.meals[nextProps.meals.length - 1];
   
   if (!prevLastMeal || !nextLastMeal) return false;
-  
+
   return (
     prevLastMeal.id === nextLastMeal.id &&
     prevLastMeal.calories === nextLastMeal.calories &&
@@ -133,7 +123,6 @@ const RecentlyEaten = memo(({ meals = [], isLoading = false }) => {
 const getStyles = (theme) => StyleSheet.create({
   container: {
     flex: 1,
-    minHeight: 400,
   },
   loadingContainer: {
     flex: 1,
@@ -152,7 +141,7 @@ const getStyles = (theme) => StyleSheet.create({
   },
   listContent: {
     paddingHorizontal: 16,
-    paddingBottom: 80,
+    paddingBottom: 16,
   },
   mealCard: {
     backgroundColor: theme.colors.surface,
