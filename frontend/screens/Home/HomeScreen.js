@@ -293,10 +293,11 @@ const HomeScreen = () => {
         </View>
         <View style={{ flexDirection: 'row', alignItems: 'center',justifyContent: 'space-between', marginVertical: 8 }}>
           <Text style={styles.sectionTitle}>Recently Eaten</Text>
-          <TouchableOpacity style={{ marginLeft: 100 }} onPress={handleOpenAdModal}>
+          {/* <TouchableOpacity style={{ marginLeft: 100 }} onPress={handleOpenAdModal}>
             <Image source={DiamondChest} style={{ width: 58, height: 58,resizeMode: 'contain' }} />
-          </TouchableOpacity>
+          </TouchableOpacity> */}
           {/* <NativeAdComponent /> */}
+          <HomescreenAdComponent />
         </View>
         <MemoizedRecentlyEaten {...mealsData} />
         <FAB
@@ -364,20 +365,6 @@ const HomeScreen = () => {
             >Got it!</Text>
           </View>
         </View>
-      </Modal>
-            {/* Ad Modal */}
-            <Modal
-        visible={showAdModal}
-        transparent={true}
-        onRequestClose={handleCloseAdModal}
-      >
-        <TouchableOpacity
-          style={{ flex: 1 }}
-          activeOpacity={1}
-          onPressOut={handleCloseAdModal} // Close the modal when tapping outside
-        >
-          <HomescreenAdComponent />
-        </TouchableOpacity>
       </Modal>
     </>
   );
