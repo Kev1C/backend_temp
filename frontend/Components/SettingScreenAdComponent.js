@@ -1,9 +1,9 @@
-// frontend/Components/AdComponent.js
+// frontend/Components/SettingScreenAdComponent.js
 import React, { useEffect } from 'react';
 import { View, Button, Alert, StyleSheet } from 'react-native';
 import { useAdStore } from '../stores/adStore';
 
-const AdComponent = ({ onAdWatched }) => {
+const SettingScreenAdComponent = ({ onAdWatched }) => {
   const { settingsAdReady, showSettingsRewardedAd, initializeAds } = useAdStore();
 
   // Initialize ads if not already done
@@ -40,4 +40,4 @@ const styles = StyleSheet.create({
   },
 });
 
-export default AdComponent;
+export default SettingScreenAdComponent;
