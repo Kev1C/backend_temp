@@ -1,5 +1,5 @@
 // frontend/Components/HomescreenAdComponent.js
-import React, { useState, useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   View,
   Modal,
@@ -8,142 +8,52 @@ import {
   Image,
   Text,
   Alert,
-  Platform,
   Dimensions,
 } from 'react-native';
-import {
-  RewardedAd,
-  RewardedAdEventType,
-  AdEventType,
-  TestIds,
-} from 'react-native-google-mobile-ads';
-import { useDiamondStore } from '../stores/diamondStore'; // Import your diamond store
+import { useDiamondStore } from '../stores/diamondStore';
 import DiamondChest from '../assets/images/cropped.png';
+import { useAdStore } from '../stores/adStore';
 
 const screenWidth = Dimensions.get('window').width;
 const screenHeight = Dimensions.get('window').height;
-const modalWidth = screenWidth * 0.85; // 85% of screen width
-const modalHeight = screenHeight * 0.55; // 55% of screen height
+const modalWidth = screenWidth * 0.85;
+const modalHeight = screenHeight * 0.55;
 
 const HomescreenAdComponent = () => {
-  // State to track ad readiness, rewarded ad instance and modal visibility.
-  const [adReady, setAdReady] = useState(false);
-  const [rewardedAd, setRewardedAd] = useState(null);
+  const { addDiamonds } = useDiamondStore();
+  const { homeAdReady, showHomeRewardedAd, initializeAds } = useAdStore();
   const [showModal, setShowModal] = useState(false);
 
-  // Get addDiamonds action from diamond store.
-  const { addDiamonds } = useDiamondStore();
-
-  // Use test IDs during development.
-  // In production, use process.env.GOOGLE_ADMOB_ANDROID_REWARDED_HomeScreen on Android.
-  const adUnitId =
-      false
-      ? TestIds.REWARDED
-      : Platform.OS === 'ios'
-      ? 'YOUR_IOS_REWARDED_AD_UNIT_ID'
-      : process.env.GOOGLE_ADMOB_ANDROID_REWARDED_HomeScreen;
-
+  // Initialize ads on mount
   useEffect(() => {
-    // Create a rewarded ad instance.
-    const rewarded = RewardedAd.createForAdRequest(adUnitId, {
-      keywords: ['fitness', 'health', 'workout', 'exercise'],
-    });
-    setRewardedAd(rewarded);
+    initializeAds?.();
+  }, [initializeAds]);
 
-    // Subscribe to the LOADED event.
-    const unsubscribeLoaded = rewarded.addAdEventListener(
-      RewardedAdEventType.LOADED,
-      () => {
-        console.log('Rewarded ad loaded');
-        setAdReady(true);
-      }
-    );
-
-    // Subscribe to the EARNED_REWARD event.
-    const unsubscribeEarned = rewarded.addAdEventListener(
-      RewardedAdEventType.EARNED_REWARD,
-      reward => {
-        console.log('User earned reward:', reward);
-        // For example, add diamonds – use reward.amount if provided
-        const diamondReward = reward?.amount || 1; // default reward is 1 diamond if not provided
-        addDiamonds(diamondReward);
-      }
-    );
-
-    // Subscribe to the CLOSED event.
-    const unsubscribeClosed = rewarded.addAdEventListener(
-      AdEventType.CLOSED,
-      () => {
-        console.log('Rewarded ad closed');
-        setAdReady(false);
-        rewarded.load();
-        setShowModal(false);
-      }
-    );
-
-    // Subscribe to errors.
-    const unsubscribeError = rewarded.addAdEventListener(
-      AdEventType.ERROR,
-      error => {
-        console.error('Rewarded ad error:', error);
-        setAdReady(false);
-        // Try to reload after a delay.
-        setTimeout(() => {
-          rewarded.load();
-        }, 1000);
-      }
-    );
-
-    // Load the ad initially.
-    rewarded.load();
-
-    // Cleanup subscriptions on unmount.
-    return () => {
-      unsubscribeLoaded();
-      unsubscribeEarned();
-      unsubscribeClosed();
-      unsubscribeError();
-    };
-  }, [adUnitId, addDiamonds]);
-
-  // Show ad when "Watch Ad" is pressed.
-  const showRewardedAd = async () => {
-    if (!rewardedAd || !adReady) {
-      Alert.alert('Ad not ready', 'Please wait for the ad to load.');
-      return;
-    }
-    try {
-      await rewardedAd.show();
-    } catch (error) {
-      console.error('Error showing rewarded ad:', error);
-      Alert.alert('Error', 'Failed to show ad. Please try again.');
-    }
-  };
-
-  // When the treasure chest (outside modal) is pressed, open modal only if ad is ready.
   const handleChestPress = () => {
-    if (!adReady) {
+    if (!homeAdReady) {
       Alert.alert('Please wait', 'Ad is not ready yet.');
       return;
     }
     setShowModal(true);
   };
 
+  const handleWatchAd = async () => {
+    await showHomeRewardedAd();
+    setShowModal(false);
+  };
+
   return (
     <View>
-      {/* Treasure chest button on HomeScreen */}
-      <TouchableOpacity onPress={handleChestPress} disabled={!adReady}>
+      <TouchableOpacity onPress={handleChestPress} disabled={!homeAdReady}>
         <Image
           source={DiamondChest}
-          style={[styles.chestImage, { opacity: adReady ? 1 : 0.5 }]}
+          style={[styles.chestImage, { opacity: homeAdReady ? 1 : 0.5 }]}
         />
       </TouchableOpacity>
 
-      {/* Ad Modal */}
       <Modal visible={showModal} transparent onRequestClose={() => setShowModal(false)}>
         <View style={styles.modalOverlay}>
           <View style={styles.modalContent}>
-            {/* Extra treasure chest at the top of the modal */}
             <Image source={DiamondChest} style={styles.modalTopChest} />
             <Text style={styles.modalText}>
               Watch an ad to earn more diamonds!
@@ -151,7 +61,7 @@ const HomescreenAdComponent = () => {
             <Text style={styles.modalText}>
               Unlock the Food Scanner and get detailed nutrition data instantly.
             </Text>
-            <TouchableOpacity style={styles.watchAdButton} onPress={showRewardedAd}>
+            <TouchableOpacity style={styles.watchAdButton} onPress={handleWatchAd}>
               <Text style={styles.buttonText}>Watch Ad</Text>
             </TouchableOpacity>
             <TouchableOpacity onPress={() => setShowModal(false)}>
@@ -187,7 +97,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  // New treasure chest image on top of modal.
   modalTopChest: {
     width: 80,
     height: 80,
