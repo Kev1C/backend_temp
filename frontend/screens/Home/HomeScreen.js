@@ -17,6 +17,7 @@ import createStyles from './HomeScreenStyles';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import DiamondChest from '../../assets/images/cropped.png';
 import HomescreenAdComponent from '../../Components/HomescreenAdComponent'; // Import the ad component
+import WelcomeMessageModal from '../../Components/WelcomeMessageModal';
 
 const HomeScreen = () => {
   const { user, authToken, isGuest } = useAuthStore();
@@ -31,6 +32,7 @@ const HomeScreen = () => {
   const route = useRoute();
   const styles = useMemo(() => createStyles(theme), [theme]);
   const insets = useSafeAreaInsets();
+  const [showWelcomeModal, setShowWelcomeModal] = useState(false);
 
   // Add loading state indicators
   const [loadingStates, setLoadingStates] = useState({
@@ -46,38 +48,19 @@ const HomeScreen = () => {
   const [meals, setMeals] = useState([]);
   const [isInitialized, setIsInitialized] = useState(false);
 
-  // State to control display of the welcome modal
-  const [showModal, setShowModal] = useState(false);
-
-    // State to control display of the ad modal
-    const [showAdModal, setShowAdModal] = useState(false);
-
-  // Add new state variable for managing read more toggle
-  const [expanded, setExpanded] = useState(false);
-
+  // Consolidated welcome modal logic
   useEffect(() => {
-    // Check if the onboarding process is complete and the user is new
     if (isOnboardingComplete && isNewUser) {
-      setShowModal(true);
+      setShowWelcomeModal(true);
     }
   }, [isOnboardingComplete, isNewUser]);
 
-  const handleCloseModal = () => {
-    setShowModal(false);
-    // Update the flag so that the modal does not display again
+  const handleCloseWelcome = () => {
+    setShowWelcomeModal(false);
     markUserAsSeen();
   };
-    // Function to open the ad modal
-    const handleOpenAdModal = () => {
-      setShowAdModal(true);
-    };
   
-    // Function to close the ad modal
-    const handleCloseAdModal = () => {
-      setShowAdModal(false);
-    };
   
-
   // Fetch nutrient calculations when user and onboarding data are available
   useEffect(() => {
     const initializeNutrients = async () => {
@@ -306,66 +289,7 @@ const HomeScreen = () => {
           onPress={() => navigation.navigate('Camera')}
         />
       </View>
-      <Modal
-        visible={showModal}
-        transparent={true}
-        onRequestClose={handleCloseModal}
-      >
-        <View style={{
-          position: 'absolute',
-          top: 0,
-          left: 0,
-          right: 0,
-          bottom: 0,
-          backgroundColor: 'rgba(0,0,0,0.5)',
-          alignItems: 'center',
-          justifyContent: 'center',
-          zIndex: 1000
-        }}>
-          <View style={{
-            backgroundColor: '#fff',
-            padding: 20,
-            borderRadius: 8,
-            maxWidth: 500,
-            width: '90%',
-            alignItems: 'center',
-            shadowColor: '#000',
-            shadowOffset: { width: 0, height: 2 },
-            shadowOpacity: 0.25,
-            shadowRadius: 3.84,
-            elevation: 5
-          }}>
-            <Text style={{ fontSize: 24, fontWeight: 'bold', textAlign: 'center' }}>Hooray! You're In!</Text>
-            <Text style={{ textAlign: 'center', marginVertical: 5 }}>Time to take control of your nutrition!</Text>
-            <Text style={{ textAlign: 'center', marginVertical: 5 }}>
-              We've added <Text style={{ fontWeight: 'bold', color: '#FFA500' }}>6500 shiny diamonds</Text> to your account to kick things off! 💎
-            </Text>
-            <Text style={{ textAlign: 'center', marginVertical: 5 }}>Use them to power up your food tracking with our Food Scanner. Get instant calorie and macro counts by simply taking a picture of your meal.</Text>
-            {/* Read more toggle for the diamond info */}
-            {!expanded ? (
-              <Text onPress={() => setExpanded(true)} style={{ color: '#007bff', marginVertical: 5 }}>
-                Read more
-              </Text>
-            ) : (
-              <Text style={{ textAlign: 'center', marginVertical: 5 }}>
-                Diamonds unlock our Food Scanner: Use them to instantly analyze your meals with your camera and get detailed nutrition data. It's the fastest way to log your food!
-                <Text onPress={() => setExpanded(false)} style={{ color: '#007bff' }}> Read less</Text>
-              </Text>
-            )}
-            <Text 
-              onPress={handleCloseModal}
-              style={{
-                marginTop: 20,
-                paddingVertical: 10,
-                paddingHorizontal: 20,
-                backgroundColor: '#007bff',
-                color: '#fff',
-                borderRadius: 4
-              }}
-            >Got it!</Text>
-          </View>
-        </View>
-      </Modal>
+      <WelcomeMessageModal visible={showWelcomeModal} onClose={handleCloseWelcome} />
     </>
   );
 };
