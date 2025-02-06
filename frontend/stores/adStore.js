@@ -75,7 +75,7 @@ export const useAdStore = create((set) => {
           set({ homeAdReady: false });
         },
         (reward) => {
-            const diamondReward = reward?.amount || 1;
+            const diamondReward = reward?.amount || 75;
             useDiamondStore.getState().addDiamonds(diamondReward);
           }
       );
@@ -100,7 +100,7 @@ export const useAdStore = create((set) => {
           set({ settingsAdReady: false });
         },
         (reward) => {
-            const diamondReward = reward?.amount || 1;
+            const diamondReward = reward?.amount || 75;
             useDiamondStore.getState().addDiamonds(diamondReward);
           }
       );
