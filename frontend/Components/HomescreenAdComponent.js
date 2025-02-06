@@ -17,6 +17,7 @@ import {
   AdEventType,
   TestIds,
 } from 'react-native-google-mobile-ads';
+import { useDiamondStore } from '../stores/diamondStore'; // Import your diamond store
 import DiamondChest from '../assets/images/cropped.png';
 
 const screenWidth = Dimensions.get('window').width;
@@ -25,29 +26,31 @@ const modalWidth = screenWidth * 0.85; // 85% of screen width
 const modalHeight = screenHeight * 0.55; // 55% of screen height
 
 const HomescreenAdComponent = () => {
-  // State to track ad readiness, rewarded ad instance and modal visibility
+  // State to track ad readiness, rewarded ad instance and modal visibility.
   const [adReady, setAdReady] = useState(false);
   const [rewardedAd, setRewardedAd] = useState(null);
   const [showModal, setShowModal] = useState(false);
 
+  // Get addDiamonds action from diamond store.
+  const { addDiamonds } = useDiamondStore();
+
   // Use test IDs during development.
-  // When in production, use process.env.GOOGLE_ADMOB_ANDROID_REWARDED_HomeScreen on Android.
+  // In production, use process.env.GOOGLE_ADMOB_ANDROID_REWARDED_HomeScreen on Android.
   const adUnitId =
-    __DEV__
+      false
       ? TestIds.REWARDED
       : Platform.OS === 'ios'
       ? 'YOUR_IOS_REWARDED_AD_UNIT_ID'
       : process.env.GOOGLE_ADMOB_ANDROID_REWARDED_HomeScreen;
 
   useEffect(() => {
-    // Create the rewarded ad instance
+    // Create a rewarded ad instance.
     const rewarded = RewardedAd.createForAdRequest(adUnitId, {
-      // Optionally add keywords
       keywords: ['fitness', 'health', 'workout', 'exercise'],
     });
     setRewardedAd(rewarded);
 
-    // Listen for when the ad is loaded
+    // Subscribe to the LOADED event.
     const unsubscribeLoaded = rewarded.addAdEventListener(
       RewardedAdEventType.LOADED,
       () => {
@@ -56,53 +59,54 @@ const HomescreenAdComponent = () => {
       }
     );
 
-    // Listen for reward earned by the user
+    // Subscribe to the EARNED_REWARD event.
     const unsubscribeEarned = rewarded.addAdEventListener(
       RewardedAdEventType.EARNED_REWARD,
       reward => {
-        console.log('User earned reward: ', reward);
-        // Here you could call a callback or update state to add diamonds to the user’s account
+        console.log('User earned reward:', reward);
+        // For example, add diamonds – use reward.amount if provided
+        const diamondReward = reward?.amount || 1; // default reward is 1 diamond if not provided
+        addDiamonds(diamondReward);
       }
     );
 
-    // Listen for when the ad is closed
+    // Subscribe to the CLOSED event.
     const unsubscribeClosed = rewarded.addAdEventListener(
       AdEventType.CLOSED,
       () => {
         console.log('Rewarded ad closed');
         setAdReady(false);
-        // Reload a new ad after the previous one is closed
         rewarded.load();
         setShowModal(false);
       }
     );
 
-    // Listen for ad errors
+    // Subscribe to errors.
     const unsubscribeError = rewarded.addAdEventListener(
       AdEventType.ERROR,
       error => {
         console.error('Rewarded ad error:', error);
         setAdReady(false);
-        // Try to load a new ad after a delay
+        // Try to reload after a delay.
         setTimeout(() => {
           rewarded.load();
         }, 1000);
       }
     );
 
-    // Initially load the ad
+    // Load the ad initially.
     rewarded.load();
 
-    // Clean up event listeners on unmount
+    // Cleanup subscriptions on unmount.
     return () => {
       unsubscribeLoaded();
       unsubscribeEarned();
       unsubscribeClosed();
       unsubscribeError();
     };
-  }, [adUnitId]);
+  }, [adUnitId, addDiamonds]);
 
-  // Function to show the rewarded ad when the user taps "Watch Ad"
+  // Show ad when "Watch Ad" is pressed.
   const showRewardedAd = async () => {
     if (!rewardedAd || !adReady) {
       Alert.alert('Ad not ready', 'Please wait for the ad to load.');
@@ -116,7 +120,7 @@ const HomescreenAdComponent = () => {
     }
   };
 
-  // When the treasure chest is pressed, only open the modal if the ad is ready
+  // When the treasure chest (outside modal) is pressed, open modal only if ad is ready.
   const handleChestPress = () => {
     if (!adReady) {
       Alert.alert('Please wait', 'Ad is not ready yet.');
@@ -127,7 +131,7 @@ const HomescreenAdComponent = () => {
 
   return (
     <View>
-      {/* Treasure chest button */}
+      {/* Treasure chest button on HomeScreen */}
       <TouchableOpacity onPress={handleChestPress} disabled={!adReady}>
         <Image
           source={DiamondChest}
@@ -139,6 +143,8 @@ const HomescreenAdComponent = () => {
       <Modal visible={showModal} transparent onRequestClose={() => setShowModal(false)}>
         <View style={styles.modalOverlay}>
           <View style={styles.modalContent}>
+            {/* Extra treasure chest at the top of the modal */}
+            <Image source={DiamondChest} style={styles.modalTopChest} />
             <Text style={styles.modalText}>
               Watch an ad to earn more diamonds!
             </Text>
@@ -180,6 +186,13 @@ const styles = StyleSheet.create({
     borderColor: 'black',
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  // New treasure chest image on top of modal.
+  modalTopChest: {
+    width: 80,
+    height: 80,
+    resizeMode: 'contain',
+    marginBottom: 20,
   },
   modalText: {
     marginBottom: screenHeight * 0.015,
