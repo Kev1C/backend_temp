@@ -69,19 +69,19 @@ const authRoutes = require('./routes/auth');
 app.use('/api/auth', authLimiter, authRoutes);
 
 // Mount Other Routes
-const exerciseRoutes = require('./routes/exercises');
+//const exerciseRoutes = require('./routes/exercises');
 const progressRoutes = require('./routes/progress');
 const foodAnalysisRoutes = require('./routes/foodAnalysis');
 const mealRoutes = require('./routes/meals');
-const workoutsRoutes = require('./routes/workouts');
+//const workoutsRoutes = require('./routes/workouts');
 const userRoutes = require('./routes/users');
 const nutritionRoutes = require('./routes/nutritionRoutes');
 
-app.use('/api/exercises', exerciseRoutes);
+//app.use('/api/exercises', exerciseRoutes);
 app.use('/api/progress', progressRoutes);
 app.use('/api/food-analysis', foodAnalysisRoutes);
 app.use('/api/meals', mealRoutes);
-app.use('/api/workouts', workoutsRoutes);
+//app.use('/api/workouts', workoutsRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/nutrition', nutritionRoutes);
 
