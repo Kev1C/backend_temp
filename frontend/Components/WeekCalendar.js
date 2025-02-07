@@ -1,6 +1,7 @@
-//frontned/Components/WeekCalendar.js
+//frontend/Components/WeekCalendar.js
 import React, { useState, useContext, useCallback, useEffect, useMemo, memo } from 'react';
-import { View, TouchableOpacity, FlatList, StyleSheet } from 'react-native';
+import { View, TouchableOpacity, StyleSheet } from 'react-native';
+import { FlashList } from '@shopify/flash-list';
 import { ThemeContext } from '../context/ThemeContext';
 import Typography, { Small, Label } from './Typography';
 
@@ -11,53 +12,67 @@ const formatDate = (date) => ({
   date: date.getDate().toString(),
 });
 
-const DateItem = memo(({ date, isToday, isSelected, onSelect, theme }) => {
-  const formattedDate = useMemo(() => formatDate(date), [date]);
-  const isActive = isToday || isSelected;
-  
-  const containerStyle = useMemo(() => [
-    styles.dateContainer,
-    isToday && styles.todayContainer(theme),
-    isSelected && styles.selectedContainer(theme)
-  ], [isToday, isSelected, theme]);
+const DateItem = memo(
+  ({ date, isToday, isSelected, onSelect, theme }) => {
+    const formattedDate = useMemo(() => formatDate(date), [date]);
+    const isActive = isToday || isSelected;
+    
+    const containerStyle = useMemo(
+      () => [
+        styles.dateContainer,
+        isToday && styles.todayContainer(theme),
+        isSelected && styles.selectedContainer(theme)
+      ],
+      [isToday, isSelected, theme]
+    );
 
-  const dayTextStyle = useMemo(() => [
-    styles.dayText,
-    { color: theme.colors.textSecondary },
-    isActive && styles.activeText(theme)
-  ], [theme, isActive]);
+    const dayTextStyle = useMemo(
+      () => [
+        styles.dayText,
+        { color: theme.colors.textSecondary },
+        isActive && styles.activeText(theme)
+      ],
+      [theme, isActive]
+    );
 
-  const dateTextStyle = useMemo(() => [
-    styles.dateText,
-    { color: theme.colors.text },
-    isActive && styles.activeText(theme)
-  ], [theme, isActive]);
-  
-  const handlePress = useCallback(() => {
-    onSelect(date);
-  }, [date, onSelect]);
+    const dateTextStyle = useMemo(
+      () => [
+        styles.dateText,
+        { color: theme.colors.text },
+        isActive && styles.activeText(theme)
+      ],
+      [theme, isActive]
+    );
+    
+    const handlePress = useCallback(() => {
+      onSelect(date);
+    }, [date, onSelect]);
 
-  return (
-    <TouchableOpacity 
-      style={styles.dayContainer}
-      onPress={handlePress}
-    >
-      <View style={containerStyle}>
-        <Small style={dayTextStyle}>
-          {formattedDate.day}
-        </Small>
-        <Label style={dateTextStyle}>
-          {formattedDate.date}
-        </Label>
-      </View>
-    </TouchableOpacity>
-  );
-}, (prevProps, nextProps) => {
-  return prevProps.isToday === nextProps.isToday &&
-         prevProps.isSelected === nextProps.isSelected &&
-         prevProps.date.getTime() === nextProps.date.getTime() &&
-         prevProps.theme === nextProps.theme;
-});
+    return (
+      <TouchableOpacity 
+        style={styles.dayContainer}
+        onPress={handlePress}
+      >
+        <View style={containerStyle}>
+          <Small style={dayTextStyle}>
+            {formattedDate.day}
+          </Small>
+          <Label style={dateTextStyle}>
+            {formattedDate.date}
+          </Label>
+        </View>
+      </TouchableOpacity>
+    );
+  },
+  (prevProps, nextProps) => {
+    return (
+      prevProps.isToday === nextProps.isToday &&
+      prevProps.isSelected === nextProps.isSelected &&
+      prevProps.date.getTime() === nextProps.date.getTime() &&
+      prevProps.theme === nextProps.theme
+    );
+  }
+);
 
 const WeekCalendar = memo(({ onDateSelect, selectedDate }) => {
   const { theme } = useContext(ThemeContext);
@@ -88,50 +103,52 @@ const WeekCalendar = memo(({ onDateSelect, selectedDate }) => {
     return datesArray;
   }, [selectedDate]);
 
-  const handleDateSelect = useCallback((date) => {
-    if (onDateSelect) {
-      onDateSelect(new Date(date));
-    }
-  }, [onDateSelect]);
+  const handleDateSelect = useCallback(
+    (date) => {
+      if (onDateSelect) {
+        onDateSelect(new Date(date));
+      }
+    },
+    [onDateSelect]
+  );
 
-  const getItemLayout = useCallback((_, index) => ({
-    length: 60,
-    offset: 60 * index,
-    index,
-  }), []);
-
-  const renderItem = useCallback(({ item }) => (
-    <DateItem
-      date={item.date}
-      isToday={item.isToday}
-      isSelected={item.isSelected}
-      onSelect={handleDateSelect}
-      theme={theme}
-    />
-  ), [handleDateSelect, theme]);
+  const renderItem = useCallback(
+    ({ item }) => (
+      <DateItem
+        date={item.date}
+        isToday={item.isToday}
+        isSelected={item.isSelected}
+        onSelect={handleDateSelect}
+        theme={theme}
+      />
+    ),
+    [handleDateSelect, theme]
+  );
 
   const keyExtractor = useCallback((item) => item.date.toISOString(), []);
 
   const initialScrollIndex = useMemo(() => {
-    return dates.findIndex(d => d.isToday);
+    return dates.findIndex((d) => d.isToday);
   }, [dates]);
 
   return (
     <View style={styles.container}>
-      <FlatList
-        horizontal
-        data={dates}
-        renderItem={renderItem}
-        keyExtractor={keyExtractor}
-        showsHorizontalScrollIndicator={false}
-        getItemLayout={getItemLayout}
-        initialScrollIndex={initialScrollIndex}
-        initialNumToRender={7}
-        maxToRenderPerBatch={7}
-        windowSize={7}
-        removeClippedSubviews={true}
-        contentContainerStyle={styles.scrollContainer}
-      />
+      <View style={styles.listContainer}>
+        <FlashList
+          horizontal
+          data={dates}
+          renderItem={renderItem}
+          keyExtractor={keyExtractor}
+          showsHorizontalScrollIndicator={false}
+          estimatedItemSize={60}
+          initialScrollIndex={initialScrollIndex}
+          initialNumToRender={7}
+          maxToRenderPerBatch={7}
+          windowSize={7}
+          removeClippedSubviews={true}
+          contentContainerStyle={styles.scrollContainer}
+        />
+      </View>
     </View>
   );
 });
@@ -142,11 +159,16 @@ const styles = StyleSheet.create({
     marginTop: 16,
     marginBottom: 8,
   },
+  listContainer: {
+    height: 90,
+    width: '100%',
+  },
   scrollContainer: {
     paddingHorizontal: 8,
   },
   dayContainer: {
     width: 60,
+    height: 70,
     alignItems: 'center',
     justifyContent: 'center',
     marginHorizontal: 4,
@@ -165,13 +187,15 @@ const styles = StyleSheet.create({
   dateText: {
     fontSize: 16,
   },
-  todayContainer: theme => ({
+  todayContainer: (theme) => ({
     backgroundColor: theme.colors.primary + '15',
+    borderRadius: 12,
   }),
-  selectedContainer: theme => ({
+  selectedContainer: (theme) => ({
     backgroundColor: theme.colors.primary + '30',
+    borderRadius: 12,
   }),
-  activeText: theme => ({
+  activeText: (theme) => ({
     color: theme.colors.primary,
   }),
 });
