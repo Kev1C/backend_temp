@@ -1,3 +1,4 @@
+//frontned/Components/WeekCalendar.js
 import React, { useState, useContext, useCallback, useEffect, useMemo, memo } from 'react';
 import { View, TouchableOpacity, FlatList, StyleSheet } from 'react-native';
 import { ThemeContext } from '../context/ThemeContext';

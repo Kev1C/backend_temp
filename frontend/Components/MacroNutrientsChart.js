@@ -1,3 +1,4 @@
+//frontend/Components/MacroNutrientsChart.js
 import React, { useMemo, useEffect, useState } from 'react';
 import { View, Text, StyleSheet, useWindowDimensions } from 'react-native';
 import { VictoryChart, VictoryBar, VictoryAxis, VictoryGroup, VictoryLegend, VictoryLabel } from 'victory-native';

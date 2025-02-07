@@ -1,3 +1,4 @@
+//frontend/Components/CalorieProgress.js
 import React, { useMemo, useCallback } from 'react';
 import { View, Text } from 'react-native';
 import { useTheme } from 'react-native-paper';

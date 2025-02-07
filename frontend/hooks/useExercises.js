@@ -1,3 +1,4 @@
+//frontend/hooks/useExercises.js
 import { useState, useEffect, useCallback, useContext, useRef } from 'react';
 import debounce from 'lodash.debounce';
 import * as SecureStore from 'expo-secure-store';

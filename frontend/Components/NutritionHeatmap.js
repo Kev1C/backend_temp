@@ -1,3 +1,4 @@
+//frontned/Components/NutritionHeatmap.js
 import React, { useMemo, useCallback, useRef } from 'react';
 import { View, StyleSheet, useWindowDimensions } from 'react-native';
 import { Calendar } from 'react-native-calendars';
