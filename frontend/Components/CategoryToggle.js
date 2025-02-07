@@ -38,11 +38,11 @@ const CategoryToggle = ({ selectedCategories, onToggleCategory }) => {
 const styles = StyleSheet.create({
   container: {
     flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8,
+    flexWrap: 'nowrap',
     marginTop: 16,
     marginBottom: 8,
     justifyContent: 'center',
+    alignItems: 'center',
   },
   chip: {
     marginHorizontal: 4,

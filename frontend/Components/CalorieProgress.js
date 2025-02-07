@@ -1,3 +1,4 @@
+//frontend/Components/CalorieProgress.js
 import React, { useMemo, useCallback } from 'react';
 import { View, Text } from 'react-native';
 import { useTheme } from 'react-native-paper';
@@ -104,7 +105,7 @@ const CalorieProgress = React.memo(({ nutrients }) => {
       label: 'Fats',
       value: fats,
       total: fatsGoal,
-      color: '#FFD700'
+      color: '#FFA500'
     }
   ]), [carbs, carbsGoal, protein, proteinGoal, fats, fatsGoal, theme.colors.secondary]);
 

@@ -1,7 +1,7 @@
 import React from 'react';
 import { View, Text, TouchableOpacity, Alert } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import styles from './ActivityLevel.styles';
 import Button from '../../Components/Button';
 import OnboardingProgress from '../../Components/OnboardingProgress';
@@ -50,6 +50,7 @@ const AGE_RANGES = Object.freeze([
 const AgeSelectionScreen = React.memo(({ navigation }) => {
   const [selectedAge, setSelectedAge] = React.useState('18_24');
   const { saveOnboardingData } = useOnboardingStore();
+  const insets = useSafeAreaInsets();
 
   const handleAgeSelection = React.useCallback((ageId) => {
     setSelectedAge(ageId);
@@ -107,7 +108,7 @@ const AgeSelectionScreen = React.memo(({ navigation }) => {
   ), [selectedAge, handleAgeSelection]);
 
   return (
-    <SafeAreaView edges={['top']} style={sharedStyles.container}>
+    <View style={[sharedStyles.container, { paddingTop: insets.top }]}>
       <OnboardingProgress currentScreen="AgeSelection" />
       <View style={sharedStyles.header}>
         <TouchableOpacity 
@@ -127,7 +128,7 @@ const AgeSelectionScreen = React.memo(({ navigation }) => {
         </View>
       </View>
 
-      <View style={sharedStyles.footer}>
+      <View style={[sharedStyles.footer, { paddingBottom: insets.bottom }]}>
         <Button
           title="Continue"
           onPress={handleContinue}
@@ -135,7 +136,7 @@ const AgeSelectionScreen = React.memo(({ navigation }) => {
           style={{ backgroundColor: selectedAge ? '#2196F3' : '#ccc' }}
         />
       </View>
-    </SafeAreaView>
+    </View>
   );
 });
 

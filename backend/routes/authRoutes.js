@@ -1,7 +1,8 @@
+//backend/routes/authRoutes.js
 const express = require('express');
 const router = express.Router();
 const firebaseAuth = require('../middleware/firebaseAuth');
-const User = require('../models/user');
+const User = require('../models/User');
 
 // Initial authentication endpoint
 router.post('/authenticate', firebaseAuth, async (req, res) => {

@@ -64,14 +64,14 @@ export const useNutritionStore = create((set, get) => ({
     const formattedDate = formatDate(date);
     const cacheKey = `nutrition_${formattedDate}`;
     const state = get();
-
-    // Return state data if available and not forced
+    
+    // Return current state if available – avoid duplicate calls unless forced
     if (!force && state.dailyNutrition && state.currentDate === formattedDate) {
-      console.log('Using existing data for:', formattedDate);
-      return state.dailyNutrition;
+      console.log('Using existing state data for:', formattedDate);
+      return Promise.resolve(state.dailyNutrition);
     }
 
-    // Check cache first
+    // Return cached version (if available and fresh) before doing any network call
     const cache = cacheStore.getState();
     const cachedData = cache.get(cacheKey);
     if (!force && cachedData) {
@@ -81,51 +81,44 @@ export const useNutritionStore = create((set, get) => ({
         currentDate: formattedDate,
         isLoading: false
       });
-      return cachedData;
+      return Promise.resolve(cachedData);
     }
 
-    // Check if there's already a pending request for this date (from notworking)
-    const pendingRequest = state.pendingRequests.get(formattedDate);
-    if (pendingRequest) {
-      console.log('Using pending request for:', formattedDate);
-      return pendingRequest;
+    // Check for a pending request and return it rather than firing a duplicate call
+    if (state.pendingRequests.has(formattedDate)) {
+      console.log('Returning pending request for:', formattedDate);
+      return state.pendingRequests.get(formattedDate);
     }
 
-    // Create the request promise (from notworking)
+    // Create and store the new request promise
     const requestPromise = (async () => {
       console.log('Fetching from server for:', formattedDate);
       set({ isLoading: true, error: null });
-
       try {
         const response = await api.get(`/nutrition/daily/${formattedDate}`);
         const data = response.data;
 
-        // Store the data in cache and state
-        cache.set(cacheKey, data, CACHE_DURATION); // Using CACHE_DURATION
+        // Update cache and state:
+        cache.set(cacheKey, data, CACHE_DURATION);
         set({
           dailyNutrition: data,
           currentDate: formattedDate,
           isLoading: false
         });
-
         return data;
       } catch (error) {
         console.error('Error fetching daily nutrition:', error);
-        set({
-          error: 'Failed to fetch daily nutrition data',
-          isLoading: false
-        });
+        set({ error: 'Failed to fetch daily nutrition data', isLoading: false });
         throw error;
       } finally {
-        // Clean up pending request (from notworking)
+        // Remove this pending request whether it succeeded or failed
         state.pendingRequests.delete(formattedDate);
       }
     })();
 
-    // Store the promise in pendingRequests (from notworking)
     state.pendingRequests.set(formattedDate, requestPromise);
     return requestPromise;
-  },
+},
 
   updateDailyNutrition: async (date, newMeal) => {
     const dateObj = typeof date === 'string' ? new Date(date) : new Date();

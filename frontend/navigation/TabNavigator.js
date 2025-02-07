@@ -62,25 +62,25 @@ const TabNavigator = () => {
           return <MaterialCommunityIcons name={iconName} size={24} color={color} />;
         },
         tabBarActiveTintColor: theme.colors.primary,
-        tabBarInactiveTintColor: theme.colors.disabled,
+        tabBarInactiveTintColor: 'rgba(0, 0, 0, 0.5)',
         tabBarStyle: {
           backgroundColor: theme.colors.surface,
           borderTopWidth: 0,
-          elevation: 0,
-          height: 60,
+          elevation: 8,
+          height: 65,
           paddingTop: 8,
           paddingBottom: 8,
           shadowColor: theme.colors.shadow,
           shadowOffset: {
             width: 0,
-            height: -4,
+            height: -2,
           },
-          shadowOpacity: 0.1,
-          shadowRadius: 4,
+          shadowOpacity: 0.15,
+          shadowRadius: 6,
         },
         tabBarLabelStyle: {
           fontSize: 12,
-          fontWeight: '500',
+          fontWeight: '600',
           marginTop: 2,
         },
         tabBarItemStyle: {

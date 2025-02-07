@@ -24,6 +24,22 @@ const FoodAnalysisBottomSheet = ({
 }) => {
   const theme = useTheme();
 
+  const [currentSnapPoint, setCurrentSnapPoint] = React.useState(0);
+
+  const snapPoints = React.useMemo(() => ['60%', '80%'], []);
+
+  const imageSize = React.useMemo(() => 
+    currentSnapPoint === 0 ? 
+      { width: 100, height: 100 } : 
+      { width: Dimensions.get('window').width * 0.8, height: 200 }
+  , [currentSnapPoint]);
+
+  const headerLayout = React.useMemo(() => 
+    currentSnapPoint === 0 ? 
+      { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' } : 
+      { flexDirection: 'column', alignItems: 'center' }
+  , [currentSnapPoint]);
+
   const handleNutrientChange = (value, nutrientType) => {
     const numValue = parseFloat(value) || 0;
     setNutritionState(prev => ({
@@ -59,9 +75,13 @@ const FoodAnalysisBottomSheet = ({
 
   const getHealthScoreColor = (score) => {
     const numScore = Math.min(Math.max(parseFloat(score) || 0, 0), 100);
-    const red = numScore <= 50 ? 255 : Math.round(255 * (100 - numScore) / 50);
-    const green = numScore >= 50 ? 255 : Math.round(255 * numScore / 50);
-    return `rgb(${red}, ${green}, 0)`;
+    if (numScore < 40) {
+      return '#FF4D4D'; // bright red for low scores
+    } else if (numScore < 70) {
+      return '#FFA500'; // orange for medium scores
+    } else {
+      return '#2ECC71'; // bright green for high scores
+    }
   };
 
   const getMealType = () => {
@@ -70,6 +90,11 @@ const FoodAnalysisBottomSheet = ({
     if (hour >= 11 && hour < 15) return 'Lunch';
     return 'Dinner';
   };
+
+  const handleSheetChange = React.useCallback((index) => {
+    setCurrentSnapPoint(index);
+    handleSheetChanges(index);
+  }, [handleSheetChanges]);
 
   const renderBackdrop = (props) => (
     <BottomSheetBackdrop
@@ -84,8 +109,8 @@ const FoodAnalysisBottomSheet = ({
     <BottomSheet
       ref={bottomSheetRef}
       index={isModalVisible ? 0 : -1}
-      snapPoints={['60%']}
-      onChange={handleSheetChanges}
+      snapPoints={snapPoints}
+      onChange={handleSheetChange}
       enablePanDownToClose={true}
       enableContentPanningGesture={true}
       enableHandlePanningGesture={true}
@@ -113,37 +138,49 @@ const FoodAnalysisBottomSheet = ({
                   </View>
                 ) : (
                   <>
-                    <View style={styles.headerContainer}>
-                      <Image
-                        source={{ uri: capturedImage.uri }}
-                        style={styles.imagePreview}
-                        resizeMode="cover"
-                      />
-                      <Chip
-                        mode="outlined"
-                        style={[styles.mealTypeChip, { borderRadius: 25 }]}
-                        textStyle={{ fontSize: 14 }}
-                      >
-                        {getMealType()}
-                      </Chip>
-                      {foodAnalysis.healthScore && (
+                    <View style={[styles.headerContainer, headerLayout]}>
+                      <View style={[styles.imageContainer, currentSnapPoint === 0 && styles.imageContainerSmall]}>
+                        <Image
+                          source={{ uri: capturedImage.uri }}
+                          style={[styles.imagePreview, imageSize]}
+                          resizeMode="cover"
+                        />
+                      </View>
+                      <View style={[styles.chipsContainer, currentSnapPoint === 0 && styles.chipsContainerSmall]}>
                         <Chip
                           mode="outlined"
-                          style={[
-                            styles.healthScoreChip,
-                            {
-                              borderRadius: 25,
-                              borderColor: getHealthScoreColor(foodAnalysis.healthScore),
-                            }
-                          ]}
-                          textStyle={{
-                            fontSize: 14,
-                            color: getHealthScoreColor(foodAnalysis.healthScore)
-                          }}
+                          style={[styles.chip, styles.mealTypeChip]}
+                          textStyle={{ fontSize: 14 }}
                         >
-                          Health Score: {foodAnalysis.healthScore}
+                          {getMealType()}
                         </Chip>
-                      )}
+                        {foodAnalysis.healthScore && (
+                          <Chip
+                            mode="outlined"
+                            style={[
+                              styles.chip,
+                              styles.healthScoreChip,
+                              {
+                                backgroundColor: 'white',
+                                elevation: 2,
+                                shadowColor: '#000',
+                                shadowOffset: { width: 0, height: 1 },
+                                shadowOpacity: 0.2,
+                                shadowRadius: 2,
+                                borderColor: getHealthScoreColor(foodAnalysis.healthScore),
+                                borderWidth: 1.5,
+                              }
+                            ]}
+                            textStyle={{
+                              fontSize: 16,
+                              fontWeight: '900',
+                              color: getHealthScoreColor(foodAnalysis.healthScore)
+                            }}
+                          >
+                            Health Score: {foodAnalysis.healthScore}
+                          </Chip>
+                        )}
+                      </View>
                     </View>
 
                     <View style={styles.foodInputContainer}>
@@ -263,14 +300,33 @@ const styles = StyleSheet.create({
     padding: 12,
   },
   headerContainer: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
+    width: '100%',
+    marginBottom: 12,
+    padding: 8,
+  },
+  imageContainer: {
     alignItems: 'center',
     marginBottom: 12,
   },
+  imageContainerSmall: {
+    marginBottom: 0,
+    marginRight: 12,
+  },
+  chipsContainer: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    flexWrap: 'wrap',
+    gap: 8,
+  },
+  chipsContainerSmall: {
+    flex: 1,
+    justifyContent: 'flex-end',
+  },
+  chip: {
+    borderRadius: 25,
+    marginVertical: 4,
+  },
   imagePreview: {
-    width: 100,
-    height: 100,
     borderRadius: 10,
   },
   foodInputContainer: {
@@ -357,12 +413,10 @@ const styles = StyleSheet.create({
     borderRadius: 2,
   },
   mealTypeChip: {
-    marginHorizontal: 8,
     backgroundColor: '#fff',
     borderColor: '#f0f0f0',
   },
   healthScoreChip: {
-    marginHorizontal: 8,
     backgroundColor: '#fff',
   },
   fabContainer: {

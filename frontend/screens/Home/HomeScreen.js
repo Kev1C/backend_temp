@@ -1,6 +1,6 @@
 // frontend/screens/Home/HomeScreen.js
 import React, { useMemo, useState, useEffect, useCallback } from 'react';
-import { Text, SafeAreaView, View, Image, FlatList, StyleSheet, Alert } from 'react-native';
+import { Text, View, Image, FlatList, StyleSheet, Alert, Modal, TouchableOpacity } from 'react-native';
 import { useTheme, FAB } from 'react-native-paper';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { useAuthStore } from '../../stores/authStore';
@@ -10,13 +10,18 @@ import { useCalorieStore } from '../../hooks/useCalorieTracker';
 import useMacroStore from '../../hooks/useMacroTracker';
 import useNutrientCalculations from '../../hooks/useNutrientCalculations';
 import { MemoizedWeekCalendar, MemoizedCalorieProgress, MemoizedRecentlyEaten } from './MemoizedComponents';
+import NativeAdComponent from '../../Components/NativeAdComponent';
 import { api } from '../../services/api';
 import isEqual from 'lodash/isEqual';
 import createStyles from './HomeScreenStyles';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import DiamondChest from '../../assets/images/cropped.png';
+import HomescreenAdComponent from '../../Components/HomescreenAdComponent'; // Import the ad component
+import WelcomeMessageModal from '../../Components/WelcomeMessageModal';
 
 const HomeScreen = () => {
   const { user, authToken, isGuest } = useAuthStore();
-  const { onboardingData, isOnboardingComplete } = useOnboardingStore();
+  const { onboardingData, isOnboardingComplete, isNewUser, markUserAsSeen } = useOnboardingStore();
   const { calculatedNutrients, loading: loadingNutrients, fetchCalculations } = useNutrientCalculations();
   const { fetchDailyNutrition, dailyNutrition, isLoading: isLoadingNutrition, updateDailyNutrition } = useNutritionStore();
   const { calories, addCalories, resetCalories } = useCalorieStore();
@@ -26,6 +31,8 @@ const HomeScreen = () => {
   const navigation = useNavigation();
   const route = useRoute();
   const styles = useMemo(() => createStyles(theme), [theme]);
+  const insets = useSafeAreaInsets();
+  const [showWelcomeModal, setShowWelcomeModal] = useState(false);
 
   // Add loading state indicators
   const [loadingStates, setLoadingStates] = useState({
@@ -41,6 +48,19 @@ const HomeScreen = () => {
   const [meals, setMeals] = useState([]);
   const [isInitialized, setIsInitialized] = useState(false);
 
+  // Consolidated welcome modal logic
+  useEffect(() => {
+    if (isOnboardingComplete && isNewUser) {
+      setShowWelcomeModal(true);
+    }
+  }, [isOnboardingComplete, isNewUser]);
+
+  const handleCloseWelcome = () => {
+    setShowWelcomeModal(false);
+    markUserAsSeen();
+  };
+  
+  
   // Fetch nutrient calculations when user and onboarding data are available
   useEffect(() => {
     const initializeNutrients = async () => {
@@ -245,52 +265,33 @@ const HomeScreen = () => {
   }), [dailyNutrition?.meals, isLoadingNutrition, loadingStates.saving]);
 
   return (
-    <SafeAreaView style={styles.container}>
-      <View style={styles.header}>
-        <MemoizedWeekCalendar 
-          onDateSelect={handleDateSelect} 
-          selectedDate={selectedDate} 
-        />
-        <MemoizedCalorieProgress nutrients={nutrients} />
-      </View>
-      <View style={styles.mealsContainer}>
-        <Text style={styles.sectionTitle}>Recently Eaten</Text>
+    <>
+      <View style={[styles.container, { paddingTop: insets.top }]}>
+        <View style={styles.header}>
+          <MemoizedWeekCalendar 
+            onDateSelect={handleDateSelect} 
+            selectedDate={selectedDate} 
+          />
+          <MemoizedCalorieProgress nutrients={nutrients} />
+        </View>
+        <View style={{ flexDirection: 'row', alignItems: 'center',justifyContent: 'space-between', marginVertical: 8 }}>
+          <Text style={styles.sectionTitle}>Recently Eaten</Text>
+          {/* <TouchableOpacity style={{ marginLeft: 100 }} onPress={handleOpenAdModal}>
+            <Image source={DiamondChest} style={{ width: 58, height: 58,resizeMode: 'contain' }} />
+          </TouchableOpacity> */}
+          {/* <NativeAdComponent /> */}
+          <HomescreenAdComponent />
+        </View>
         <MemoizedRecentlyEaten {...mealsData} />
+        <FAB
+          icon="plus"
+          style={[styles.fab, { backgroundColor: theme.colors.primary, bottom: insets.bottom + 16 }]}
+          onPress={() => navigation.navigate('Camera')}
+        />
       </View>
-      <FAB
-        icon="plus"
-        style={[styles.fab, { backgroundColor: theme.colors.primary }]}
-        onPress={() => navigation.navigate('Camera')}
-      />
-    </SafeAreaView>
+      <WelcomeMessageModal visible={showWelcomeModal} onClose={handleCloseWelcome} />
+    </>
   );
 };
-
-const getStyles = (theme) => StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: theme.colors.background,
-  },
-  header: {
-    paddingHorizontal: 16,
-    paddingTop: 16,
-  },
-  mealsContainer: {
-    flex: 1,
-    paddingHorizontal: 16,
-  },
-  sectionTitle: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    marginVertical: 8,
-    color: theme.colors.onSurface,
-  },
-  fab: {
-    position: 'absolute',
-    margin: 16,
-    right: 0,
-    bottom: 0,
-  },
-});
 
 export default HomeScreen;

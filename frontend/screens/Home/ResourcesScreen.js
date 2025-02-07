@@ -1,50 +1,53 @@
 // frontend/screens/Home/ResourcesScreen.js
 
 import React from 'react';
-import { View, Text, FlatList, Linking, TouchableOpacity } from 'react-native';
+import { View, Text, Linking, TouchableOpacity } from 'react-native';
 import { useTheme } from 'react-native-paper';
-import Icon from 'react-native-vector-icons/MaterialCommunityIcons'; // Ensure this is installed
-import styles from './ResourcesScreenStyles'; // Import the styles
+import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
+import { FlashList } from '@shopify/flash-list';
+import styles from './ResourcesScreenStyles';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 const ResourcesScreen = () => {
-  const theme = useTheme(); // Access the current theme
+  const theme = useTheme();
+  const insets = useSafeAreaInsets();
 
   const resources = [
     {
-      id: '1', // Added unique ID
+      id: '1',
       title: 'Bodybuilding.com Exercises',
       url: 'https://www.bodybuilding.com/exercises',
-      icon: 'dumbbell', // Consistent with fitness theme
+      icon: 'dumbbell',
     },
     {
       id: '2',
       title: 'MuscleWiki',
       url: 'https://musclewiki.com/',
-      icon: 'dumbbell', // Represents muscles; adjust if a better icon exists
+      icon: 'dumbbell',
     },
     {
       id: '3',
       title: 'Custom Resource',
       url: 'https://d3ta25z7nz02qv.cloudfront.net/',
-      icon: 'web', // Generic web icon for unspecified resources
+      icon: 'web',
     },
     {
       id: '4',
       title: 'ExRx.net',
       url: 'https://exrx.net/',
-      icon: 'dumbbell', // Represents exercises and fitness
+      icon: 'dumbbell',
     },
     {
       id: '5',
       title: 'FreeTrainers',
       url: 'https://www.freetrainers.com/exercise/muscle/',
-      icon: 'account-group', // Represents trainers or group exercises
+      icon: 'account-group',
     },
     {
       id: '6',
       title: 'Fitbod Exercises',
       url: 'https://fitbod.me/exercises',
-      icon: 'weight-lifter', // Represents weightlifting exercises
+      icon: 'weight-lifter',
     },
     // Add more resources as needed
   ];
@@ -69,11 +72,12 @@ const ResourcesScreen = () => {
   );
 
   return (
-    <View style={[styles.container, { backgroundColor: theme.colors.background }]}>
-      <FlatList
+    <View style={[styles.container, { backgroundColor: theme.colors.background, paddingTop: insets.top }]}>
+      <FlashList
         data={resources}
-        keyExtractor={(item) => item.id}
         renderItem={renderItem}
+        estimatedItemSize={70} // Adjust this value based on your item's average height
+        keyExtractor={(item) => item.id}
         contentContainerStyle={styles.list}
         ItemSeparatorComponent={() => <View style={{ height: 10 }} />}
       />

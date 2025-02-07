@@ -1,11 +1,17 @@
 import 'dotenv/config';
 
 export default ({ config }) => ({
-  ...config,
+  ...config, 
   extra: {
-    apiBaseUrl: process.env.API_BASE_URL || 'http://10.0.0.203:5000',
+    apiBaseUrl: 'http://10.0.0.203:5000', // Your development machine's IP address
   },
-  experiments: {
-    tsconfigPaths: true,
-  },
+  plugins: [
+    [
+      "react-native-google-mobile-ads",
+      {
+        androidAppId: "ca-app-pub-2191904332416469~4553503462",
+        iosAppId: "ca-app-pub-2191904332416469~1234567890"
+      }
+    ]
+  ],
 });

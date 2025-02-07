@@ -72,23 +72,7 @@ const authStore = create((set, get) => ({
 
       let { token: backendToken, refreshToken, user: userData } = response.data;
 
-      // Check if onboarding data needs to be synced and if the user was updated
-      const { userUpdated } = await useOnboardingStore.getState().loadOnboardingData();
-
-      if (userUpdated) {
-        // Regenerate the token after successful onboarding data update
-        const regenerateResponse = await api.post('/auth/verify-token', {
-          firebaseToken: fbToken
-        });
-
-        if (regenerateResponse.status !== 200) {
-          throw new Error('Failed to regenerate token after onboarding update.');
-        }
-
-        backendToken = regenerateResponse.data.token;
-        refreshToken = regenerateResponse.data.refreshToken;
-        userData = regenerateResponse.data.user;
-      }
+      //console.log('Backend token received:', backendToken); // Debugging line
 
       // Ensure all values stored in SecureStore are strings
       await Promise.all([
@@ -111,6 +95,25 @@ const authStore = create((set, get) => ({
         get().refreshAccessToken,
         (decoded.exp * 1000) - Date.now() - 60000
       );
+
+      // Check if onboarding data needs to be synced and if the user was updated
+      // Do this AFTER setting the authToken
+      const { userUpdated } = await useOnboardingStore.getState().loadOnboardingData();
+
+      if (userUpdated) {
+        // Regenerate the token after successful onboarding data update
+        const regenerateResponse = await api.post('/auth/verify-token', {
+          firebaseToken: fbToken
+        });
+
+        if (regenerateResponse.status !== 200) {
+          throw new Error('Failed to regenerate token after onboarding update.');
+        }
+
+        backendToken = regenerateResponse.data.token;
+        refreshToken = regenerateResponse.data.refreshToken;
+        userData = regenerateResponse.data.user;
+      }
 
       return backendToken;
     } catch (error) {
@@ -209,6 +212,7 @@ const authStore = create((set, get) => ({
   },
 
   updateUserData: async (force = false) => {
+    //console.log("Sending authToken:", get().authToken); // Debugging line
     const { lastUserFetch } = get();
     if (!force && lastUserFetch && Date.now() - lastUserFetch < USER_FETCH_INTERVAL) {
       return;

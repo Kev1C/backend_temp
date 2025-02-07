@@ -1,3 +1,4 @@
+//backend/models/DailyNutrition.js
 const mongoose = require('mongoose');
 
 const dailyNutritionSchema = new mongoose.Schema({

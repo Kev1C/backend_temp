@@ -1,3 +1,4 @@
+//backend/routes/meals.js
 const express = require('express');
 const router = express.Router();
 const { getRecentMeals, addMeal } = require('../controllers/mealController');

@@ -6,8 +6,12 @@ import { IconButton, FAB, useTheme, Text, Button, MD3Colors } from 'react-native
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { useAuthStore } from '../../stores/authStore';
 import { api } from '../../services/api';
-import { useNutritionStore, formatDate } from '../../stores/nutritionStore';
+import { useNutritionStore, formatDate, fetchHeatmapData } from '../../stores/nutritionStore';
 import FoodAnalysisBottomSheet from './FoodAnalysisBottomSheet';
+import { useDiamondStore } from '../../stores/diamondStore';
+import AdComponent from '../../Components/SettingScreenAdComponent';
+import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 const CameraScreen = ({ navigation }) => {
   const [facing, setFacing] = useState('back');
@@ -38,13 +42,18 @@ const CameraScreen = ({ navigation }) => {
     healthScore: '',
   });
   const [analysisLoading, setAnalysisLoading] = useState(false);
+  const [showAdComponent, setShowAdComponent] = useState(false);
 
   const cameraRef = useRef(null);
   const bottomSheetRef = useRef(null);
   const isFocused = useIsFocused();
   const { authToken } = useAuthStore();
   const updateDailyNutrition = useNutritionStore((state) => state.updateDailyNutrition);
+  const fetchHeatmapData = useNutritionStore((state) => state.fetchHeatmapData);
   const theme = useTheme();
+  const insets = useSafeAreaInsets();
+
+  const { balance, fetchBalance, addDiamonds, deductDiamonds } = useDiamondStore();
 
   const dynamicStyles = useMemo(() => ({
     confirmFab: {
@@ -54,7 +63,10 @@ const CameraScreen = ({ navigation }) => {
 
   useEffect(() => {
     requestPermission();
-  }, []);
+    if (authToken) {
+      fetchBalance(authToken);
+    }
+  }, [authToken]);
 
   const handleCameraReady = () => {
     setIsCameraReady(true);
@@ -148,44 +160,83 @@ const CameraScreen = ({ navigation }) => {
     return 'Dinner';
   };
 
-  const handleConfirm = async () => {
+  const handleAdWatched = async (reward) => {
+    // Assuming 1 rewarded video view = 5 diamonds
+    const diamondsToAdd = 5;
+    try {
+      await addDiamonds(diamondsToAdd, authToken);
+      Alert.alert('Success', `You've earned ${diamondsToAdd} diamonds!`);
+      setShowAdComponent(false); // Hide the AdComponent after successfully adding diamonds
+    } catch (error) {
+      console.error('Error adding diamonds:', error);
+      Alert.alert('Error', 'Failed to add diamonds. Please try again.');
+    }
+  };
+
+const handleConfirm = async () => {
     if (!foodTitle) {
-      Alert.alert('Error', 'Please enter a food name');
-      return;
+        Alert.alert('Error', 'Please enter a food name');
+        return;
+    }
+
+    // The analysis cost is now handled on the backend
+    const analysisCost = 5;
+
+    if (balance < analysisCost) {
+        // Show option to watch ad
+        setShowAdComponent(true);
+        Alert.alert('Insufficient Diamonds', 'You do not have enough diamonds to analyze. Please watch an ad to earn more.');
+        return;
     }
 
     try {
-      const mealType = getMealType();
-      const today = new Date();
-      const currentTime = new Date().toLocaleTimeString('en-US', {
-        hour: '2-digit',
-        minute: '2-digit',
-        hour12: true
-      });
+        // Deduct diamonds - the backend handles the actual cost
+        await deductDiamonds(analysisCost, authToken);
 
-      const nutritionData = {
-        name: foodTitle,
-        image: capturedImage?.uri || '',
-        time: currentTime,
-        mealType,
-        foodName: foodTitle,
-        servings,
-        calories: parseFloat(nutritionState.calories) || 0,
-        carbs: parseFloat(nutritionState.carbs) || 0,
-        protein: parseFloat(nutritionState.protein) || 0,
-        fats: parseFloat(nutritionState.fats) || 0,
-        healthScore: parseFloat(foodAnalysis.healthScore) || 0,
-      };
+        const mealType = getMealType();
+        const today = new Date();
+        const currentTime = new Date().toLocaleTimeString('en-US', {
+            hour: '2-digit',
+            minute: '2-digit',
+            hour12: true
+        });
 
-      console.log('Sending nutrition data:', nutritionData);
-      await updateDailyNutrition(today, nutritionData);
-      setIsModalVisible(false);
-      navigation.goBack();
+        const nutritionData = {
+            name: foodTitle,
+            image: capturedImage?.uri || '',
+            time: currentTime,
+            mealType,
+            foodName: foodTitle,
+            servings,
+            calories: parseFloat(nutritionState.calories) || 0,
+            carbs: parseFloat(nutritionState.carbs) || 0,
+            protein: parseFloat(nutritionState.protein) || 0,
+            fats: parseFloat(nutritionState.fats) || 0,
+            healthScore: parseFloat(foodAnalysis.healthScore) || 0,
+        };
+
+        console.log('Sending nutrition data:', nutritionData);
+        await updateDailyNutrition(today, nutritionData);
+
+        // Refresh heatmap data
+        const startDate = new Date();
+        startDate.setMonth(startDate.getMonth() - 3);
+        startDate.setUTCHours(0, 0, 0, 0);
+        const endDate = new Date();
+        endDate.setUTCHours(23, 59, 59, 999);
+        await fetchHeatmapData(startDate.toISOString(), endDate.toISOString());
+
+        setIsModalVisible(false);
+        navigation.goBack();
     } catch (error) {
-      console.error('Error saving nutrition data:', error.response?.data || error.message);
-      Alert.alert('Error', 'Failed to save nutrition data');
+        console.error('Error saving nutrition data:', error.response?.data || error.message);
+        if (error.response?.data?.message === 'Insufficient diamonds to perform analysis') {
+            Alert.alert('Error', 'Insufficient diamonds to perform analysis');
+        } else {
+            Alert.alert('Error', 'Failed to save nutrition data');
+        }
     }
-  };
+};
 
   const toggleCameraFacing = () => {
     setFacing(current => (current === 'back' ? 'front' : 'back'));
@@ -217,7 +268,7 @@ const CameraScreen = ({ navigation }) => {
             onCameraReady={handleCameraReady}
           >
             {/* Top Bar */}
-            <View style={styles.topBar}>
+            <View style={[styles.topBar, { marginTop: insets.top }]}>
               <IconButton
                 icon="arrow-left"
                 size={30}
@@ -240,7 +291,7 @@ const CameraScreen = ({ navigation }) => {
             </View>
 
             {/* Bottom Controls */}
-            <View style={styles.buttonContainer}>
+            <View style={[styles.buttonContainer, { paddingBottom: insets.bottom }]}>
               <IconButton
                 icon="camera-flip"
                 iconColor={MD3Colors.neutral100}
@@ -259,6 +310,21 @@ const CameraScreen = ({ navigation }) => {
               <View style={{ width: 30 }} />
             </View>
           </CameraView>
+        )}
+
+        {/* Diamond Balance and Ad */}
+        <View style={[styles.diamondBalanceContainer, { paddingTop: insets.top }]}>
+          <View style={styles.diamondContainer}>
+            <MaterialCommunityIcons
+              name="diamond-stone"
+              size={24}
+              color="#00FFFF"
+            />
+            <Text style={styles.diamondText}>{balance}</Text>
+          </View>
+        </View>
+        {showAdComponent && (
+          <AdComponent onAdWatched={handleAdWatched} />
         )}
 
         <FoodAnalysisBottomSheet
@@ -367,6 +433,29 @@ const styles = StyleSheet.create({
     fontSize: 20,
     fontWeight: '600',
     textAlign: 'center',
+  },
+  diamondContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(0, 255, 255, 0.1)',
+    padding: 8,
+    borderRadius: 20,
+    marginRight: 8,
+  },
+  diamondText: {
+    marginLeft: 4,
+    color: '#fff',
+    fontWeight: 'bold',
+    fontSize: 16,
+    alignSelf: 'center',
+  },
+  diamondBalanceContainer: {
+    position: 'absolute',
+    top: 80,
+    right: 10,
+    padding: 10,
+    borderRadius: 5,
   },
 });
 

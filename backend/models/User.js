@@ -1,3 +1,4 @@
+//backend/models/User.js
 const mongoose = require('mongoose');
 const bcrypt = require('bcryptjs');
 
@@ -30,6 +31,11 @@ const UserSchema = new mongoose.Schema({
     desiredPhysique: { type: String, enum: ['lean', 'muscular', 'athletic'], default: 'athletic' },
     dietaryPreferences: [String],
     dietaryRestrictions: [String],
+    // Reference to Diamond model
+    diamonds: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'Diamond'
+    },
 }, { timestamps: true });
 
 // Password hashing middleware

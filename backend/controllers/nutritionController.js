@@ -697,12 +697,12 @@ const getMonthlyNutrition = asyncHandler(async (req, res) => {
       fats: goals.fats * result.daysTracked
     };
 
-    // Calculate completion percentages
+    // Calculate completion percentages based on daily averages
     result.completion = {
-      calories: result.monthlyGoals.calories > 0 ? (result.totalCalories / result.monthlyGoals.calories) * 100 : 0,
-      protein: result.monthlyGoals.protein > 0 ? (result.totalProtein / result.monthlyGoals.protein) * 100 : 0,
-      carbs: result.monthlyGoals.carbs > 0 ? (result.totalCarbs / result.monthlyGoals.carbs) * 100 : 0,
-      fats: result.monthlyGoals.fats > 0 ? (result.totalFats / result.monthlyGoals.fats) * 100 : 0
+      calories: goals.calories > 0 ? (result.averageCalories / goals.calories) * 100 : 0,
+      protein: goals.protein > 0 ? (result.averageProtein / goals.protein) * 100 : 0,
+      carbs: goals.carbs > 0 ? (result.averageCarbs / goals.carbs) * 100 : 0,
+      fats: goals.fats > 0 ? (result.averageFats / goals.fats) * 100 : 0
     };
   } catch (error) {
     console.error('Error fetching nutritional goals:', error);

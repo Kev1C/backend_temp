@@ -1,3 +1,4 @@
+//frontend/Components/MacroNutrientsChart.js
 import React, { useMemo, useEffect, useState } from 'react';
 import { View, Text, StyleSheet, useWindowDimensions } from 'react-native';
 import { VictoryChart, VictoryBar, VictoryAxis, VictoryGroup, VictoryLegend, VictoryLabel } from 'victory-native';
@@ -17,7 +18,7 @@ const MacroNutrientsChart = () => {
     calories: theme.colors.primary,
     carbs: '#8A2BE2',      // BlueViolet for carbs
     protein: theme.colors.secondary,
-    fats: '#FFD700'        // Gold for fats
+    fats: '#FFA500'        // Gold for fats
   }), [theme.colors]);
 
   useEffect(() => {

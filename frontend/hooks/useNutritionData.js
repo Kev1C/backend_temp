@@ -1,3 +1,4 @@
+//frontend/hooks/useNutritionData.js
 import { useState, useCallback, useEffect } from 'react';
 import { useAuthStore } from '../stores/authStore';
 import { useNutritionStore } from '../stores/nutritionStore';

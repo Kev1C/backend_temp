@@ -4,31 +4,21 @@ const User = require('../models/User');
 // Get user data
 const getUserData = async (req, res) => {
     try {
-        const userId = req.user.userId || req.user.id; // Support both for backward compatibility
+        const userId = req.user.userId || req.user.id;
         console.log('Getting user data for ID:', userId);
 
-        let user = await User.findById(userId).select('-password');
+        // Use lean() for better performance
+        let user = await User.findById(userId)
+            .select('-password')
+            .lean();
 
         if (!user) {
             console.log('User not found for ID:', userId);
-            console.log('Creating default user data');
-
-            // Create default user data with isOnboardingComplete set to false
-            user = new User({
-                _id: userId,
-                username: 'user_' + userId.substring(0, 6),
-                email: 'user_' + userId.substring(0, 6) + '@example.com',
-                password: 'defaultpassword', // Note: This should ideally be hashed, even for a default
-                gender: 'other',
-                age: 25,
-                height: 170,
-                weight: 70,
-                goal: 'get_fitter',
-                isOnboardingComplete: false
+            // Instead of creating a default user immediately, return a 404
+            return res.status(404).json({ 
+                message: 'User not found',
+                needsOnboarding: true 
             });
-
-            await user.save();
-            console.log('Created default user:', user);
         }
 
         console.log('User data found:', user);
@@ -39,27 +29,39 @@ const getUserData = async (req, res) => {
     }
 };
 
-// Update user data
+// Update user data with optimized writes
 const updateUserData = async (req, res) => {
     try {
-        const { gender, age, height, weight, goal, isOnboardingComplete } = req.body;
-        const userId = req.user.userId || req.user.id; // Support both for backward compatibility
+        const userId = req.user.userId || req.user.id;
+        const updates = {};
 
-        let user = await User.findById(userId);
+        // Only include fields that are actually provided
+        const { gender, age, height, weight, goal, isOnboardingComplete } = req.body;
+        
+        if (gender) updates.gender = gender;
+        if (age) updates.age = age;
+        if (height) updates.height = height;
+        if (weight) updates.weight = weight;
+        if (goal) updates.fitnessGoal = goal;
+        if (typeof isOnboardingComplete !== 'undefined') {
+            updates.isOnboardingComplete = isOnboardingComplete;
+        }
+
+        // Use findOneAndUpdate with lean() for better performance
+        const user = await User.findOneAndUpdate(
+            { _id: userId },
+            { $set: updates },
+            { 
+                new: true,
+                lean: true,
+                select: '-password'
+            }
+        );
+
         if (!user) {
             return res.status(404).json({ message: 'User not found' });
         }
 
-        // Update user data
-        if (gender) user.gender = gender;
-        if (age) user.age = age;
-        if (height) user.height = height;
-        if (weight) user.weight = weight;
-        if (goal) user.fitnessGoal = goal;
-        if (typeof isOnboardingComplete !== 'undefined') user.isOnboardingComplete = isOnboardingComplete;
-
-        await user.save();
-        console.log('Updated user data:', user);
         res.json(user);
     } catch (error) {
         console.error('Error updating user data:', error);
@@ -67,34 +69,35 @@ const updateUserData = async (req, res) => {
     }
 };
 
-// @desc    Update user's nutritional goals
-// @route   PUT /api/users/nutrition-goals
-// @access  Private
+// Update nutritional goals with optimized query
 const updateNutritionalGoals = asyncHandler(async (req, res) => {
-  const userId = req.user.userId || req.user._id;
-  const { calories, protein, carbs, fat } = req.body;
+    const userId = req.user.userId || req.user._id;
+    const { calories, protein, carbs, fat } = req.body;
 
-  const updatedUser = await User.findByIdAndUpdate(
-    userId,
-    {
-      $set: {
-        'nutritionalGoals.calories': calories,
-        'nutritionalGoals.protein': protein,
-        'nutritionalGoals.carbs': carbs,
-        'nutritionalGoals.fat': fat,
-      }
-    },
-    { new: true }
-  );
+    const updates = {};
+    if (calories) updates['nutritionalGoals.calories'] = calories;
+    if (protein) updates['nutritionalGoals.protein'] = protein;
+    if (carbs) updates['nutritionalGoals.carbs'] = carbs;
+    if (fat) updates['nutritionalGoals.fat'] = fat;
 
-  if (!updatedUser) {
-    res.status(404);
-    throw new Error('User not found');
-  }
+    const updatedUser = await User.findByIdAndUpdate(
+        userId,
+        { $set: updates },
+        { 
+            new: true,
+            lean: true,
+            select: 'nutritionalGoals'
+        }
+    );
 
-  res.status(200).json({
-    nutritionalGoals: updatedUser.nutritionalGoals
-  });
+    if (!updatedUser) {
+        res.status(404);
+        throw new Error('User not found');
+    }
+
+    res.status(200).json({
+        nutritionalGoals: updatedUser.nutritionalGoals
+    });
 });
 
 module.exports = {

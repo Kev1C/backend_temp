@@ -1,4 +1,5 @@
 // backend/app.js
+require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
 const morgan = require('morgan');
@@ -7,7 +8,6 @@ const connectDB = require('./config/db');
 const admin = require('firebase-admin');
 
 // Load environment variables from .env file
-require('dotenv').config();
 
 // Initialize Firebase Admin SDK
 try {
@@ -32,6 +32,7 @@ const mealRoutes = require('./routes/meals');
 const workoutsRoutes = require('./routes/workouts');
 const userRoutes = require('./routes/users');
 const nutritionRoutes = require('./routes/nutritionRoutes');
+const diamondRoutes = require('./routes/diamonds');
 
 // Connect to database
 connectDB();
@@ -87,6 +88,7 @@ app.use('/api/meals', mealRoutes);
 app.use('/api/workouts', workoutsRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/nutrition', nutritionRoutes);
+app.use('/api/diamonds', diamondRoutes);
 
 // Error handling
 app.use(notFound);

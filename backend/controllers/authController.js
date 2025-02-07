@@ -16,7 +16,7 @@ const generateRefreshToken = (userId) => {
 // Function to generate JWT
 const generateToken = (user) => {
     return jwt.sign(
-        { 
+        {
             userId: user._id,
             id: user._id, // Include both userId and id for backward compatibility
             username: user.username,
@@ -67,7 +67,7 @@ const refreshToken = async (req, res) => {
     try {
         // Verify refresh token
         const decoded = jwt.verify(refreshToken, process.env.JWT_REFRESH_SECRET || 'your-refresh-secret-key');
-        
+
         // Check if user exists
         const user = await User.findById(decoded.userId);
         if (!user) {
@@ -77,7 +77,7 @@ const refreshToken = async (req, res) => {
         // Generate new tokens
         const token = generateToken(user);
         const newRefreshToken = generateRefreshToken(user._id);
-        
+
         res.json({ token, refreshToken: newRefreshToken });
     } catch (err) {
         console.error('Refresh token error:', err);
@@ -100,9 +100,10 @@ const register = async (req, res) => {
                 email: `guest_${Date.now()}@temp.com`, // Temporary unique email
                 password: 'guest' // This won't be hashed due to guest type check in pre-save
             });
-
+            
+            console.log("Before saving guest user:", guestUser);
             const savedUser = await guestUser.save();
-            console.log('Guest user created:', savedUser);
+            console.log("After saving guest user:", savedUser);
 
             // Generate tokens
             const token = generateToken(savedUser);
@@ -125,10 +126,10 @@ const register = async (req, res) => {
         } else {
             // Handle regular user registration
             const { email, password, username } = userData;
-            
+
             // Check if user already exists
-            const existingUser = await User.findOne({ 
-                $or: [{ email }, { username }] 
+            const existingUser = await User.findOne({
+                $or: [{ email }, { username }]
             });
 
             if (existingUser) {
@@ -177,10 +178,13 @@ const register = async (req, res) => {
     }
 };
 
-// Get current user function
+// Get current user function with lean query
 const getCurrentUser = async (req, res) => {
     try {
-        const user = await User.findById(req.user.userId).select('-password');
+        const user = await User.findById(req.user.userId)
+            .select('-password')
+            .lean();
+            
         if (!user) {
             return res.status(404).json({ message: 'User not found' });
         }
@@ -191,15 +195,10 @@ const getCurrentUser = async (req, res) => {
     }
 };
 
-// Update profile function
+// Update profile function with optimized writes
 const updateProfile = async (req, res) => {
     try {
-        const user = await User.findById(req.user.userId);
-        if (!user) {
-            return res.status(404).json({ message: 'User not found' });
-        }
-
-        // Fields that can be updated from onboarding flow
+        const updates = {};
         const allowedUpdates = [
             'gender',
             'height',
@@ -211,20 +210,36 @@ const updateProfile = async (req, res) => {
             'dietaryRestrictions'
         ];
 
-        // Only update fields that are provided in the request
+        // Only include fields that are actually provided
         allowedUpdates.forEach(field => {
             if (req.body[field] !== undefined) {
-                user[field] = req.body[field];
+                updates[field] = req.body[field];
             }
         });
 
-        await user.save();
-        res.json({ message: 'Profile updated successfully', user: user.toObject({ hide: 'password' }) });
+        const user = await User.findByIdAndUpdate(
+            req.user.userId,
+            { $set: updates },
+            { 
+                new: true,
+                lean: true,
+                select: '-password'
+            }
+        );
+
+        if (!user) {
+            return res.status(404).json({ message: 'User not found' });
+        }
+
+        res.json({ 
+            message: 'Profile updated successfully', 
+            user 
+        });
     } catch (err) {
         console.error('Update profile error:', err);
-        res.status(500).json({ 
-            message: 'Server error', 
-            details: err.message 
+        res.status(500).json({
+            message: 'Server error',
+            details: err.message
         });
     }
 };
@@ -233,34 +248,39 @@ const updateProfile = async (req, res) => {
 const verifyFirebaseToken = async (req, res) => {
     try {
         const { firebaseToken } = req.body;
-        
+
         if (!firebaseToken) {
             return res.status(400).json({ message: 'Firebase token is required' });
         }
 
-        // Verify the Firebase token using firebase-admin
+        console.time('verifyIdToken');
         const decodedToken = await admin.auth().verifyIdToken(firebaseToken);
-        
+        console.timeEnd('verifyIdToken');
+
         if (!decodedToken) {
             return res.status(401).json({ message: 'Invalid Firebase token' });
         }
 
         // Find or create user based on Firebase UID
         let user = await User.findOne({ firebaseUid: decodedToken.uid });
-        
+
         if (!user) {
             // Create new user with email if available, otherwise set a placeholder
-            user = await User.create({
+            user = new User({
                 firebaseUid: decodedToken.uid,
                 email: decodedToken.email || `temp-${decodedToken.uid}@temp.com`, // Set placeholder email
                 username: decodedToken.email ? decodedToken.email.split('@')[0] : `user_${decodedToken.uid}`,
-                authProvider: decodedToken.firebase?.sign_in_provider || 'firebase'
+                authProvider: decodedToken.firebase?.sign_in_provider || 'firebase',
+                type: 'guest'
             });
+            await user.save();
         }
 
         // Generate backend JWT
         const token = generateToken(user);
         const refreshToken = generateRefreshToken(user._id);
+
+        console.log('Generated backend token:', token);
 
         res.json({
             token,

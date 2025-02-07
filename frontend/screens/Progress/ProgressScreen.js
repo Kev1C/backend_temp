@@ -1,6 +1,6 @@
 // frontend/screens/Progress/ProgressScreen.js
 
-import React, { useEffect, useRef, useState, Suspense, useMemo } from 'react';
+import React, { useEffect, useRef, useState, Suspense } from 'react';
 import { ScrollView, Alert, TouchableOpacity, RefreshControl, View, ActivityIndicator } from 'react-native';
 import { Button, Text, useTheme } from 'react-native-paper';
 import { useAuthStore } from '../../stores/authStore';
@@ -9,6 +9,7 @@ import ProgressInput from '../../Components/ProgressInput';
 import ProgressChart from '../../Components/ProgressChart';
 import CategoryToggle, { PROGRESS_CATEGORIES } from '../../Components/CategoryToggle';
 import getStyles from './ProgressScreen.styles';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 class ProgressErrorBoundary extends React.Component {
   state = { hasError: false };
@@ -23,14 +24,14 @@ class ProgressErrorBoundary extends React.Component {
 
   render() {
     const { styles, theme } = this.props;
-    
+
     if (this.state.hasError) {
       return (
         <View style={styles?.errorContainer || { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 16 }}>
           <Text variant="bodyLarge" style={{ marginBottom: 16, textAlign: 'center' }}>
             Something went wrong. Please try again later.
           </Text>
-          <Button 
+          <Button
             mode="contained"
             onPress={() => this.setState({ hasError: false })}
             style={{ marginTop: 8 }}
@@ -60,6 +61,7 @@ const ProgressScreen = ({ navigation }) => {
   const [selectedCategories, setSelectedCategories] = useState(
     PROGRESS_CATEGORIES.map(category => category.key)
   );
+  const insets = useSafeAreaInsets();
 
   useEffect(() => {
     if (!authToken || !user) {
@@ -74,7 +76,7 @@ const ProgressScreen = ({ navigation }) => {
 
   const handleProgressSubmit = React.useCallback(async () => {
     if (isSubmitting) return;
-    
+
     setIsSubmitting(true);
     try {
       if (chartRef.current?.refresh) {
@@ -97,7 +99,7 @@ const ProgressScreen = ({ navigation }) => {
 
   const onRefresh = React.useCallback(async () => {
     if (refreshing) return;
-    
+
     setRefreshing(true);
     try {
       if (chartRef.current?.refresh) {
@@ -136,8 +138,8 @@ const ProgressScreen = ({ navigation }) => {
   }
 
   return (
-    <ScrollView 
-      contentContainerStyle={styles.container}
+    <ScrollView
+      contentContainerStyle={[styles.container, { paddingTop: insets.top, paddingBottom: insets.bottom }]}
       refreshControl={
         <RefreshControl
           refreshing={refreshing}
@@ -162,7 +164,7 @@ const ProgressScreen = ({ navigation }) => {
 const ProgressScreenWithErrorBoundary = (props) => {
   const theme = useTheme();
   const styles = getStyles(theme);
-  
+
   return (
     <ProgressErrorBoundary styles={styles} theme={theme}>
       <ProgressScreen {...props} />
