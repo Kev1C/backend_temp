@@ -178,10 +178,13 @@ const register = async (req, res) => {
     }
 };
 
-// Get current user function
+// Get current user function with lean query
 const getCurrentUser = async (req, res) => {
     try {
-        const user = await User.findById(req.user.userId).select('-password');
+        const user = await User.findById(req.user.userId)
+            .select('-password')
+            .lean();
+            
         if (!user) {
             return res.status(404).json({ message: 'User not found' });
         }
@@ -192,15 +195,10 @@ const getCurrentUser = async (req, res) => {
     }
 };
 
-// Update profile function
+// Update profile function with optimized writes
 const updateProfile = async (req, res) => {
     try {
-        const user = await User.findById(req.user.userId);
-        if (!user) {
-            return res.status(404).json({ message: 'User not found' });
-        }
-
-        // Fields that can be updated from onboarding flow
+        const updates = {};
         const allowedUpdates = [
             'gender',
             'height',
@@ -212,15 +210,31 @@ const updateProfile = async (req, res) => {
             'dietaryRestrictions'
         ];
 
-        // Only update fields that are provided in the request
+        // Only include fields that are actually provided
         allowedUpdates.forEach(field => {
             if (req.body[field] !== undefined) {
-                user[field] = req.body[field];
+                updates[field] = req.body[field];
             }
         });
 
-        await user.save();
-        res.json({ message: 'Profile updated successfully', user: user.toObject({ hide: 'password' }) });
+        const user = await User.findByIdAndUpdate(
+            req.user.userId,
+            { $set: updates },
+            { 
+                new: true,
+                lean: true,
+                select: '-password'
+            }
+        );
+
+        if (!user) {
+            return res.status(404).json({ message: 'User not found' });
+        }
+
+        res.json({ 
+            message: 'Profile updated successfully', 
+            user 
+        });
     } catch (err) {
         console.error('Update profile error:', err);
         res.status(500).json({
