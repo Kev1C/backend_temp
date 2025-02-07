@@ -1,9 +1,10 @@
 // frontend/screens/Home/ResourcesScreen.js
 
 import React from 'react';
-import { View, Text, FlatList, Linking, TouchableOpacity } from 'react-native';
+import { View, Text, Linking, TouchableOpacity } from 'react-native';
 import { useTheme } from 'react-native-paper';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
+import { FlashList } from '@shopify/flash-list';
 import styles from './ResourcesScreenStyles';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -72,10 +73,11 @@ const ResourcesScreen = () => {
 
   return (
     <View style={[styles.container, { backgroundColor: theme.colors.background, paddingTop: insets.top }]}>
-      <FlatList
+      <FlashList
         data={resources}
-        keyExtractor={(item) => item.id}
         renderItem={renderItem}
+        estimatedItemSize={70} // Adjust this value based on your item's average height
+        keyExtractor={(item) => item.id}
         contentContainerStyle={styles.list}
         ItemSeparatorComponent={() => <View style={{ height: 10 }} />}
       />
