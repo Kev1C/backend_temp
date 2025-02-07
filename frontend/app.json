@@ -3,7 +3,7 @@
   "slug": "Pangu",
   "version": "1.0.0",
   "orientation": "portrait",
-  "icon": "./assets/images/pangu.jpg",
+  "icon": "./assets/images/pangu.png",
   "scheme": "pangu",
   "userInterfaceStyle": "automatic",
   "splash": {
@@ -15,6 +15,7 @@
     "supportsTablet": true
   },
   "android": {
+    "icon": "./assets/images/pangu.png",
     "adaptiveIcon": {
       "foregroundImage": "./assets/images/adaptive-icon.png",
       "backgroundColor": "#ffffff"
