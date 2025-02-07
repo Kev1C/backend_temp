@@ -136,7 +136,7 @@ const getStyles = (theme) => StyleSheet.create({
     justifyContent: 'flex-start',
     alignItems: 'center',
     minHeight: 400,
-    paddingTop: 120,
+    paddingTop: 60,
     padding: 16,
   },
   listContent: {
