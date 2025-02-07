@@ -1,3 +1,4 @@
+//frontend/stores/onboardingStore.js
 import { create } from 'zustand';
 import * as SecureStore from 'expo-secure-store';
 import { api } from '../services/api';

@@ -1,3 +1,4 @@
+//frontend/stores/cacheStore.js
 import { create } from 'zustand';
 
 const DEFAULT_TTL = 30 * 24 * 60 * 60 * 1000; // 30 days
