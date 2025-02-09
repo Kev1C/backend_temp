@@ -133,7 +133,6 @@ const analyzeFood = asyncHandler(async (req, res) => {
     *   **Do not** add any conversational text before or after the JSON.
     *   If you are unsure about an aspect, provide your best estimate based on available information and consider indicating the uncertainty in your reasoning (though not in the final JSON output).
     *   If the image contains multiple food items, provide an analysis for the most prominent or central item.
-    *   If the image is not of food, return an empty JSON object \`\`\`json {} \`\`\`
     *   Assume the photo was taken with a standard phone camera.
     `;
 
