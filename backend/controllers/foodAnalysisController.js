@@ -7,8 +7,6 @@ const asyncHandler = require('express-async-handler');
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 
-const ANALYSIS_COST = 5; // Diamonds
-
 const analyzeFood = asyncHandler(async (req, res) => {
     console.log('Received food analysis request');
 

@@ -1,3 +1,4 @@
+//frontend/screens/Camera/FoodAnalysisBottomSheet.js
 import React from 'react';
 import { View, StyleSheet, Dimensions, Image, TextInput, ActivityIndicator } from 'react-native';
 import { Text, Button, IconButton, MD3Colors, Chip, useTheme, FAB } from 'react-native-paper';

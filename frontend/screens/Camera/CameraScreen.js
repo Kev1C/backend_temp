@@ -81,19 +81,11 @@ const CameraScreen = ({ navigation }) => {
     try {
       console.log('Taking picture...');
       const photo = await cameraRef.current.takePictureAsync({
-        quality: 0.5,
+        //quality: 0.95,
         base64: true,
-        exif: true,
+        //exif: true,
         width: 1024,
         height: 1024
-      });
-      console.log('Picture taken successfully');
-      console.log('Photo properties:', {
-        hasUri: !!photo.uri,
-        hasBase64: !!photo.base64,
-        width: photo.width,
-        height: photo.height,
-        base64Length: photo.base64?.length
       });
 
       const image = {
@@ -103,11 +95,16 @@ const CameraScreen = ({ navigation }) => {
         height: photo.height,
       };
 
+      // Update UI immediately
       setCapturedImage(image);
       setIsModalVisible(true);
+      setAnalysisLoading(true);
 
-      // Automatically trigger analysis after capturing
-      await analyzeImage(image);
+      // Start analysis asynchronously
+      analyzeImage(image).catch(error => {
+        console.error('Analysis failed:', error);
+        Alert.alert('Analysis Failed', 'Please try again or enter details manually.');
+      });
 
     } catch (error) {
       console.error('Error taking picture:', error);
@@ -117,11 +114,9 @@ const CameraScreen = ({ navigation }) => {
 
   const analyzeImage = async (image) => {
     if (!image?.base64) {
-      Alert.alert('Error', 'No image data available');
-      return;
+      throw new Error('No image data available');
     }
 
-    setAnalysisLoading(true);
     try {
       const response = await api.post('/food-analysis/analyze', { imageBase64: image.base64 });
       if (!response?.data) throw new Error('No analysis data received');
@@ -129,7 +124,6 @@ const CameraScreen = ({ navigation }) => {
       const { calories, carbs, protein, fats, healthScore, foodTitle } = response.data;
       setFoodAnalysis(response.data);
       setNutritionState(prev => ({
-
         ...prev,
         calories, carbs, protein, fats, healthScore,
         baseCalories: calories,
@@ -138,8 +132,6 @@ const CameraScreen = ({ navigation }) => {
         baseFats: fats,
       }));
       setFoodTitle(foodTitle || '');
-    } catch (error) {
-      Alert.alert('Analysis Failed', 'Please try again or enter details manually.');
     } finally {
       setAnalysisLoading(false);
     }
@@ -173,70 +165,90 @@ const CameraScreen = ({ navigation }) => {
     }
   };
 
-const handleConfirm = async () => {
+  const handleConfirm = async () => {
     if (!foodTitle) {
-        Alert.alert('Error', 'Please enter a food name');
-        return;
+      Alert.alert('Error', 'Please enter a food name');
+      return;
     }
 
     // The analysis cost is now handled on the backend
     const analysisCost = 5;
-
     if (balance < analysisCost) {
         // Show option to watch ad
-        setShowAdComponent(true);
-        Alert.alert('Insufficient Diamonds', 'You do not have enough diamonds to analyze. Please watch an ad to earn more.');
-        return;
+      setShowAdComponent(true);
+      Alert.alert('Insufficient Diamonds', 'You do not have enough diamonds to analyze. Please watch an ad to earn more.');
+      return;
     }
 
     try {
-        // Deduct diamonds - the backend handles the actual cost
-        await deductDiamonds(analysisCost, authToken);
+      // First, deduct diamonds as this must be sequential
+      await deductDiamonds(analysisCost, authToken);
 
-        const mealType = getMealType();
-        const today = new Date();
-        const currentTime = new Date().toLocaleTimeString('en-US', {
-            hour: '2-digit',
-            minute: '2-digit',
-            hour12: true
-        });
+      const mealType = getMealType();
+      const today = new Date();
+      const currentTime = new Date().toLocaleTimeString('en-US', {
+        hour: '2-digit',
+        minute: '2-digit',
+        hour12: true
+      });
 
-        const nutritionData = {
-            name: foodTitle,
-            image: capturedImage?.uri || '',
-            time: currentTime,
-            mealType,
-            foodName: foodTitle,
-            servings,
-            calories: parseFloat(nutritionState.calories) || 0,
-            carbs: parseFloat(nutritionState.carbs) || 0,
-            protein: parseFloat(nutritionState.protein) || 0,
-            fats: parseFloat(nutritionState.fats) || 0,
-            healthScore: parseFloat(foodAnalysis.healthScore) || 0,
-        };
+      const nutritionData = {
+        name: foodTitle,
+        image: capturedImage?.uri || '',
+        time: currentTime,
+        mealType,
+        foodName: foodTitle,
+        servings,
+        calories: parseFloat(nutritionState.calories) || 0,
+        carbs: parseFloat(nutritionState.carbs) || 0,
+        protein: parseFloat(nutritionState.protein) || 0,
+        fats: parseFloat(nutritionState.fats) || 0,
+        healthScore: parseFloat(foodAnalysis.healthScore) || 0,
+      };
 
-        console.log('Sending nutrition data:', nutritionData);
-        await updateDailyNutrition(today, nutritionData);
+      // Prepare timestamps for heatmap data
+      const startDate = new Date();
+      startDate.setMonth(startDate.getMonth() - 3);
+      startDate.setUTCHours(0, 0, 0, 0);
+      const endDate = new Date();
+      endDate.setUTCHours(23, 59, 59, 999);
 
-        // Refresh heatmap data
-        const startDate = new Date();
-        startDate.setMonth(startDate.getMonth() - 3);
-        startDate.setUTCHours(0, 0, 0, 0);
-        const endDate = new Date();
-        endDate.setUTCHours(23, 59, 59, 999);
-        await fetchHeatmapData(startDate.toISOString(), endDate.toISOString());
+      // Run independent operations concurrently
+      const [updateResult, heatmapResult] = await Promise.all([
+        updateDailyNutrition(today, nutritionData),
+        fetchHeatmapData(startDate.toISOString(), endDate.toISOString())
+      ]);
 
-        setIsModalVisible(false);
-        navigation.goBack();
-    } catch (error) {
-        console.error('Error saving nutrition data:', error.response?.data || error.message);
-        if (error.response?.data?.message === 'Insufficient diamonds to perform analysis') {
-            Alert.alert('Error', 'Insufficient diamonds to perform analysis');
-        } else {
-            Alert.alert('Error', 'Failed to save nutrition data');
+      setIsModalVisible(false);
+
+      // Handle store review prompt asynchronously
+      (async () => {
+        const { hasPromptedForReview, setHasPromptedForReview } = useSessionStore.getState();
+        if (!hasPromptedForReview) {
+          try {
+            const isAvailable = await StoreReview.isAvailableAsync();
+            if (isAvailable) {
+              await StoreReview.requestReview();
+              setHasPromptedForReview(true);
+            }
+          } catch (error) {
+            console.error('Store review prompt failed:', error);
+          }
         }
+      })();
+
+      // Navigate back immediately without waiting for review prompt
+      navigation.goBack();
+
+    } catch (error) {
+      console.error('Error saving nutrition data:', error.response?.data || error.message);
+      if (error.response?.data?.message === 'Insufficient diamonds to perform analysis') {
+        Alert.alert('Error', 'Insufficient diamonds to perform analysis');
+      } else {
+        Alert.alert('Error', 'Failed to save nutrition data');
+      }
     }
-};
+  };
 
   const toggleCameraFacing = () => {
     setFacing(current => (current === 'back' ? 'front' : 'back'));
