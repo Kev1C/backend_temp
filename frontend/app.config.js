@@ -3,7 +3,7 @@ import 'dotenv/config';
 export default ({ config }) => ({
   ...config, 
   extra: {
-    apiBaseUrl: 'http://10.0.0.203:5000', // Your development machine's IP address
+    apiBaseUrl: 'https://helloworld-6vsbghmcqq-uc.a.run.app'|'http://10.0.0.203:5000', // Your development machine's IP address
   },
   plugins: [
     [

@@ -1,5 +1,11 @@
 {
   "projects": {
     "default": "fitness-app-bf54e"
+  },
+  "targets": {},
+  "etags": {
+    "fitness-app-bf54e": {
+      "extensionInstances": {}
+    }
   }
 }
