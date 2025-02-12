@@ -3,7 +3,7 @@ import 'dotenv/config';
 export default ({ config }) => ({
   ...config, 
   extra: {
-    apiBaseUrl: 'https://helloworld-6vsbghmcqq-uc.a.run.app'|'http://10.0.0.203:5000', // Your development machine's IP address
+    apiBaseUrl: 'http://127.0.0.1:5001/fitness-app-bf54e/us-central1/api', // Your development machine's IP address
   },
   plugins: [
     [
