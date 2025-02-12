@@ -9,7 +9,7 @@
 
 const functions = require("firebase-functions");
 const admin = require('firebase-admin');
-const app = require('../../app'); // Import your express app.
+const app = require('../app'); // Import your express app.
 
 // Initialize Firebase Admin (if not already done in app.js)
 if (!admin.apps.length) {
