@@ -1,3 +1,4 @@
+//frontend/screens/Onboarding/SocialAuthScreen.js
 import React, { useState } from 'react';
 import { View, Text, TouchableOpacity, Alert } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';

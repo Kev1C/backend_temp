@@ -1,3 +1,4 @@
+//frontend/firebaseConfig.js
 import { initializeApp } from '@firebase/app';
 import { getReactNativePersistence, initializeAuth, signInAnonymously } from '@firebase/auth';
 import AsyncStorage from '@react-native-async-storage/async-storage';
