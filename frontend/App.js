@@ -12,13 +12,17 @@ import AppNavigator from './navigation/AppNavigator';
 import { api, cachedGet } from './services/api';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
-// Preload API data
-const preloadApiData = async () => {
+// Preload API data only if user is authenticated
+const preloadApiData = async (authToken) => {
+  if (!authToken) {
+    return; // Skip preloading if no auth token
+  }
+  
   try {
     // Get today's date in ISO format for the meals endpoint
     const today = new Date().toISOString().split('T')[0];
     const promises = [
-      cachedGet('/meals/recent', { params: { date: today } })  // Fetch recently eaten meals for today
+      cachedGet('/meals/recent', { params: { date: today } })
     ];
     await Promise.all(promises);
   } catch (error) {
@@ -37,21 +41,26 @@ const preloadComponents = () => {
 };
 
 const App = () => {
-  const { initializeAuth } = useAuthStore();
+  const { initializeAuth, authToken } = useAuthStore();
   const { loadOnboardingData } = useOnboardingStore();
 
   useEffect(() => {
     const initializeApp = async () => {
+      // First initialize auth and load onboarding data
       await Promise.all([
         initializeAuth(),
-        loadOnboardingData(),
+        loadOnboardingData()
+      ]);
+
+      // Then preload components and API data if authenticated
+      await Promise.all([
         preloadComponents(),
-        preloadApiData()
+        preloadApiData(authToken)
       ]);
     };
 
     initializeApp();
-  }, []);
+  }, [authToken]); // Add authToken as dependency
 
   return (
     <SafeAreaProvider>
