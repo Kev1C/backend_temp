@@ -15,12 +15,17 @@ const connectDB = require('./config/db');
 // Initialize Firebase Admin SDK
 try {
   if (!admin.apps.length) {
-    if (process.env.FIREBASE_SERVICE_ACCOUNT) {
-      // If you’ve stored your service account in an environment variable, parse it
+    if (process.env.FIREBASE_EMULATOR) {
+      // When running with emulators, use a default config that matches the frontend project
+      admin.initializeApp({
+        projectId: 'fitness-app-bf54e'
+      });
+    } else if (process.env.FIREBASE_SERVICE_ACCOUNT) {
+      // If you've stored your service account in an environment variable, parse it
       const serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT);
       admin.initializeApp({
         credential: admin.credential.cert(serviceAccount),
-        projectId: process.env.FIREBASE_PROJECT_ID,
+        projectId: process.env.FIREBASE_PROJECT_ID || 'fitness-app-bf54e',
       });
     } else {
       // When deployed on Firebase, initializeApp() without parameters is enough
@@ -69,6 +74,12 @@ app.use(
       'http://localhost:19000',
       'http://localhost:19006',
       'exp://localhost:19000',
+      'http://10.0.2.2:19000',
+      'http://10.0.2.2:19006',
+      'exp://10.0.2.2:19000',
+      'exp://10.0.2.2:19006',
+      'http://10.0.2.2:5001',
+      'http://localhost:5001'
     ],
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
     allowedHeaders: [

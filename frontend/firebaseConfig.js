@@ -22,9 +22,17 @@ const auth = initializeAuth(app, {
   persistence: getReactNativePersistence(AsyncStorage)
 });
 
+// Connect to Firebase emulators in development
+if (__DEV__) {
+  const { connectAuthEmulator } = require("@firebase/auth");
+  // Connect to the auth emulator using Android emulator special localhost IP
+  connectAuthEmulator(auth, "http://10.0.2.2:9099");
+}
+
 // Helper functions
 export const signInAsGuest = async () => {
   try {
+    console.log('Attempting anonymous sign-in...'); // Debug log
     const userCredential = await signInAnonymously(auth);
     const user = userCredential.user;
     if (!user) {
@@ -32,12 +40,13 @@ export const signInAsGuest = async () => {
     }
 
     const token = await user.getIdToken(true);
+    console.log('Anonymous sign-in successful, user:', user.uid);
 
     // Return a consistent object structure
     return {
       user,
       token,
-      type: 'guest', // Add the type property for consistency
+      type: 'guest',
       id: user.uid,
       email: user.email || null, // Handle potential null email
       provider: 'guest'

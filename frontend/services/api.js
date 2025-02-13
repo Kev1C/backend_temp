@@ -5,6 +5,7 @@ import { Alert } from 'react-native';
 import Constants from 'expo-constants';
 import mitt from 'mitt';
 import jwt_decode from 'jwt-decode';
+import { Platform } from 'react-native';
 
 // Initialize event emitter
 const eventEmitter = mitt();
@@ -116,9 +117,19 @@ const processQueue = async () => {
   processingQueue = false;
 };
 
+// Get the correct base URL for the current platform
+const getBaseUrl = () => {
+  if (Platform.OS === 'android') {
+    // Use 10.0.2.2 for Android emulator
+    return 'http://10.0.2.2:5001/fitness-app-bf54e/us-central1/api/api';
+  }
+  // For iOS or other platforms
+  return 'http://127.0.0.1:5001/fitness-app-bf54e/us-central1/api/api';
+};
+
 // Create an Axios instance with default configurations
 const api = axios.create({
-  baseURL: `${Constants.expoConfig.extra.apiBaseUrl}/api`,
+  baseURL: getBaseUrl(),
   timeout: REQUEST_TIMEOUT,
   headers: {
     'Content-Type': 'application/json',
