@@ -70,27 +70,27 @@ const authStore = create((set, get) => ({
         throw new Error('Failed to authenticate with backend.');
       }
 
-      let { token: backendToken, refreshToken, user: userData } = response.data;
+      let { token, user: userData } = response.data;
 
-      //console.log('Backend token received:', backendToken); // Debugging line
+      //console.log('Backend token received:', token); // Debugging line
 
       // Ensure all values stored in SecureStore are strings
       await Promise.all([
-        SecureStore.setItemAsync(SIGNIN_KEY, backendToken),
-        SecureStore.setItemAsync(REFRESH_TOKEN_KEY, refreshToken),
+        SecureStore.setItemAsync(SIGNIN_KEY, token),
+        // SecureStore.setItemAsync(REFRESH_TOKEN_KEY, refreshToken), // Not currently using refresh tokens
         SecureStore.setItemAsync(FIREBASE_TOKEN_KEY, fbToken),
         SecureStore.setItemAsync(USER_DATA_KEY, JSON.stringify(userData))
       ]);
 
       set({
-        authToken: backendToken,
+        authToken: token,
         firebaseToken: fbToken,
         user: userData,
         loading: false,
       });
 
       // Set up token refresh
-      const decoded = jwtDecode(backendToken);
+      const decoded = jwtDecode(token);
       setTimeout(
         get().refreshAccessToken,
         (decoded.exp * 1000) - Date.now() - 60000
@@ -110,12 +110,12 @@ const authStore = create((set, get) => ({
           throw new Error('Failed to regenerate token after onboarding update.');
         }
 
-        backendToken = regenerateResponse.data.token;
-        refreshToken = regenerateResponse.data.refreshToken;
+        token = regenerateResponse.data.token;
+        //refreshToken = regenerateResponse.data.refreshToken; // Not currently using refresh tokens
         userData = regenerateResponse.data.user;
       }
 
-      return backendToken;
+      return token;
     } catch (error) {
       set({ error: error.message, loading: false });
       throw new Error('Authentication failed: ' + error.message);

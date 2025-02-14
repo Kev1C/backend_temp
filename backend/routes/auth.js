@@ -1,7 +1,8 @@
 const express = require('express');
 const router = express.Router();
 const firebaseAuth = require('../middleware/firebaseAuth');
-const { register, login, getCurrentUser, updateProfile, refreshToken, verifyFirebaseToken } = require('../controllers/authController');
+//const { register, login, getCurrentUser, updateProfile, refreshToken, verifyFirebaseToken } = require('../controllers/authController');
+const { verifyFirebaseToken } = require('../controllers/authController');
 const authMiddleware = require('../middleware/auth');
 const User = require('../models/User'); // Add User model import
 
@@ -35,10 +36,10 @@ router.post('/authenticate', firebaseAuth, async (req, res) => {
 });
 
 // Regular auth routes
-router.post('/register', register);
-router.post('/login', login);
-router.get('/me', authMiddleware, getCurrentUser);
-router.put('/profile', authMiddleware, updateProfile);
-router.post('/refresh', refreshToken);
+//router.post('/register', register);
+//router.post('/login', login);
+//router.get('/me', authMiddleware, getCurrentUser);
+//router.put('/profile', authMiddleware, updateProfile);
+//router.post('/refresh', refreshToken);
 
 module.exports = router;
