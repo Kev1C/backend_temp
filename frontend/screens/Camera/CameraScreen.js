@@ -182,7 +182,7 @@ const CameraScreen = ({ navigation }) => {
 
     try {
       // First, deduct diamonds as this must be sequential
-      await deductDiamonds(analysisCost, authToken);
+      //await deductDiamonds(analysisCost, authToken);
 
       const mealType = getMealType();
       const today = new Date();
