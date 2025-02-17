@@ -3,6 +3,7 @@ import { create } from 'zustand';
 import { api } from '../services/api';
 import { cacheStore } from './cacheStore';
 import { isEqual } from 'lodash'; // Import isEqual if you need to use it for comparisons
+import { useAuthStore } from './authStore';
 
 const CACHE_DURATION = 30 * 24 * 60 * 60 * 1000; // 30 days (Adjust if needed)
 
@@ -133,11 +134,13 @@ export const useNutritionStore = create((set, get) => ({
       }
 
       // Send update to backend
+      await useAuthStore.getState().ensureValidToken();
       const response = await api.post(`/nutrition/daily/${formattedDate}`, {
-        meal: {
-          ...newMeal,
-          date: formattedDate
-        }
+          headers: { Authorization: `Bearer ${useAuthStore.getState().authToken}` },
+          meal: {
+              ...newMeal,
+              date: formattedDate
+          }
       });
 
       // Update with server response and invalidate cache
@@ -166,13 +169,28 @@ export const useNutritionStore = create((set, get) => ({
 
   // Fetch heatmap data (from notworking)
   fetchHeatmapData: async (startDate, endDate) => {
+    const cacheKey = `heatmap_${startDate}-${endDate}`;
+    const cached = cacheStore.getState().get(cacheKey);
+    if (cached) {
+      const goals = get().nutritionalGoals;
+      const streak = get().calculateStreak(cached, goals);
+      set({
+        heatmapData: cached,
+        currentStreak: streak,
+        isLoadingHeatmap: false
+      });
+      return cached;
+    }
+
     set({ isLoadingHeatmap: true, heatmapError: null });
 
     try {
       // Clear old heatmap data when fetching new data
       set({ heatmapData: {} });
 
+      await useAuthStore.getState().ensureValidToken();
       const response = await api.get('/nutrition/heatmap', {
+        headers: { Authorization: `Bearer ${useAuthStore.getState().authToken}` },
         params: { startDate, endDate }
       });
 
@@ -181,6 +199,7 @@ export const useNutritionStore = create((set, get) => ({
       }
 
       const heatmapData = response.data;
+      cacheStore.getState().set(cacheKey, heatmapData, CACHE_DURATION); // Cache the data
       const goals = get().nutritionalGoals;
       const streak = get().calculateStreak(heatmapData, goals);
 
@@ -211,7 +230,10 @@ export const useNutritionStore = create((set, get) => ({
     }
 
     try {
-      const response = await api.get(`/nutrition/monthly/${year}/${month}`);
+      await useAuthStore.getState().ensureValidToken();
+      const response = await api.get(`/nutrition/monthly/${year}/${month}`,{
+        headers: { Authorization: `Bearer ${useAuthStore.getState().authToken}` },
+      });
       const data = response.data;
 
       // Cache the monthly data

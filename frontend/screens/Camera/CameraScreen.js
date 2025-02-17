@@ -4,7 +4,7 @@ import { CameraView, useCameraPermissions } from 'expo-camera';
 import { useIsFocused } from '@react-navigation/native';
 import { IconButton, FAB, useTheme, Text, Button, MD3Colors } from 'react-native-paper';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
-import { useAuthStore } from '../../stores/authStore';
+import { useAuthStore, getState } from '../../stores/authStore';
 import { api } from '../../services/api';
 import { useNutritionStore, formatDate, fetchHeatmapData } from '../../stores/nutritionStore';
 import FoodAnalysisBottomSheet from './FoodAnalysisBottomSheet';

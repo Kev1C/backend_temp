@@ -7,36 +7,10 @@ import {
   AdEventType,
   TestIds,
 } from 'react-native-google-mobile-ads';
-import { useDiamondStore } from '../stores/diamondStore'; // Import diamond store
+import { useDiamondStore } from './diamondStore'; // Import diamond store
+import { initRewardedAd } from '../utils/adUtils'; // Import the utility
 
 export const useAdStore = create((set) => {
-  const initializeRewardedAd = (adUnitId, keywords, onLoaded, onClosed, onError,onEarnedReward) => {
-    const adInstance = RewardedAd.createForAdRequest(adUnitId, { keywords });
-    const unsubscribeLoaded = adInstance.addAdEventListener(RewardedAdEventType.LOADED, () => {
-      onLoaded && onLoaded();
-    });
-    const unsubscribeEarned = adInstance.addAdEventListener(
-        RewardedAdEventType.EARNED_REWARD,
-        (reward) => {
-          onEarnedReward?.(reward);
-        }
-      );
-    const unsubscribeClosed = adInstance.addAdEventListener(AdEventType.CLOSED, () => {
-      onClosed && onClosed();
-      // Reload after closed
-      adInstance.load();
-    });
-    const unsubscribeError = adInstance.addAdEventListener(AdEventType.ERROR, (error) => {
-      onError && onError(error);
-      // Reload after error with delay
-      setTimeout(() => adInstance.load(), 1000);
-    });
-    adInstance.load();
-
-    // Return object with instance and unsubscribe functions for cleanup if needed
-    return { adInstance, unsubscribeListeners: [unsubscribeLoaded, unsubscribeEarned, unsubscribeClosed, unsubscribeError] };
-  };
-
   // Initialize the rewarded ad instances for home and settings screens
   const homeAdUnitId =
     //__DEV__
@@ -46,13 +20,13 @@ export const useAdStore = create((set) => {
       ? 'YOUR_IOS_REWARDED_AD_UNIT_ID_FOR_HOME'
       : process.env.GOOGLE_ADMOB_ANDROID_REWARDED_HomeScreen;
 
-  const settingsAdUnitId =
+    const settingsAdUnitId =
     //__DEV__
-    false
-      ? TestIds.REWARDED
-      : Platform.OS === 'ios'
-      ? 'YOUR_IOS_REWARDED_AD_UNIT_ID_FOR_SETTINGS'
-      : process.env.GOOGLE_ADMOB_ANDROID_REWARDED_SettingScreen;
+      false
+        ? TestIds.REWARDED
+        : Platform.OS === 'ios'
+        ? 'YOUR_IOS_REWARDED_AD_UNIT_ID_FOR_SETTINGS'
+        : process.env.GOOGLE_ADMOB_ANDROID_REWARDED_SettingScreen;
 
   // Create the store and return state and actions
   return {
@@ -65,19 +39,21 @@ export const useAdStore = create((set) => {
     initializeAds: () => {
       // Home Screen Ad
       const homeKeywords = ['fitness', 'health', 'workout', 'exercise'];
-      const homeAd = initializeRewardedAd(
+      const homeAd = initRewardedAd(
         homeAdUnitId,
         homeKeywords,
-        () => set({ homeAdReady: true }),
-        () => set({ homeAdReady: false }),
-        (error) => {
-          console.error('Home ad error:', error);
-          set({ homeAdReady: false });
-        },
-        (reward) => {
+        {
+          onLoaded: () => set({ homeAdReady: true }),
+          onClosed: () => set({ homeAdReady: false }),
+          onError: (error) => {
+            console.error('Home ad error:', error);
+            set({ homeAdReady: false });
+          },
+          onEarnedReward: (reward) => {
             const diamondReward = reward?.amount || 75;
             useDiamondStore.getState().addDiamonds(diamondReward);
           }
+        }
       );
       set({ homeRewardedAd: homeAd.adInstance });
 
@@ -90,19 +66,21 @@ export const useAdStore = create((set) => {
         'bodybuilding',
         'muscle',
       ];
-      const settingsAd = initializeRewardedAd(
+      const settingsAd = initRewardedAd(
         settingsAdUnitId,
         settingsKeywords,
-        () => set({ settingsAdReady: true }),
-        () => set({ settingsAdReady: false }),
-        (error) => {
-          console.error('Settings ad error:', error);
-          set({ settingsAdReady: false });
-        },
-        (reward) => {
+        {
+          onLoaded: () => set({ settingsAdReady: true }),
+          onClosed: () => set({ settingsAdReady: false }),
+          onError: (error) => {
+            console.error('Settings ad error:', error);
+            set({ settingsAdReady: false });
+          },
+          onEarnedReward: (reward) => {
             const diamondReward = reward?.amount || 75;
             useDiamondStore.getState().addDiamonds(diamondReward);
           }
+        }
       );
       set({ settingsRewardedAd: settingsAd.adInstance });
     },
