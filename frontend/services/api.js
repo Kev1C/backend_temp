@@ -1,37 +1,35 @@
 // frontend/services/api.js
 import axios from 'axios';
 import * as SecureStore from 'expo-secure-store';
-import { Alert } from 'react-native';
+import { Alert, Platform } from 'react-native';
 import Constants from 'expo-constants';
 import mitt from 'mitt';
 import jwt_decode from 'jwt-decode';
-import { Platform } from 'react-native';
 
 // Initialize event emitter
 const eventEmitter = mitt();
 
 // Constants
 const SIGNIN_KEY = 'authToken';
-const REFRESH_TOKEN_KEY = 'refreshToken';
-const CSRF_TOKEN_KEY = 'csrfToken';
-const MAX_REQUESTS_PER_MINUTE = 120; // Increased for social auth
-const REQUEST_TIMEOUT = 15000; // Increased timeout
+const REQUEST_TIMEOUT = 15000; // Timeout in ms
 const CACHE_TTL = 1000 * 60 * 15; // 15 minutes default cache TTL
 const CACHE_TTL_AUTH = 1000 * 60 * 5; // 5 minutes cache for auth endpoints
 
-// Rate limiting with better queue management
+// Rate limiting variables and request queue (same as before)
 let requestCounter = 0;
 let lastResetTime = Date.now();
 const requestQueue = [];
 let processingQueue = false;
 let queueTimer = null;
 
-// Enhanced cache system with memory management
+// Enhanced cache system
 const cache = {
   data: new Map(),
   timeouts: new Map(),
-  maxSize: 200, // Increased cache size
+  maxSize: 200,
   endpoints: {
+    '/auth/verify-token': CACHE_TTL_AUTH,
+    '/users/me': CACHE_TTL_AUTH,
     '/auth/me': CACHE_TTL_AUTH,
     '/auth/profile': CACHE_TTL_AUTH,
     '/auth/settings': CACHE_TTL_AUTH,
@@ -39,17 +37,16 @@ const cache = {
   }
 };
 
-// Optimized cache helper functions
 const setCacheWithExpiry = (key, value, endpoint) => {
   if (!value) return;
   
   const ttl = cache.endpoints[endpoint] || CACHE_TTL;
   
-  // Clear oldest entries if cache is full
+  // Evict oldest items if cache is full
   if (cache.data.size >= cache.maxSize) {
     const entriesToDelete = Array.from(cache.data.entries())
       .sort(([, a], [, b]) => a.timestamp - b.timestamp)
-      .slice(0, Math.ceil(cache.maxSize * 0.2)); // Remove 20% of oldest entries
+      .slice(0, Math.ceil(cache.maxSize * 0.2));
       
     entriesToDelete.forEach(([k]) => {
       cache.data.delete(k);
@@ -90,7 +87,10 @@ const getCache = (key, endpoint) => {
   return null;
 };
 
-// Improved request queue processor
+// Global deduplication store
+const pendingRequests = new Map();
+
+// Request queue processing as before
 const processQueue = async () => {
   if (processingQueue || requestQueue.length === 0) return;
   
@@ -103,31 +103,28 @@ const processQueue = async () => {
       resolve(response);
     } catch (error) {
       if (error.response?.status === 429) { // Rate limit exceeded
-        requestQueue.unshift({ config, resolve, reject }); // Put back in queue
+        requestQueue.unshift({ config, resolve, reject });
         await new Promise(resolve => setTimeout(resolve, 1000));
         continue;
       }
       reject(error);
     }
     
-    // Add delay between requests to prevent overwhelming the server
     await new Promise(resolve => setTimeout(resolve, 50));
   }
   
   processingQueue = false;
 };
 
-// Get the correct base URL for the current platform
+// Get base URL depending on platform
 const getBaseUrl = () => {
   if (Platform.OS === 'android') {
-    // Use 10.0.2.2 for Android emulator
     return 'http://10.0.2.2:5001/fitness-app-bf54e/us-central1/api/api';
   }
-  // For iOS or other platforms
   return 'http://127.0.0.1:5001/fitness-app-bf54e/us-central1/api/api';
 };
 
-// Create an Axios instance with default configurations
+// Create Axios instance with default settings
 const api = axios.create({
   baseURL: getBaseUrl(),
   timeout: REQUEST_TIMEOUT,
@@ -137,19 +134,16 @@ const api = axios.create({
   }
 });
 
-// Optimized request interceptor
+// Request interceptor to add auth headers and cache control
 api.interceptors.request.use(async (config) => {
   const now = Date.now();
   
-  // Reset counter if a minute has passed
   if (now - lastResetTime > 60000) {
     requestCounter = 0;
     lastResetTime = now;
   }
 
-  // Check rate limit
-  if (requestCounter >= MAX_REQUESTS_PER_MINUTE) {
-    // Add to queue instead of rejecting
+  if (requestCounter >= 120) { // MAX_REQUESTS_PER_MINUTE condition
     return new Promise((resolve, reject) => {
       requestQueue.push({ config, resolve, reject });
       if (!queueTimer) {
@@ -159,24 +153,26 @@ api.interceptors.request.use(async (config) => {
   }
 
   try {
-    // Get both tokens
     const [authToken, firebaseToken] = await Promise.all([
       SecureStore.getItemAsync(SIGNIN_KEY),
       SecureStore.getItemAsync('firebaseToken')
     ]);
 
-    // For the /auth/verify-token endpoint, use Firebase token
+    // For /auth/verify-token requests, pass the firebase token and onboarding flags.
     if (config.url === '/auth/verify-token') {
       if (firebaseToken) {
         config.headers['Firebase-Token'] = firebaseToken;
+        if (!config.data) config.data = {};
+        config.data.includeOnboardingStatus = true;
+        if (config.data.onboardingData) {
+          config.data.syncOnboarding = true;
+        }
       }
-    } 
-    // For all other endpoints, use the backend JWT
-    else if (authToken) {
+    } else if (authToken) {
       config.headers.Authorization = `Bearer ${authToken}`;
     }
 
-    // Add cache control headers
+    // Add cache-control headers if applicable.
     const endpoint = config.url.split('?')[0];
     if (cache.endpoints[endpoint]) {
       const cachedData = getCache(config.url, endpoint);
@@ -184,7 +180,6 @@ api.interceptors.request.use(async (config) => {
         config.headers['If-None-Match'] = cachedData.etag;
       }
     }
-
     requestCounter++;
     return config;
   } catch (error) {
@@ -193,20 +188,13 @@ api.interceptors.request.use(async (config) => {
   }
 }, error => Promise.reject(error));
 
-// Optimized response interceptor
+// Response interceptor to cache GET responses and handle 304 responses.
 api.interceptors.response.use(
   response => {
     const endpoint = response.config.url.split('?')[0];
-    
-    // Cache successful GET requests
     if (response.config.method === 'get' && response.status === 200) {
-      setCacheWithExpiry(
-        response.config.url,
-        response.data,
-        endpoint
-      );
+      setCacheWithExpiry(response.config.url, response.data, endpoint);
     }
-    
     return response;
   },
   async error => {
@@ -221,12 +209,24 @@ api.interceptors.response.use(
     if (error.response?.status === 401) {
       eventEmitter.emit('sessionExpired');
     }
-
     return Promise.reject(error);
   }
 );
 
-// Enhanced get method with caching
+// --- Global API request deduplication ---
+// We override the default request function:
+api.request = async function(config) {
+  const key = `${config.method}:${config.url}:${JSON.stringify(config.params || config.data)}`;
+  if (pendingRequests.has(key)) {
+    return pendingRequests.get(key);
+  }
+  const promise = axios.request(config)
+    .finally(() => pendingRequests.delete(key));
+  pendingRequests.set(key, promise);
+  return promise;
+};
+
+// Simple cached GET method
 const cachedGet = async (url, config = {}) => {
   const endpoint = url.split('?')[0];
   const cacheKey = `${endpoint}-${JSON.stringify(config)}`;
@@ -235,11 +235,9 @@ const cachedGet = async (url, config = {}) => {
   if (cached) {
     return Promise.resolve({ data: cached.value, fromCache: true });
   }
-
   const response = await api.get(url, config);
   setCacheWithExpiry(cacheKey, response.data, endpoint);
   return response;
 };
 
-// Export the enhanced API instance and utilities
 export { api, eventEmitter, cachedGet };
