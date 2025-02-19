@@ -1,91 +1,91 @@
 // backend/controllers/foodAnalysisController.js
-const { GoogleGenerativeAI } = require('@google/generative-ai');
-require('dotenv').config();
-const Diamond = require('../models/Diamond');
-const Transaction = require('../models/Transactions'); // Import Transaction model
-const asyncHandler = require('express-async-handler');
+const {GoogleGenerativeAI} = require("@google/generative-ai");
+require("dotenv").config();
+const Diamond = require("../models/Diamond");
+const Transaction = require("../models/Transactions"); // Import Transaction model
+const asyncHandler = require("express-async-handler");
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 
 const analyzeFood = asyncHandler(async (req, res) => {
-    console.log('Received food analysis request');
+  console.log("Received food analysis request");
 
-    // Validate environment variables
-    if (!process.env.GEMINI_API_KEY) {
-        console.error('GEMINI_API_KEY not found in environment variables');
-        return res.status(500).json({
-            success: false,
-            message: 'Server configuration error'
-        });
-    }
-
-    if (!req.body) {
-        console.error('No request body received');
-        return res.status(400).json({
-            success: false,
-            message: 'No request body provided'
-        });
-    }
-
-    const { imageBase64 } = req.body;
-
-    if (!imageBase64) {
-        console.error('No image data in request');
-        return res.status(400).json({
-            success: false,
-            message: 'No image data provided'
-        });
-    }
-
-    // **Diamond Deduction Logic**
-    const userId = req.user.userId;
-    const analysisCost = parseInt(process.env.ANALYSIS_COST, 10); // Use the defined constant
-
-    const diamond = await Diamond.findOne({ user: userId });
-    if (!diamond) {
-        return res.status(404).json({
-            success: false,
-            message: 'User not found'
-        });
-    }
-
-    if (diamond.balance < analysisCost) {
-        return res.status(400).json({
-            success: false,
-            message: 'Insufficient diamonds to perform analysis',
-        });
-    }
-
-    // Deduct diamonds and record the transaction
-    diamond.balance -= analysisCost;
-    await diamond.save();
-
-    // Create a transaction record
-    await Transaction.create({
-        user: userId,
-        type: 'SPEND',
-        amount: analysisCost,
-        description: 'Deducted diamonds for food analysis',
-        balanceAfter: diamond.balance,
+  // Validate environment variables
+  if (!process.env.GEMINI_API_KEY) {
+    console.error("GEMINI_API_KEY not found in environment variables");
+    return res.status(500).json({
+      success: false,
+      message: "Server configuration error",
     });
+  }
 
-    console.log('Image size:', Math.round(imageBase64.length / 1024), 'KB');
-    console.log('Image data received, analyzing with Gemini...');
+  if (!req.body) {
+    console.error("No request body received");
+    return res.status(400).json({
+      success: false,
+      message: "No request body provided",
+    });
+  }
 
-    // Initialize the model
-    //const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash-exp" });
-    const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash-thinking-exp-01-21" });
+  const {imageBase64} = req.body;
 
-    // Prepare the image data
-    const imageData = {
-        inlineData: {
-            data: imageBase64,
-            mimeType: "image/jpeg"
-        }
-    };
+  if (!imageBase64) {
+    console.error("No image data in request");
+    return res.status(400).json({
+      success: false,
+      message: "No image data provided",
+    });
+  }
 
-    // **Enhanced Prompt for Food Analysis**
-    const prompt = `You are a highly advanced AI nutritionist. Analyze the food item(s) in this image with extreme precision.
+  // **Diamond Deduction Logic**
+  const userId = req.user.userId;
+  const analysisCost = parseInt(process.env.ANALYSIS_COST, 10); // Use the defined constant
+
+  const diamond = await Diamond.findOne({user: userId});
+  if (!diamond) {
+    return res.status(404).json({
+      success: false,
+      message: "User not found",
+    });
+  }
+
+  if (diamond.balance < analysisCost) {
+    return res.status(400).json({
+      success: false,
+      message: "Insufficient diamonds to perform analysis",
+    });
+  }
+
+  // Deduct diamonds and record the transaction
+  diamond.balance -= analysisCost;
+  await diamond.save();
+
+  // Create a transaction record
+  await Transaction.create({
+    user: userId,
+    type: "SPEND",
+    amount: analysisCost,
+    description: "Deducted diamonds for food analysis",
+    balanceAfter: diamond.balance,
+  });
+
+  console.log("Image size:", Math.round(imageBase64.length / 1024), "KB");
+  console.log("Image data received, analyzing with Gemini...");
+
+  // Initialize the model
+  // const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash-exp" });
+  const model = genAI.getGenerativeModel({model: "gemini-2.0-flash-thinking-exp-01-21"});
+
+  // Prepare the image data
+  const imageData = {
+    inlineData: {
+      data: imageBase64,
+      mimeType: "image/jpeg",
+    },
+  };
+
+  // **Enhanced Prompt for Food Analysis**
+  const prompt = `You are a highly advanced AI nutritionist. Analyze the food item(s) in this image with extreme precision.
 
     Consider these factors:
     1. **Visual Identification:** Identify every food item visible in the image. Be as specific as possible (e.g., "grilled salmon fillet" instead of "fish"). If you see packaging try and extract relevant information.
@@ -134,83 +134,82 @@ const analyzeFood = asyncHandler(async (req, res) => {
     *   Assume the photo was taken with a standard phone camera.
     `;
 
-    try {
-        // Generate content using Gemini
-        const result = await model.generateContent([prompt, imageData]);
-        const response = await result.response;
-        const text = response.text();
+  try {
+    // Generate content using Gemini
+    const result = await model.generateContent([prompt, imageData]);
+    const response = await result.response;
+    const text = response.text();
 
-        console.log('Raw response from Gemini:', text);
+    console.log("Raw response from Gemini:", text);
 
-        // Enhanced cleaning of the response text
-        let cleanedText = text
-            .replace(/^```json\n?/, '')     // Remove starting ```json
-            .replace(/^```\n?/, '')         // Remove starting ```
-            .replace(/\n?```$/, '')         // Remove ending ```
-            .replace(/[\u0000-\u001F\u007F-\u009F]/g, '') // Remove control characters
-            .trim();                        // Remove extra whitespace
+    // Enhanced cleaning of the response text
+    let cleanedText = text
+        .replace(/^```json\n?/, "") // Remove starting ```json
+        .replace(/^```\n?/, "") // Remove starting ```
+        .replace(/\n?```$/, "") // Remove ending ```
+        .replace(/[\u0000-\u001F\u007F-\u009F]/g, "") // Remove control characters
+        .trim(); // Remove extra whitespace
 
-        // Try to extract JSON if it's wrapped in other text
-        const jsonMatch = cleanedText.match(/\{[\s\S]*\}/);
-        if (jsonMatch) {
-            cleanedText = jsonMatch[0];
-        }
-
-        console.log('Cleaned response text:', cleanedText);
-
-        // Validate JSON structure before parsing
-        if (!cleanedText.startsWith('{') || !cleanedText.endsWith('}')) {
-            console.error('Invalid JSON structure. Raw text:', text);
-            console.error('Cleaned text:', cleanedText);
-            throw new Error('Invalid JSON structure in response');
-        }
-
-        // Parse the cleaned JSON response
-        let nutritionData;
-        try {
-            nutritionData = JSON.parse(cleanedText);
-        } catch (parseError) {
-            console.error('JSON parsing error:', parseError);
-            console.error('Problematic text:', cleanedText);
-
-            // Attempt to fix common JSON issues
-            cleanedText = cleanedText
-                .replace(/(['"'])?([a-zA-Z0-9_]+)(['"'])?\\s*:/g, '"$2": ') // Fix unquoted keys
-                .replace(/:\\s*'([^']*)']/g, ': "$1"')  // Replace single quotes with double quotes
-                .replace(/,\\s*}/g, '}');  // Remove trailing commas
-
-            try {
-                nutritionData = JSON.parse(cleanedText);
-                console.log('Successfully parsed JSON after fixes');
-            } catch (secondError) {
-                console.error('Failed to parse JSON even after fixes:', secondError);
-                throw new Error(`Failed to parse nutrition data: ${parseError.message}`);
-            }
-        }
-
-        // Validate required fields
-        const requiredFields = ['foodTitle', 'calories', 'carbs', 'protein', 'fats', 'healthScore'];
-        const missingFields = requiredFields.filter(field => !nutritionData[field]);
-        if (missingFields.length > 0) {
-            throw new Error(`Missing required fields: ${missingFields.join(', ')}`);
-        }
-
-        console.log('Sending successful response:', nutritionData);
-        res.status(200).json({
-            success: true,
-            ...nutritionData
-        });
-
-    } catch (geminiError) {
-        console.error('Gemini API error:', geminiError);
-        res.status(500).json({
-            success: false,
-            message: 'Error processing image with Gemini API',
-            error: geminiError.message
-        });
+    // Try to extract JSON if it's wrapped in other text
+    const jsonMatch = cleanedText.match(/\{[\s\S]*\}/);
+    if (jsonMatch) {
+      cleanedText = jsonMatch[0];
     }
+
+    console.log("Cleaned response text:", cleanedText);
+
+    // Validate JSON structure before parsing
+    if (!cleanedText.startsWith("{") || !cleanedText.endsWith("}")) {
+      console.error("Invalid JSON structure. Raw text:", text);
+      console.error("Cleaned text:", cleanedText);
+      throw new Error("Invalid JSON structure in response");
+    }
+
+    // Parse the cleaned JSON response
+    let nutritionData;
+    try {
+      nutritionData = JSON.parse(cleanedText);
+    } catch (parseError) {
+      console.error("JSON parsing error:", parseError);
+      console.error("Problematic text:", cleanedText);
+
+      // Attempt to fix common JSON issues
+      cleanedText = cleanedText
+          .replace(/(['"'])?([a-zA-Z0-9_]+)(['"'])?\\s*:/g, "\"$2\": ") // Fix unquoted keys
+          .replace(/:\\s*'([^']*)']/g, ": \"$1\"") // Replace single quotes with double quotes
+          .replace(/,\\s*}/g, "}"); // Remove trailing commas
+
+      try {
+        nutritionData = JSON.parse(cleanedText);
+        console.log("Successfully parsed JSON after fixes");
+      } catch (secondError) {
+        console.error("Failed to parse JSON even after fixes:", secondError);
+        throw new Error(`Failed to parse nutrition data: ${parseError.message}`);
+      }
+    }
+
+    // Validate required fields
+    const requiredFields = ["foodTitle", "calories", "carbs", "protein", "fats", "healthScore"];
+    const missingFields = requiredFields.filter((field) => !nutritionData[field]);
+    if (missingFields.length > 0) {
+      throw new Error(`Missing required fields: ${missingFields.join(", ")}`);
+    }
+
+    console.log("Sending successful response:", nutritionData);
+    res.status(200).json({
+      success: true,
+      ...nutritionData,
+    });
+  } catch (geminiError) {
+    console.error("Gemini API error:", geminiError);
+    res.status(500).json({
+      success: false,
+      message: "Error processing image with Gemini API",
+      error: geminiError.message,
+    });
+  }
 });
 
 module.exports = {
-    analyzeFood
+  analyzeFood,
 };

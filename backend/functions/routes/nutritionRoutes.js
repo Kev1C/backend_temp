@@ -1,7 +1,7 @@
 // backend/routes/nutritionRoutes.js
-const express = require('express');
+const express = require("express");
 const router = express.Router();
-const auth = require('../middleware/auth');
+const auth = require("../middleware/auth");
 const {
   getDailyNutrition,
   getNutritionCalculations,
@@ -10,39 +10,39 @@ const {
   resetMacros,
   calculateNutritionalNeeds,
   getNutritionHeatmapData, // From notworking
-  getMonthlyNutrition // From notworking
-} = require('../controllers/nutritionController');
-const Meal = require('../models/Meal');
-const DailyNutrition = require('../models/DailyNutrition');
+  getMonthlyNutrition, // From notworking
+} = require("../controllers/nutritionController");
+const Meal = require("../models/Meal");
+const DailyNutrition = require("../models/DailyNutrition");
 
 // Get daily nutrition
-router.get('/daily/:date', auth, getDailyNutrition);
+router.get("/daily/:date", auth, getDailyNutrition);
 
 // Get monthly nutrition (from notworking)
-router.get('/monthly/:year/:month', auth, getMonthlyNutrition);
+router.get("/monthly/:year/:month", auth, getMonthlyNutrition);
 
 // Update daily nutrition
-router.post('/daily/:date', auth, updateDailyNutrition);
+router.post("/daily/:date", auth, updateDailyNutrition);
 
 // Get nutrition calculations
-router.get('/calculations', auth, getNutritionCalculations);
+router.get("/calculations", auth, getNutritionCalculations);
 
 // Update macros
-router.post('/macros', auth, updateMacros);
+router.post("/macros", auth, updateMacros);
 
 // Reset macros
-router.post('/macros/reset', auth, resetMacros);
+router.post("/macros/reset", auth, resetMacros);
 
 // Calculate nutritional needs
-router.post('/calculate', auth, calculateNutritionalNeeds);
+router.post("/calculate", auth, calculateNutritionalNeeds);
 
 // Get nutrition heatmap data (from notworking)
-router.get('/heatmap', auth, getNutritionHeatmapData);
+router.get("/heatmap", auth, getNutritionHeatmapData);
 
 // Save meal and update daily nutrition
-router.post('/meals', auth, async (req, res) => {
+router.post("/meals", auth, async (req, res) => {
   try {
-    const { name, image, calories, carbs, protein, fats, time, date } = req.body;
+    const {name, image, calories, carbs, protein, fats, time, date} = req.body;
     const userId = req.user.id;
     const mealDate = new Date(date);
 
@@ -62,32 +62,32 @@ router.post('/meals', auth, async (req, res) => {
           protein,
           fats,
           time,
-          date: mealDate
-        }], { session });
+          date: mealDate,
+        }], {session});
 
         // Update or create daily nutrition
         await DailyNutrition.findOneAndUpdate(
-          {
-            userId,
-            date: {
-              $gte: new Date(mealDate.setHours(0, 0, 0, 0)),
-              $lt: new Date(mealDate.setHours(23, 59, 59, 999))
-            }
-          },
-          {
-            $inc: {
-              calories,
-              carbs,
-              protein,
-              fats
+            {
+              userId,
+              date: {
+                $gte: new Date(mealDate.setHours(0, 0, 0, 0)),
+                $lt: new Date(mealDate.setHours(23, 59, 59, 999)),
+              },
             },
-            $push: { meals: savedMeal[0]._id }
-          },
-          {
-            upsert: true,
-            new: true,
-            session
-          }
+            {
+              $inc: {
+                calories,
+                carbs,
+                protein,
+                fats,
+              },
+              $push: {meals: savedMeal[0]._id},
+            },
+            {
+              upsert: true,
+              new: true,
+              session,
+            },
         );
       });
 
@@ -98,8 +98,8 @@ router.post('/meals', auth, async (req, res) => {
       throw error;
     }
   } catch (error) {
-    console.error('Error saving meal:', error);
-    res.status(500).json({ message: 'Error saving meal', error: error.message });
+    console.error("Error saving meal:", error);
+    res.status(500).json({message: "Error saving meal", error: error.message});
   }
 });
 

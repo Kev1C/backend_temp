@@ -1,24 +1,24 @@
 // controllers/authController.js
-const User = require('../models/User');
-const admin = require('firebase-admin');
-const jwt = require('jsonwebtoken');
+const User = require("../models/User");
+const admin = require("firebase-admin");
+const jwt = require("jsonwebtoken");
 
 const verifyFirebaseToken = async (req, res) => {
   try {
-    const { firebaseToken, includeOnboardingStatus, syncOnboarding, onboardingData } = req.body;
+    const {firebaseToken, includeOnboardingStatus, syncOnboarding, onboardingData} = req.body;
 
     if (!firebaseToken) {
-      return res.status(400).json({ message: 'Firebase token is required' });
+      return res.status(400).json({message: "Firebase token is required"});
     }
 
     // Verify the Firebase token with the Admin SDK.
     const decodedToken = await admin.auth().verifyIdToken(firebaseToken);
     if (!decodedToken) {
-      return res.status(401).json({ message: 'Invalid Firebase token' });
+      return res.status(401).json({message: "Invalid Firebase token"});
     }
 
     // Attempt to find the user in MongoDB by Firebase UID.
-    let user = await User.findOne({ firebaseUid: decodedToken.uid });
+    let user = await User.findOne({firebaseUid: decodedToken.uid});
     let onboardingNeedsSync = false;
 
     if (!user) {
@@ -26,14 +26,14 @@ const verifyFirebaseToken = async (req, res) => {
       user = new User({
         firebaseUid: decodedToken.uid,
         email: decodedToken.email || `temp-${decodedToken.uid}@temp.com`,
-        username: decodedToken.email 
-          ? decodedToken.email.split('@')[0] 
-          : `user_${decodedToken.uid}`,
+        username: decodedToken.email ?
+          decodedToken.email.split("@")[0] :
+          `user_${decodedToken.uid}`,
         authProvider:
           (decodedToken.firebase && decodedToken.firebase.sign_in_provider) ||
-          'firebase',
-        type: 'guest',
-        isOnboardingComplete: false
+          "firebase",
+        type: "guest",
+        isOnboardingComplete: false,
       });
       await user.save();
       onboardingNeedsSync = true;
@@ -44,7 +44,7 @@ const verifyFirebaseToken = async (req, res) => {
 
     // If the client is sending onboarding data to sync, update the user.
     if (syncOnboarding && onboardingData) {
-      const { gender, age, height, weight, goal } = onboardingData;
+      const {gender, age, height, weight, goal} = onboardingData;
       user.gender = gender || user.gender;
       user.age = age || user.age;
       user.height = height || user.height;
@@ -61,10 +61,10 @@ const verifyFirebaseToken = async (req, res) => {
       email: user.email,
       username: user.username,
       type: user.type,
-      onboardingComplete: user.isOnboardingComplete
+      onboardingComplete: user.isOnboardingComplete,
     };
 
-    const token = jwt.sign(tokenPayload, process.env.JWT_SECRET, { expiresIn: '1h' });
+    const token = jwt.sign(tokenPayload, process.env.JWT_SECRET, {expiresIn: "1h"});
 
     // Return the token, user data, and onboarding status flag.
     res.json({
@@ -81,14 +81,14 @@ const verifyFirebaseToken = async (req, res) => {
         height: user.height,
         weight: user.weight,
         fitnessGoal: user.fitnessGoal,
-        isOnboardingComplete: user.isOnboardingComplete
+        isOnboardingComplete: user.isOnboardingComplete,
       },
-      onboardingNeedsSync
+      onboardingNeedsSync,
     });
   } catch (error) {
-    console.error('Firebase token verification error:', error);
-    res.status(500).json({ message: 'Error verifying Firebase token' });
+    console.error("Firebase token verification error:", error);
+    res.status(500).json({message: "Error verifying Firebase token"});
   }
 };
 
-module.exports = { verifyFirebaseToken };
+module.exports = {verifyFirebaseToken};
