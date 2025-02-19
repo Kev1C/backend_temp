@@ -1,11 +1,20 @@
 // backend/app.js
-require('dotenv').config();
+//require('dotenv').config({ path: path.resolve(__dirname, '.env') });
 const express = require('express');
 const cors = require('cors');
 const morgan = require('morgan');
 const admin = require('firebase-admin');
-const path = require('path');
-require('dotenv').config({ path: path.resolve(__dirname, '.env') });
+
+try {
+  const path = require('path');
+  require('dotenv').config({ path: path.join(__dirname, '.env') });
+  console.log('Environment variables loaded:', {
+    USE_FIREBASE_EMULATOR: process.env.USE_FIREBASE_EMULATOR,
+    FIREBASE_PROJECT_ID: process.env.FIREBASE_PROJECT_ID
+  });
+} catch (error) {
+  console.error('Failed to load .env file:', error);
+}
 
 // Custom error handling middleware
 const { errorHandler, notFound } = require('./middleware/errorMiddleware');
@@ -15,7 +24,7 @@ const connectDB = require('./config/db');
 // Initialize Firebase Admin SDK
 try {
   if (!admin.apps.length) {
-    if (process.env.FIREBASE_EMULATOR) {
+    if (process.env.USE_FIREBASE_EMULATOR) {
       // When running with emulators, use a default config that matches the frontend project
       admin.initializeApp({
         projectId: 'fitness-app-bf54e'
@@ -48,8 +57,9 @@ const userRoutes = require('./routes/users');
 const nutritionRoutes = require('./routes/nutritionRoutes');
 const diamondRoutes = require('./routes/diamonds');
 
+// Remove the isDbConnected flag and connect before setting up routes
 // Connect to database
-connectDB();
+connectDB().catch(console.error);
 
 const app = express();
 

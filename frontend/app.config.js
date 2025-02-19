@@ -3,7 +3,7 @@ import 'dotenv/config';
 export default ({ config }) => ({
   ...config, 
   extra: {
-    apiBaseUrl: 'http://127.0.0.1:5001', // Updated to match emulator port
+    apiBaseUrl: 'http://127.0.0.1:5001/fitness-app-bf54e/us-central1/api'//'http://127.0.0.1:5001', // Updated to match emulator port
   },
   plugins: [
     [
