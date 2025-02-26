@@ -48,51 +48,15 @@ const getStyles = (theme) =>
             color: theme.colors.text,
             opacity: 0.7,
         },
-        sectionContainer: {
-            paddingHorizontal: 16,
-            marginBottom: 16,
-        },
-        sectionTitle: {
-            fontSize: 20,
-            fontWeight: 'bold',
-            color: theme.colors.text,
-            marginBottom: 16,
-        },
-        logoutContainer: {
-            marginTop: 20,
-            paddingHorizontal: 16,
-            marginBottom: 30,
-        },
-        logoutButton: {
-            width: '100%',
-            paddingVertical: 16,
-            borderRadius: 12,
-            backgroundColor: 'transparent',
-            alignItems: 'center',
-            justifyContent: 'center',
-            borderWidth: 1,
-            borderColor: theme.colors.border,
-        },
-        logoutContent: {
-            flexDirection: 'row',
-            alignItems: 'center',
-            justifyContent: 'center',
-        },
-        logoutIcon: {
-            marginRight: 8,
-        },
-        logoutButtonText: {
-            color: theme.colors.text,
-            fontSize: 16,
-            fontWeight: '500',
-            letterSpacing: 0.5,
-            textAlign: 'center',
+        divider: {
+            marginVertical: 16,
+            backgroundColor: theme.colors.border,
         },
         diamondContainer: {
             flexDirection: 'row',
             alignItems: 'center',
             justifyContent: 'center',
-            backgroundColor: 'rgba(0, 255, 255, 0.1)',
+            backgroundColor: 'rgba(0, 255, 255, 0.1)', // Reverted to original color
             padding: 8,
             borderRadius: 20,
             marginRight: 8,
@@ -103,6 +67,12 @@ const getStyles = (theme) =>
             fontWeight: 'bold',
             fontSize: 16,
             alignSelf: 'center',
+        },
+        plusButton: {
+            marginLeft: 4,
+            backgroundColor: theme.colors.primary,
+            borderRadius: 12,
+            padding: 4,
         },
         resourcesButton: {
             backgroundColor: theme.colors.primary,
@@ -130,7 +100,7 @@ const getStyles = (theme) =>
             backgroundColor: theme.colors.background,
             borderRadius: 12,
             maxHeight: '80%',
-            flex: 1, // Add this line
+            flex: 1,
         },
         modalHeader: {
             flexDirection: 'row',
@@ -172,6 +142,16 @@ const getStyles = (theme) =>
         },
         selectedModalText: {
             color: theme.colors.surface,
+        },
+        modalFooter: {
+            padding: 16,
+            borderTopWidth: 1,
+            borderTopColor: theme.colors.border,
+            alignItems: 'center',
+        },
+        modalSaveButton: {
+            width: '50%',
+            backgroundColor: theme.colors.primary,
         },
     });
 

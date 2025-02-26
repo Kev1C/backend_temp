@@ -1,7 +1,7 @@
 //frontend/screens/Camera/FoodAnalysisBottomSheet.js
 import React from 'react';
 import { View, StyleSheet, Dimensions, Image, TextInput, ActivityIndicator } from 'react-native';
-import { Text, Button, IconButton, MD3Colors, Chip, useTheme, FAB } from 'react-native-paper';
+import { Text, Button, IconButton, Chip, useTheme } from 'react-native-paper';
 import BottomSheet, { BottomSheetScrollView, BottomSheetBackdrop } from '@gorhom/bottom-sheet';
 import { useNutritionStore, formatDate } from '../../stores/nutritionStore';
 import { api } from '../../services/api';
@@ -24,30 +24,40 @@ const FoodAnalysisBottomSheet = ({
   onRetake,
 }) => {
   const theme = useTheme();
-
   const [currentSnapPoint, setCurrentSnapPoint] = React.useState(0);
-
   const snapPoints = React.useMemo(() => ['60%', '80%'], []);
 
-  const imageSize = React.useMemo(() => 
-    currentSnapPoint === 0 ? 
-      { width: 100, height: 100 } : 
-      { width: Dimensions.get('window').width * 0.8, height: 200 }
-  , [currentSnapPoint]);
+  // Function to determine meal type based on current time
+  const getMealType = () => {
+    const hour = new Date().getHours();
+    if (hour >= 4 && hour < 11) return 'Breakfast';
+    if (hour >= 11 && hour < 15) return 'Lunch';
+    return 'Dinner';
+  };
 
-  const headerLayout = React.useMemo(() => 
-    currentSnapPoint === 0 ? 
-      { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' } : 
-      { flexDirection: 'column', alignItems: 'center' }
-  , [currentSnapPoint]);
+  const imageSize = React.useMemo(() =>
+    currentSnapPoint === 0
+      ? { width: 100, height: 100 }
+      : { width: Dimensions.get('window').width * 0.8, height: 200 },
+    [currentSnapPoint]
+  );
+
+  const headerLayout = React.useMemo(() =>
+    currentSnapPoint === 0
+      ? { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }
+      : { flexDirection: 'column', alignItems: 'center' },
+    [currentSnapPoint]
+  );
 
   const handleNutrientChange = (value, nutrientType) => {
     const numValue = parseFloat(value) || 0;
-    setNutritionState(prev => ({
+    setNutritionState((prev) => ({
       ...prev,
       [nutrientType]: value,
       [`base${nutrientType.charAt(0).toUpperCase() + nutrientType.slice(1)}`]:
-        numValue > 0 ? (numValue / servings).toString() : prev[`base${nutrientType.charAt(0).toUpperCase() + nutrientType.slice(1)}`]
+        numValue > 0
+          ? (numValue / servings).toString()
+          : prev[`base${nutrientType.charAt(0).toUpperCase() + nutrientType.slice(1)}`],
     }));
   };
 
@@ -65,7 +75,7 @@ const FoodAnalysisBottomSheet = ({
   };
 
   const updateNutritionValues = (newServings) => {
-    setNutritionState(prev => ({
+    setNutritionState((prev) => ({
       ...prev,
       calories: Math.round(parseFloat(prev.baseCalories) * newServings).toString(),
       carbs: Math.round(parseFloat(prev.baseCarbs) * newServings).toString(),
@@ -76,34 +86,21 @@ const FoodAnalysisBottomSheet = ({
 
   const getHealthScoreColor = (score) => {
     const numScore = Math.min(Math.max(parseFloat(score) || 0, 0), 100);
-    if (numScore < 40) {
-      return '#FF4D4D'; // bright red for low scores
-    } else if (numScore < 70) {
-      return '#FFA500'; // orange for medium scores
-    } else {
-      return '#2ECC71'; // bright green for high scores
-    }
+    if (numScore < 40) return '#FF4D4D'; // Red for low
+    if (numScore < 70) return '#FFA500'; // Orange for medium
+    return '#2ECC71'; // Green for high
   };
 
-  const getMealType = () => {
-    const hour = new Date().getHours();
-    if (hour >= 4 && hour < 11) return 'Breakfast';
-    if (hour >= 11 && hour < 15) return 'Lunch';
-    return 'Dinner';
-  };
-
-  const handleSheetChange = React.useCallback((index) => {
-    setCurrentSnapPoint(index);
-    handleSheetChanges(index);
-  }, [handleSheetChanges]);
+  const handleSheetChange = React.useCallback(
+    (index) => {
+      setCurrentSnapPoint(index);
+      handleSheetChanges(index);
+    },
+    [handleSheetChanges]
+  );
 
   const renderBackdrop = (props) => (
-    <BottomSheetBackdrop
-      {...props}
-      disappearsOnIndex={-1}
-      appearsOnIndex={0}
-      opacity={0.5}
-    />
+    <BottomSheetBackdrop {...props} disappearsOnIndex={-1} appearsOnIndex={0} opacity={0.5} />
   );
 
   return (
@@ -118,11 +115,8 @@ const FoodAnalysisBottomSheet = ({
       handleIndicatorStyle={styles.modalHandle}
       handleStyle={styles.handleStyle}
       backgroundStyle={styles.modalContent}
-      renderBackdrop={renderBackdrop}
-      onCloseEnd={() => {
-        // Reset the state after the bottom sheet is fully closed
-        setCapturedImage(null);
-      }}
+      backdropComponent={renderBackdrop}
+      onCloseEnd={() => setCapturedImage(null)}
     >
       <View style={styles.bottomSheetContent}>
         <BottomSheetScrollView
@@ -170,12 +164,12 @@ const FoodAnalysisBottomSheet = ({
                                 shadowRadius: 2,
                                 borderColor: getHealthScoreColor(foodAnalysis.healthScore),
                                 borderWidth: 1.5,
-                              }
+                              },
                             ]}
                             textStyle={{
                               fontSize: 16,
                               fontWeight: '900',
-                              color: getHealthScoreColor(foodAnalysis.healthScore)
+                              color: getHealthScoreColor(foodAnalysis.healthScore),
                             }}
                           >
                             Health Score: {foodAnalysis.healthScore}
@@ -186,32 +180,22 @@ const FoodAnalysisBottomSheet = ({
 
                     <View style={styles.foodInputContainer}>
                       <TextInput
-                        style={styles.foodTitleInput}
+                        style={[styles.foodTitleInput, { borderBottomColor: theme.colors.primary }]}
                         placeholder="Enter food name"
                         value={foodTitle}
                         onChangeText={setFoodTitle}
                       />
                       <View style={styles.servingsContainer}>
-                        <IconButton
-                          icon="minus"
-                          size={20}
-                          onPress={decrementServings}
-                          disabled={servings <= 1}
-                        />
+                        <IconButton icon="minus" size={20} onPress={decrementServings} disabled={servings <= 1} />
                         <Text style={styles.servingsText}>{servings}</Text>
-                        <IconButton
-                          icon="plus"
-                          size={20}
-                          onPress={incrementServings}
-                        />
+                        <IconButton icon="plus" size={20} onPress={incrementServings} />
                       </View>
                     </View>
 
                     <View style={styles.cardsContainer}>
-                      {/* First Row */}
                       <View style={styles.cardRow}>
                         <View style={styles.card}>
-                          <Text style={styles.cardLabel}>Calories</Text>
+                          <Text style={styles.cardLabel}>Calories (kcal)</Text>
                           <TextInput
                             style={styles.cardInput}
                             value={nutritionState.calories}
@@ -221,7 +205,7 @@ const FoodAnalysisBottomSheet = ({
                           />
                         </View>
                         <View style={styles.card}>
-                          <Text style={styles.cardLabel}>Carbs</Text>
+                          <Text style={styles.cardLabel}>Carbs (g)</Text>
                           <TextInput
                             style={styles.cardInput}
                             value={nutritionState.carbs}
@@ -231,11 +215,9 @@ const FoodAnalysisBottomSheet = ({
                           />
                         </View>
                       </View>
-
-                      {/* Second Row */}
                       <View style={styles.cardRow}>
                         <View style={styles.card}>
-                          <Text style={styles.cardLabel}>Protein</Text>
+                          <Text style={styles.cardLabel}>Protein (g)</Text>
                           <TextInput
                             style={styles.cardInput}
                             value={nutritionState.protein}
@@ -245,7 +227,7 @@ const FoodAnalysisBottomSheet = ({
                           />
                         </View>
                         <View style={styles.card}>
-                          <Text style={styles.cardLabel}>Fats</Text>
+                          <Text style={styles.cardLabel}>Fats (g)</Text>
                           <TextInput
                             style={styles.cardInput}
                             value={nutritionState.fats}
@@ -257,9 +239,11 @@ const FoodAnalysisBottomSheet = ({
                       </View>
                     </View>
 
+                    <Text style={styles.analysisCost}>Analysis costs 150 diamonds</Text>
+
                     <View style={styles.fabContainer}>
                       <Button
-                        icon="refresh"
+                        icon="camera"
                         mode="contained-tonal"
                         onPress={onRetake}
                         style={styles.retakeButton}
@@ -298,7 +282,7 @@ const styles = StyleSheet.create({
     paddingBottom: 90,
   },
   scrollContent: {
-    padding: 12,
+    padding: 16, // Increased padding for better spacing
   },
   headerContainer: {
     width: '100%',
@@ -327,6 +311,13 @@ const styles = StyleSheet.create({
     borderRadius: 25,
     marginVertical: 4,
   },
+  mealTypeChip: {
+    backgroundColor: '#fff',
+    borderColor: '#f0f0f0',
+  },
+  healthScoreChip: {
+    backgroundColor: '#fff',
+  },
   imagePreview: {
     borderRadius: 10,
   },
@@ -339,7 +330,6 @@ const styles = StyleSheet.create({
   foodTitleInput: {
     fontSize: 16,
     borderBottomWidth: 1,
-    borderBottomColor: '#e0e0e0',
     paddingVertical: 8,
     flex: 1,
     marginRight: 15,
@@ -381,12 +371,17 @@ const styles = StyleSheet.create({
     width: '45%',
     borderWidth: 1,
     borderColor: '#f0f0f0',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.22,
+    shadowRadius: 2.22,
+    elevation: 3,
   },
   cardLabel: {
     fontSize: 14,
     color: '#666',
     marginBottom: 8,
-    fontWeight: '500',
+    fontWeight: '600',
   },
   cardInput: {
     fontSize: 16,
@@ -413,12 +408,17 @@ const styles = StyleSheet.create({
     height: 4,
     borderRadius: 2,
   },
-  mealTypeChip: {
-    backgroundColor: '#fff',
-    borderColor: '#f0f0f0',
+  analysisNote: {
+    fontSize: 12,
+    color: '#666',
+    marginBottom: 8,
+    textAlign: 'center',
   },
-  healthScoreChip: {
-    backgroundColor: '#fff',
+  analysisCost: {
+    fontSize: 14,
+    color: '#666',
+    marginBottom: 8,
+    textAlign: 'center',
   },
   fabContainer: {
     flexDirection: 'row',

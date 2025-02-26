@@ -1,8 +1,8 @@
-// SettingsScreen.js
+// frontend/screens/Profile/SettingsScreen.js
 
 import React, { useContext, useEffect, useState, useCallback, useMemo } from 'react';
-import { View, Alert, TouchableOpacity, Platform, Modal } from 'react-native';
-import { Text, Divider, Portal } from 'react-native-paper';
+import { View, Alert, TouchableOpacity, Platform, Modal, ActivityIndicator } from 'react-native';
+import { Text, Divider, Portal, Button } from 'react-native-paper';
 import { ThemeContext } from '../../context/ThemeContext';
 import { useAuthStore } from '../../stores/authStore';
 import { useOnboardingStore } from '../../stores/onboardingStore';
@@ -13,6 +13,7 @@ import { useDiamondStore } from '../../stores/diamondStore';
 import AdComponent from '../../Components/SettingScreenAdComponent';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { FlashList } from "@shopify/flash-list";
+import { useAdStore } from '../../stores/adStore';
 
 const GOALS = [
     { id: 'lose_weight', title: 'Lose weight', subtitle: 'Burn fat & get lean', icon: 'fire' },
@@ -44,6 +45,8 @@ const ModalOption = React.memo(({ item, selectedId, onSelect, theme, styles }) =
         <TouchableOpacity
             style={[styles.modalOption, isSelected && styles.selectedModalOption]}
             onPress={() => onSelect(item.id)}
+            accessible={true}
+            accessibilityLabel={`${item.title}, ${item.subtitle}${isSelected ? ', selected' : ''}`}
         >
             <MaterialCommunityIcons
                 name={item.icon}
@@ -70,12 +73,15 @@ const SettingsScreen = () => {
     const { balance, fetchBalance, addDiamonds } = useDiamondStore();
     const { authToken } = useAuthStore();
     const [selectedGoal, setSelectedGoal] = useState(onboardingData?.fitnessGoal || 'get_fitter');
+    const [tempGoal, setTempGoal] = useState(selectedGoal);
     const [selectedActivity, setSelectedActivity] = useState(onboardingData?.activityLevel || 'moderately_active');
-    const [showAdComponent, setShowAdComponent] = useState(false);
+    const [tempActivity, setTempActivity] = useState(selectedActivity);
     const [showGoalModal, setShowGoalModal] = useState(false);
     const [showActivityModal, setShowActivityModal] = useState(false);
     const insets = useSafeAreaInsets();
     const [isDataLoading, setIsDataLoading] = useState(true);
+    const { settingsAdReady } = useAdStore();
+    const [showAdModal, setShowAdModal] = useState(false);
 
     const styles = useMemo(() => getStyles(theme), [theme]);
 
@@ -89,6 +95,10 @@ const SettingsScreen = () => {
                 }
             } catch (error) {
                 console.error('Error loading user data:', error);
+                Alert.alert('Error', 'Failed to load user data. Please try again.', [
+                    { text: 'Retry', onPress: loadUserData },
+                    { text: 'Cancel', style: 'cancel' },
+                ]);
             } finally {
                 setIsDataLoading(false);
             }
@@ -120,41 +130,40 @@ const SettingsScreen = () => {
     }, [signOut, navigation]);
 
     const handleAdWatched = useCallback(async (reward) => {
-        const diamondsToAdd = reward.amount || 10;
+        const diamondsToAdd = reward.amount || 75;
         try {
             await addDiamonds(diamondsToAdd, authToken);
             await fetchBalance(authToken);
             Alert.alert('Success', `You've earned ${diamondsToAdd} diamonds!`);
-            setShowAdComponent(false);
         } catch (error) {
             console.error('Error adding diamonds:', error);
             Alert.alert('Error', 'Failed to add diamonds. Please try again.');
         }
     }, [addDiamonds, authToken, fetchBalance]);
 
-    const handleGoalSelection = useCallback(async (goalId) => {
+    const handleGoalSelection = useCallback(async () => {
         try {
-            setSelectedGoal(goalId);
-            await saveOnboardingData({ fitnessGoal: goalId });
+            setSelectedGoal(tempGoal);
+            await saveOnboardingData({ fitnessGoal: tempGoal });
             setShowGoalModal(false);
             Alert.alert('Success', 'Your fitness goal has been updated!');
         } catch (error) {
             console.error('Error saving fitness goal:', error);
             Alert.alert('Error', 'Failed to update your fitness goal. Please try again.');
         }
-    }, [saveOnboardingData]);
+    }, [tempGoal, saveOnboardingData]);
 
-    const handleActivitySelection = useCallback(async (activityId) => {
+    const handleActivitySelection = useCallback(async () => {
         try {
-            setSelectedActivity(activityId);
-            await saveOnboardingData({ activityLevel: activityId });
+            setSelectedActivity(tempActivity);
+            await saveOnboardingData({ activityLevel: tempActivity });
             setShowActivityModal(false);
             Alert.alert('Success', 'Your activity level has been updated!');
         } catch (error) {
             console.error('Error saving activity level:', error);
             Alert.alert('Error', 'Failed to update your activity level. Please try again.');
         }
-    }, [saveOnboardingData]);
+    }, [tempActivity, saveOnboardingData]);
 
     const getCurrentGoal = useCallback(() => {
         const goal = GOALS.find((g) => g.id === selectedGoal);
@@ -168,7 +177,7 @@ const SettingsScreen = () => {
 
     const navigateToResources = useCallback(() => navigation.navigate('Resources'), [navigation]);
 
-    const renderModalContent = useCallback((data, selectedId, onSelect, type) => {
+    const renderModalContent = useCallback((data, selectedId, onSelect, type, onSave) => {
         const closeModal = type === 'Fitness Goal' ? setShowGoalModal : setShowActivityModal;
         return (
             <View style={styles.modalContent}>
@@ -186,6 +195,16 @@ const SettingsScreen = () => {
                     )}
                     estimatedItemSize={80}
                 />
+                <View style={styles.modalFooter}>
+                    <Button
+                        mode="contained"
+                        onPress={onSave}
+                        style={styles.modalSaveButton}
+                        labelStyle={{ color: theme.colors.surface }}
+                    >
+                        Save
+                    </Button>
+                </View>
             </View>
         );
     }, [styles, theme]);
@@ -193,7 +212,8 @@ const SettingsScreen = () => {
     if (isDataLoading) {
         return (
             <View style={[styles.safeArea, { paddingTop: insets.top, justifyContent: 'center', alignItems: 'center' }]}>
-                <Text>Loading...</Text>
+                <ActivityIndicator size="large" color={theme.colors.primary} />
+                <Text style={{ marginTop: 10 }}>Loading user data...</Text>
             </View>
         );
     }
@@ -203,15 +223,31 @@ const SettingsScreen = () => {
             <View style={styles.container}>
                 <View style={[styles.headerContainer, { marginTop: Platform.OS === 'ios' ? 0 : 20 }]}>
                     <Text style={styles.header}>Settings</Text>
-                    <View style={styles.diamondContainer}>
+                    <TouchableOpacity
+                        style={styles.diamondContainer}
+                        onPress={() => {
+                            if (settingsAdReady) {
+                                setShowAdModal(true);
+                            } else {
+                                Alert.alert('Ad not ready', 'Please wait for the ad to load.');
+                            }
+                        }}
+                        disabled={!settingsAdReady}
+                        accessible={true}
+                        accessibilityLabel="Press to watch ad and earn diamonds"
+                        accessibilityHint="Earn diamonds by watching an ad"
+                    >
                         <MaterialCommunityIcons name="diamond-stone" size={24} color="#00FFFF" />
                         <Text style={styles.diamondText}>{balance}</Text>
-                    </View>
+                        <View style={styles.plusButton}>
+                            <MaterialCommunityIcons name="plus" size={16} color={theme.colors.surface} />
+                        </View>
+                    </TouchableOpacity>
                 </View>
 
                 <View style={styles.settingsContainer}>
-                    <UserStat label="User ID" value={user?.id || '--'} icon="account" theme={theme} styles={styles} />
-                    <UserStat label="Age" value={user?.age || '--'} icon="calendar" theme={theme} styles={styles} />
+                    {/* <UserStat label="User ID" value={user?.id || '--'} icon="account" theme={theme} styles={styles} />
+                    <UserStat label="Age" value={user?.age || '--'} icon="calendar" theme={theme} styles={styles} /> */}
                     <UserStat label="Height" value={user?.height ? `${user.height} cm` : '--'} icon="human-male-height" theme={theme} styles={styles} />
                     <UserStat label="Weight" value={user?.weight ? `${user.weight} kg` : '--'} icon="weight" theme={theme} styles={styles} />
                 </View>
@@ -219,7 +255,13 @@ const SettingsScreen = () => {
                 <Divider style={styles.divider} />
 
                 <View style={styles.settingsContainer}>
-                    <TouchableOpacity style={styles.settingOption} onPress={() => setShowGoalModal(true)}>
+                    <TouchableOpacity
+                        style={styles.settingOption}
+                        onPress={() => setShowGoalModal(true)}
+                        accessible={true}
+                        accessibilityLabel={`Fitness Goal, currently set to ${getCurrentGoal()}`}
+                        accessibilityHint="Tap to change your fitness goal"
+                    >
                         <View>
                             <Text style={styles.settingLabel}>Fitness Goal</Text>
                             <Text style={styles.settingValue}>{getCurrentGoal()}</Text>
@@ -227,7 +269,13 @@ const SettingsScreen = () => {
                         <MaterialCommunityIcons name="chevron-right" size={24} color={theme.colors.text} />
                     </TouchableOpacity>
 
-                    <TouchableOpacity style={styles.settingOption} onPress={() => setShowActivityModal(true)}>
+                    <TouchableOpacity
+                        style={styles.settingOption}
+                        onPress={() => setShowActivityModal(true)}
+                        accessible={true}
+                        accessibilityLabel={`Activity Level, currently set to ${getCurrentActivity()}`}
+                        accessibilityHint="Tap to change your activity level"
+                    >
                         <View>
                             <Text style={styles.settingLabel}>Activity Level</Text>
                             <Text style={styles.settingValue}>{getCurrentActivity()}</Text>
@@ -237,17 +285,17 @@ const SettingsScreen = () => {
                 </View>
 
                 <Portal>
-                    <Modal visible={showGoalModal} onDismiss={() => setShowGoalModal(false)} transparent>
+                    <Modal visible={showGoalModal} onDismiss={() => setShowGoalModal(false)} transparent animationType="slide">
                         <View style={styles.modalContainer}>
-                            {renderModalContent(GOALS, selectedGoal, handleGoalSelection, 'Fitness Goal')}
+                            {renderModalContent(GOALS, tempGoal, setTempGoal, 'Fitness Goal', handleGoalSelection)}
                         </View>
                     </Modal>
                 </Portal>
 
                 <Portal>
-                    <Modal visible={showActivityModal} onDismiss={() => setShowActivityModal(false)} transparent>
+                    <Modal visible={showActivityModal} onDismiss={() => setShowActivityModal(false)} transparent animationType="slide">
                         <View style={styles.modalContainer}>
-                            {renderModalContent(ACTIVITY_LEVELS, selectedActivity, handleActivitySelection, 'Activity Level')}
+                            {renderModalContent(ACTIVITY_LEVELS, tempActivity, setTempActivity, 'Activity Level', handleActivitySelection)}
                         </View>
                     </Modal>
                 </Portal>
@@ -260,8 +308,18 @@ const SettingsScreen = () => {
                 </TouchableOpacity>
 
                 <Divider style={styles.divider} />
-                <AdComponent onAdWatched={handleAdWatched} />
-                <Divider style={styles.divider} />
+
+                <AdComponent
+                    balance={balance}
+                    showModal={showAdModal}
+                    setShowModal={setShowAdModal}
+                    onAdWatched={handleAdWatched}
+                />
+
+                {/* Add user ID text at the bottom left with grey color */}
+                <Text style={{ position: 'absolute', bottom: 20, left: 20, color: 'grey' }}>
+                    User ID: {user?.id || '--'}
+                </Text>
             </View>
         </View>
     );

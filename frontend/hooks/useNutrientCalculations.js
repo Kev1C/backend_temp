@@ -1,8 +1,10 @@
-//frontend/hooks/useNutrientCalculations.js
+// frontend/hooks/useNutrientCalculations.js
 import { create } from 'zustand';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { api } from '../services/api';
 
 const CACHE_DURATION = 24 * 60 * 60 * 1000; // 24 hours
+const STORAGE_KEY = 'nutrientCalculations';
 
 const useNutrientStore = create((set, get) => ({
   calculatedNutrients: {
@@ -21,7 +23,30 @@ const useNutrientStore = create((set, get) => ({
       return;
     }
 
-    // Check if we need to fetch again
+    // If not forced, check AsyncStorage for cached nutrient data.
+    if (!force) {
+      try {
+        const persisted = await AsyncStorage.getItem(STORAGE_KEY);
+        if (persisted) {
+          const parsed = JSON.parse(persisted); // Expected shape: { nutrients, timestamp }
+          if (Date.now() - parsed.timestamp < CACHE_DURATION) {
+            console.log('Using persisted nutrient calculations data');
+            // Set state with persisted data.
+            set({
+              calculatedNutrients: parsed.nutrients,
+              lastFetch: parsed.timestamp,
+              loading: false,
+              error: null,
+            });
+            return parsed.nutrients;
+          }
+        }
+      } catch (storageError) {
+        console.error('Error retrieving persisted nutrient calculations:', storageError);
+      }
+    }
+
+    // Fallback: Check if an in-memory fetch is recent enough.
     if (!force && get().lastFetch) {
       const timeSinceLastFetch = Date.now() - get().lastFetch;
       if (timeSinceLastFetch < CACHE_DURATION) {
@@ -38,40 +63,52 @@ const useNutrientStore = create((set, get) => ({
         weight: userData.weight,
         height: userData.height,
         activityLevel: userData.activityLevel,
-        fitnessGoal: userData.fitnessGoal || userData.goal
+        fitnessGoal: userData.fitnessGoal || userData.goal,
       });
-      
+
       const nutrients = {
         calories: response.data.calories || 0,
         protein: response.data.protein || 0,
         carbs: response.data.carbs || 0,
-        fats: response.data.fats || 0
+        fats: response.data.fats || 0,
       };
 
-      set({ 
+      const now = Date.now();
+      // Persist the nutrient calculations along with the current timestamp.
+      await AsyncStorage.setItem(
+        STORAGE_KEY,
+        JSON.stringify({ nutrients, timestamp: now })
+      );
+
+      set({
         calculatedNutrients: nutrients,
         loading: false,
-        lastFetch: Date.now(),
-        error: null
+        lastFetch: now,
+        error: null,
       });
 
       return nutrients;
     } catch (error) {
       console.error('Error calculating nutrients:', error);
-      set({ 
-        loading: false,
-        error: error.message || 'Failed to fetch calculations'
-      });
+      set({ loading: false, error: error.message || 'Failed to fetch calculations' });
       throw error;
     }
   },
 
   setCalculations: (nutrients) => {
+    const now = Date.now();
     set({
       calculatedNutrients: nutrients,
-      lastFetch: Date.now(),
-      error: null
+      lastFetch: now,
+      error: null,
     });
+    // Optionally update persisted data
+    AsyncStorage.setItem(
+      STORAGE_KEY,
+      JSON.stringify({ nutrients, timestamp: now })
+    ).catch(err =>
+      console.error('Error persisting nutrient calculations during setCalculations:', err)
+    );
   }
 }));
 
@@ -81,7 +118,7 @@ const useNutrientCalculations = () => {
     ...store,
     calculatedNutrients: store.calculatedNutrients,
     loading: store.loading,
-    error: store.error
+    error: store.error,
   };
 };
 

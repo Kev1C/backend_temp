@@ -1,7 +1,6 @@
-//frontend/hooks/useNutritionData.js
 import { useState, useCallback, useEffect } from 'react';
 import { useAuthStore } from '../stores/authStore';
-import { useNutritionStore } from '../stores/nutritionStore';
+import { useNutritionStore, formatDate } from '../stores/nutritionStore';
 import { useCacheStore } from '../stores/cacheStore';
 import { api } from '../services/api';
 
@@ -24,6 +23,7 @@ export const useNutritionData = () => {
       const response = await api.get('/nutrition/meals/recent');
       if (response.data) {
         setRecentMeals(response.data);
+        // Save to our cache store.
         cache.set(MEALS_CACHE_KEY, response.data, CACHE_DURATION);
       }
     } catch (err) {
@@ -49,7 +49,8 @@ export const useNutritionData = () => {
 
       if (response.data) {
         setRecentMeals(prev => [response.data, ...prev]);
-        await updateDailyNutrition();
+        // Pass the new meal to updateDailyNutrition.
+        await updateDailyNutrition(new Date(), response.data);
       }
     } catch (err) {
       setError(err.message || 'Failed to add meal');
@@ -67,7 +68,7 @@ export const useNutritionData = () => {
     try {
       await api.delete(`/nutrition/meals/${mealId}`);
       setRecentMeals(prev => prev.filter(meal => meal.id !== mealId));
-      await updateDailyNutrition();
+      await updateDailyNutrition(new Date());
     } catch (err) {
       setError(err.message || 'Failed to remove meal');
     } finally {
@@ -84,10 +85,10 @@ export const useNutritionData = () => {
     try {
       const response = await api.patch(`/nutrition/meals/${mealId}`, updates);
       if (response.data) {
-        setRecentMeals(prev => 
+        setRecentMeals(prev =>
           prev.map(meal => meal.id === mealId ? { ...meal, ...response.data } : meal)
         );
-        await updateDailyNutrition();
+        await updateDailyNutrition(new Date());
       }
     } catch (err) {
       setError(err.message || 'Failed to update meal');
@@ -104,7 +105,7 @@ export const useNutritionData = () => {
 
     try {
       await Promise.all([
-        fetchDailyNutrition(),
+        fetchDailyNutrition(new Date(), true),
         fetchRecentMeals()
       ]);
     } catch (err) {

@@ -6,23 +6,19 @@ import Constants from 'expo-constants';
 import mitt from 'mitt';
 import jwt_decode from 'jwt-decode';
 
-// Initialize event emitter
 const eventEmitter = mitt();
 
-// Constants
 const SIGNIN_KEY = 'authToken';
-const REQUEST_TIMEOUT = 15000; // Timeout in ms
-const CACHE_TTL = 1000 * 60 * 15; // 15 minutes default cache TTL
-const CACHE_TTL_AUTH = 1000 * 60 * 5; // 5 minutes cache for auth endpoints
+const REQUEST_TIMEOUT = 15000;
+const CACHE_TTL = 1000 * 60 * 15;
+const CACHE_TTL_AUTH = 1000 * 60 * 5;
 
-// Rate limiting variables and request queue (same as before)
 let requestCounter = 0;
 let lastResetTime = Date.now();
 const requestQueue = [];
 let processingQueue = false;
 let queueTimer = null;
 
-// Enhanced cache system
 const cache = {
   data: new Map(),
   timeouts: new Map(),
@@ -42,12 +38,10 @@ const setCacheWithExpiry = (key, value, endpoint) => {
   
   const ttl = cache.endpoints[endpoint] || CACHE_TTL;
   
-  // Evict oldest items if cache is full
   if (cache.data.size >= cache.maxSize) {
     const entriesToDelete = Array.from(cache.data.entries())
       .sort(([, a], [, b]) => a.timestamp - b.timestamp)
       .slice(0, Math.ceil(cache.maxSize * 0.2));
-      
     entriesToDelete.forEach(([k]) => {
       cache.data.delete(k);
       if (cache.timeouts.has(k)) {
@@ -57,12 +51,7 @@ const setCacheWithExpiry = (key, value, endpoint) => {
     });
   }
   
-  const cacheData = {
-    value,
-    timestamp: Date.now(),
-    etag: value?.etag
-  };
-  
+  const cacheData = { value, timestamp: Date.now(), etag: value?.etag };
   cache.data.set(key, cacheData);
   
   if (cache.timeouts.has(key)) {
@@ -80,43 +69,35 @@ const setCacheWithExpiry = (key, value, endpoint) => {
 const getCache = (key, endpoint) => {
   const cached = cache.data.get(key);
   const ttl = cache.endpoints[endpoint] || CACHE_TTL;
-  
   if (cached && Date.now() - cached.timestamp < ttl) {
     return cached;
   }
   return null;
 };
 
-// Global deduplication store
 const pendingRequests = new Map();
 
-// Request queue processing as before
 const processQueue = async () => {
   if (processingQueue || requestQueue.length === 0) return;
-  
   processingQueue = true;
   while (requestQueue.length > 0) {
     const { config, resolve, reject } = requestQueue.shift();
-    
     try {
       const response = await axios(config);
       resolve(response);
     } catch (error) {
-      if (error.response?.status === 429) { // Rate limit exceeded
+      if (error.response?.status === 429) {
         requestQueue.unshift({ config, resolve, reject });
         await new Promise(resolve => setTimeout(resolve, 1000));
         continue;
       }
       reject(error);
     }
-    
     await new Promise(resolve => setTimeout(resolve, 50));
   }
-  
   processingQueue = false;
 };
 
-// Get base URL depending on platform
 const getBaseUrl = () => {
   if (Platform.OS === 'android') {
     return 'http://10.0.2.2:5001/fitness-app-bf54e/us-central1/api/api';
@@ -124,7 +105,6 @@ const getBaseUrl = () => {
   return 'http://127.0.0.1:5001/fitness-app-bf54e/us-central1/api/api';
 };
 
-// Create Axios instance with default settings
 const api = axios.create({
   baseURL: getBaseUrl(),
   timeout: REQUEST_TIMEOUT,
@@ -134,16 +114,13 @@ const api = axios.create({
   }
 });
 
-// Request interceptor to add auth headers and cache control
 api.interceptors.request.use(async (config) => {
   const now = Date.now();
-  
   if (now - lastResetTime > 60000) {
     requestCounter = 0;
     lastResetTime = now;
   }
-
-  if (requestCounter >= 120) { // MAX_REQUESTS_PER_MINUTE condition
+  if (requestCounter >= 120) {
     return new Promise((resolve, reject) => {
       requestQueue.push({ config, resolve, reject });
       if (!queueTimer) {
@@ -151,14 +128,11 @@ api.interceptors.request.use(async (config) => {
       }
     });
   }
-
   try {
     const [authToken, firebaseToken] = await Promise.all([
       SecureStore.getItemAsync(SIGNIN_KEY),
       SecureStore.getItemAsync('firebaseToken')
     ]);
-
-    // For /auth/verify-token requests, pass the firebase token and onboarding flags.
     if (config.url === '/auth/verify-token') {
       if (firebaseToken) {
         config.headers['Firebase-Token'] = firebaseToken;
@@ -171,8 +145,6 @@ api.interceptors.request.use(async (config) => {
     } else if (authToken) {
       config.headers.Authorization = `Bearer ${authToken}`;
     }
-
-    // Add cache-control headers if applicable.
     const endpoint = config.url.split('?')[0];
     if (cache.endpoints[endpoint]) {
       const cachedData = getCache(config.url, endpoint);
@@ -188,7 +160,6 @@ api.interceptors.request.use(async (config) => {
   }
 }, error => Promise.reject(error));
 
-// Response interceptor to cache GET responses and handle 304 responses.
 api.interceptors.response.use(
   response => {
     const endpoint = response.config.url.split('?')[0];
@@ -205,7 +176,6 @@ api.interceptors.response.use(
         return { ...error.response, data: cachedData.value };
       }
     }
-
     if (error.response?.status === 401) {
       eventEmitter.emit('sessionExpired');
     }
@@ -213,25 +183,20 @@ api.interceptors.response.use(
   }
 );
 
-// --- Global API request deduplication ---
-// We override the default request function:
 api.request = async function(config) {
   const key = `${config.method}:${config.url}:${JSON.stringify(config.params || config.data)}`;
   if (pendingRequests.has(key)) {
     return pendingRequests.get(key);
   }
-  const promise = axios.request(config)
-    .finally(() => pendingRequests.delete(key));
+  const promise = axios.request(config).finally(() => pendingRequests.delete(key));
   pendingRequests.set(key, promise);
   return promise;
 };
 
-// Simple cached GET method
 const cachedGet = async (url, config = {}) => {
   const endpoint = url.split('?')[0];
   const cacheKey = `${endpoint}-${JSON.stringify(config)}`;
   const cached = getCache(cacheKey, endpoint);
-  
   if (cached) {
     return Promise.resolve({ data: cached.value, fromCache: true });
   }

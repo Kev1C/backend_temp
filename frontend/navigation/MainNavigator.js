@@ -9,7 +9,6 @@ import CommunityScreen from '../screens/Home/CommunityScreen';
 import AvatarScreen from '../screens/Profile/AvatarScreen';
 import ProfileScreen from '../screens/Profile/ProfileScreen';
 import CameraScreen from '../screens/Camera/CameraScreen';
-import WorkoutHeatmapScreen from '../screens/Profile/WorkoutHeatmapScreen';
 import { defaultScreenOptions } from './screenOptions';
 
 const Stack = createStackNavigator();
@@ -30,7 +29,6 @@ const MainNavigator = () => (
     <Stack.Screen name="Avatar" component={AvatarScreen} />
     <Stack.Screen name="Profile" component={ProfileScreen} />
     <Stack.Screen name="Camera" component={CameraScreen} />
-    <Stack.Screen name="WorkoutHeatmap" component={WorkoutHeatmapScreen} />
   </Stack.Navigator>
 );
 

@@ -1,12 +1,12 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
-import { View, StyleSheet, Alert, Dimensions } from 'react-native';
+import { View, StyleSheet, Alert, Dimensions, Text } from 'react-native';
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import { useIsFocused } from '@react-navigation/native';
-import { IconButton, FAB, useTheme, Text, Button, MD3Colors } from 'react-native-paper';
+import { IconButton, FAB, useTheme, Button, MD3Colors } from 'react-native-paper';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
-import { useAuthStore, getState } from '../../stores/authStore';
+import { useAuthStore } from '../../stores/authStore';
 import { api } from '../../services/api';
-import { useNutritionStore, formatDate, fetchHeatmapData } from '../../stores/nutritionStore';
+import { useNutritionStore } from '../../stores/nutritionStore';
 import FoodAnalysisBottomSheet from './FoodAnalysisBottomSheet';
 import { useDiamondStore } from '../../stores/diamondStore';
 import AdComponent from '../../Components/SettingScreenAdComponent';
@@ -81,9 +81,7 @@ const CameraScreen = ({ navigation }) => {
     try {
       console.log('Taking picture...');
       const photo = await cameraRef.current.takePictureAsync({
-        //quality: 0.95,
         base64: true,
-        //exif: true,
         width: 1024,
         height: 1024
       });
@@ -95,12 +93,10 @@ const CameraScreen = ({ navigation }) => {
         height: photo.height,
       };
 
-      // Update UI immediately
       setCapturedImage(image);
       setIsModalVisible(true);
       setAnalysisLoading(true);
 
-      // Start analysis asynchronously
       analyzeImage(image).catch(error => {
         console.error('Analysis failed:', error);
         Alert.alert('Analysis Failed', 'Please try again or enter details manually.');
@@ -138,11 +134,9 @@ const CameraScreen = ({ navigation }) => {
   };
 
   const handleRetake = () => {
-    // Use bottomSheetRef.current.close() to properly close the sheet
     if (bottomSheetRef.current) {
       bottomSheetRef.current.close();
     }
-    // The state will be reset in onCloseEnd of the BottomSheet
   };
 
   const getMealType = () => {
@@ -153,12 +147,11 @@ const CameraScreen = ({ navigation }) => {
   };
 
   const handleAdWatched = async (reward) => {
-    // Assuming 1 rewarded video view = 5 diamonds
     const diamondsToAdd = 5;
     try {
       await addDiamonds(diamondsToAdd, authToken);
       Alert.alert('Success', `You've earned ${diamondsToAdd} diamonds!`);
-      setShowAdComponent(false); // Hide the AdComponent after successfully adding diamonds
+      setShowAdComponent(false);
     } catch (error) {
       console.error('Error adding diamonds:', error);
       Alert.alert('Error', 'Failed to add diamonds. Please try again.');
@@ -171,19 +164,14 @@ const CameraScreen = ({ navigation }) => {
       return;
     }
 
-    // The analysis cost is now handled on the backend
     const analysisCost = 5;
     if (balance < analysisCost) {
-        // Show option to watch ad
       setShowAdComponent(true);
       Alert.alert('Insufficient Diamonds', 'You do not have enough diamonds to analyze. Please watch an ad to earn more.');
       return;
     }
 
     try {
-      // First, deduct diamonds as this must be sequential
-      //await deductDiamonds(analysisCost, authToken);
-
       const mealType = getMealType();
       const today = new Date();
       const currentTime = new Date().toLocaleTimeString('en-US', {
@@ -206,38 +194,18 @@ const CameraScreen = ({ navigation }) => {
         healthScore: parseFloat(foodAnalysis.healthScore) || 0,
       };
 
-      // Prepare timestamps for heatmap data
       const startDate = new Date();
       startDate.setMonth(startDate.getMonth() - 3);
       startDate.setUTCHours(0, 0, 0, 0);
       const endDate = new Date();
       endDate.setUTCHours(23, 59, 59, 999);
 
-      // Run independent operations concurrently
-      const [updateResult, heatmapResult] = await Promise.all([
+      await Promise.all([
         updateDailyNutrition(today, nutritionData),
         fetchHeatmapData(startDate.toISOString(), endDate.toISOString())
       ]);
 
       setIsModalVisible(false);
-
-      // Handle store review prompt asynchronously
-      (async () => {
-        const { hasPromptedForReview, setHasPromptedForReview } = useSessionStore.getState();
-        if (!hasPromptedForReview) {
-          try {
-            const isAvailable = await StoreReview.isAvailableAsync();
-            if (isAvailable) {
-              await StoreReview.requestReview();
-              setHasPromptedForReview(true);
-            }
-          } catch (error) {
-            console.error('Store review prompt failed:', error);
-          }
-        }
-      })();
-
-      // Navigate back immediately without waiting for review prompt
       navigation.goBack();
 
     } catch (error) {
@@ -279,7 +247,6 @@ const CameraScreen = ({ navigation }) => {
             facing={facing}
             onCameraReady={handleCameraReady}
           >
-            {/* Top Bar */}
             <View style={[styles.topBar, { marginTop: insets.top }]}>
               <IconButton
                 icon="arrow-left"
@@ -291,8 +258,6 @@ const CameraScreen = ({ navigation }) => {
               <Text style={styles.titleText}>Food Scanner</Text>
               <View style={{ width: 30 }} />
             </View>
-
-            {/* Camera Frame Overlay */}
             <View style={styles.frameContainer}>
               <View style={styles.frame}>
                 <View style={[styles.corner, styles.topLeft]} />
@@ -300,9 +265,10 @@ const CameraScreen = ({ navigation }) => {
                 <View style={[styles.corner, styles.bottomLeft]} />
                 <View style={[styles.corner, styles.bottomRight]} />
               </View>
+              <Text style={styles.frameInstruction}>
+                Place your food within the frame for best results
+              </Text>
             </View>
-
-            {/* Bottom Controls */}
             <View style={[styles.buttonContainer, { paddingBottom: insets.bottom }]}>
               <IconButton
                 icon="camera-flip"
@@ -323,8 +289,6 @@ const CameraScreen = ({ navigation }) => {
             </View>
           </CameraView>
         )}
-
-        {/* Diamond Balance and Ad */}
         <View style={[styles.diamondBalanceContainer, { paddingTop: insets.top }]}>
           <View style={styles.diamondContainer}>
             <MaterialCommunityIcons
@@ -338,7 +302,6 @@ const CameraScreen = ({ navigation }) => {
         {showAdComponent && (
           <AdComponent onAdWatched={handleAdWatched} />
         )}
-
         <FoodAnalysisBottomSheet
           bottomSheetRef={bottomSheetRef}
           capturedImage={capturedImage}
@@ -428,6 +391,17 @@ const styles = StyleSheet.create({
     right: 0,
     borderLeftWidth: 0,
     borderTopWidth: 0,
+  },
+  frameInstruction: {
+    position: 'absolute',
+    bottom: 20,
+    left: 0,
+    right: 0,
+    textAlign: 'center',
+    color: 'white',
+    fontSize: 14,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    padding: 5,
   },
   topBar: {
     position: 'absolute',

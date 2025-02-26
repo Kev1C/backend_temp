@@ -22,16 +22,10 @@ const ProfileStackScreen = () => (
     <ProfileStack.Screen 
       name="ProfileMain" 
       component={ProfileScreen} 
-      options={{
-        unmountOnBlur: true
-      }}
     />
     <ProfileStack.Screen 
       name="Settings" 
       component={SettingsScreen}
-      options={{
-        unmountOnBlur: true
-      }}
     />
   </ProfileStack.Navigator>
 );
@@ -87,6 +81,32 @@ const TabNavigator = () => {
           paddingVertical: 4,
         },
         headerShown: false,
+        tabBarStyle: {
+          backgroundColor: theme.colors.surface,
+          borderTopWidth: 0,
+          elevation: 8,
+          height: 65,
+          paddingTop: 8,
+          paddingBottom: 8,
+          shadowColor: theme.colors.shadow,
+          shadowOffset: {
+            width: 0,
+            height: -2,
+          },
+          shadowOpacity: 0.15,
+          shadowRadius: 6,
+        },
+        tabBarLabelStyle: {
+          fontSize: 12,
+          fontWeight: '600',
+          marginTop: 2,
+        },
+        tabBarItemStyle: {
+          paddingVertical: 4,
+        },
+        headerShown: false,
+        unmountOnBlur: true,
+        tabBarHideOnKeyboard: true
       })}
     >
       <Tab.Screen 
@@ -100,9 +120,14 @@ const TabNavigator = () => {
       <Tab.Screen 
         name="Profile" 
         component={ProfileStackScreen}
-        options={{
-          unmountOnBlur: true
-        }}
+        listeners={({ navigation }) => ({
+          tabPress: e => {
+            // Reset the profile stack when pressing the tab
+            navigation.navigate('Profile', {
+              screen: 'ProfileMain'
+            });
+          },
+        })}
       />
     </Tab.Navigator>
   );

@@ -1,6 +1,6 @@
-const functions = require("firebase-functions");
+const {onRequest} = require("firebase-functions/v2/https");
 const admin = require("firebase-admin");
-const app = require("./app"); // Import your express app.
+const app = require("./app"); // Import your Express app
 
 let isInitialized = false;
 
@@ -21,11 +21,11 @@ const initialize = () => {
 // Initialize once when the module loads
 initialize();
 
-// Export your Express app as a Cloud Function named 'api'
-exports.api = functions.https.onRequest((req, res) => {
-  // Remove /api prefix if it appears twice
-  if (req.url.startsWith("/api/api")) {
-    req.url = req.url.replace("/api/api", "/api");
-  }
-  return app(req, res);
-});
+// Export your Express app as a Cloud Function named 'api' using v2 syntax
+exports.api = onRequest(
+    {
+      timeoutSeconds: 540,
+      memory: "1GB",
+    },
+    app,
+);

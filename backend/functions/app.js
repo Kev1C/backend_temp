@@ -1,43 +1,38 @@
 // backend/app.js
-// require('dotenv').config({ path: path.resolve(__dirname, '.env') });
 const express = require("express");
 const cors = require("cors");
 const morgan = require("morgan");
 const admin = require("firebase-admin");
+const path = require("path");
 
 try {
-  const path = require("path");
   require("dotenv").config({path: path.join(__dirname, ".env")});
   console.log("Environment variables loaded:", {
     USE_FIREBASE_EMULATOR: process.env.USE_FIREBASE_EMULATOR,
-    FIREBASE_PROJECT_ID: process.env.FIREBASE_PROJECT_ID,
+    // FIREBASE_PROJECT_ID: process.env.FIREBASE_PROJECT_ID,
   });
 } catch (error) {
   console.error("Failed to load .env file:", error);
 }
 
-// Custom error handling middleware
+// Import custom middleware and database connection helper
 const {errorHandler, notFound} = require("./middleware/errorMiddleware");
-// Database connection helper
 const connectDB = require("./config/db");
 
 // Initialize Firebase Admin SDK
 try {
   if (!admin.apps.length) {
     if (process.env.USE_FIREBASE_EMULATOR) {
-      // When running with emulators, use a default config that matches the frontend project
       admin.initializeApp({
         projectId: "fitness-app-bf54e",
       });
     } else if (process.env.FIREBASE_SERVICE_ACCOUNT) {
-      // If you've stored your service account in an environment variable, parse it
       const serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT);
       admin.initializeApp({
         credential: admin.credential.cert(serviceAccount),
-        projectId: process.env.FIREBASE_PROJECT_ID || "fitness-app-bf54e",
+        // projectId: process.env.FIREBASE_PROJECT_ID || "fitness-app-bf54e",
       });
     } else {
-      // When deployed on Firebase, initializeApp() without parameters is enough
       admin.initializeApp();
     }
     console.log("Firebase Admin SDK initialized successfully.");
@@ -57,7 +52,6 @@ const userRoutes = require("./routes/users");
 const nutritionRoutes = require("./routes/nutritionRoutes");
 const diamondRoutes = require("./routes/diamonds");
 
-// Remove the isDbConnected flag and connect before setting up routes
 // Connect to database
 connectDB().catch(console.error);
 
@@ -77,6 +71,14 @@ app.use((req, res, next) => {
   next();
 });
 
+// URL rewriting middleware for requests starting with "/api/api"
+app.use((req, res, next) => {
+  if (req.url.startsWith("/api/api")) {
+    req.url = req.url.replace("/api/api", "/api");
+  }
+  next();
+});
+
 // CORS configuration
 app.use(
     cors({
@@ -92,18 +94,12 @@ app.use(
         "http://localhost:5001",
       ],
       methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-      allowedHeaders: [
-        "Content-Type",
-        "Authorization",
-        "Accept",
-        "Firebase-Token",
-      ],
+      allowedHeaders: ["Content-Type", "Authorization", "Accept", "Firebase-Token"],
       credentials: true,
       preflightContinue: false,
       optionsSuccessStatus: 204,
     }),
 );
-// Enable pre-flight requests for all routes
 app.options("*", cors());
 
 // Body parsing middleware
@@ -134,7 +130,6 @@ app.use(notFound);
 app.use(errorHandler);
 
 // Only start the server automatically when this file is run directly.
-// When deployed as a Firebase Cloud Function, Firebase will import the app without triggering app.listen().
 if (require.main === module) {
   const PORT = process.env.PORT || 5000;
   app.listen(PORT, () => {
@@ -143,4 +138,5 @@ if (require.main === module) {
   });
 }
 
+// Export the Express app
 module.exports = app;

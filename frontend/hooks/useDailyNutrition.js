@@ -1,6 +1,7 @@
 // frontend/hooks/useDailyNutrition.js
 import { useState, useCallback, useContext, useRef } from 'react';
-import { api, cachedGet } from '../services/api';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { api } from '../services/api';
 import { useErrorHandler } from './useErrorHandler';
 import { AuthContext } from '../context/AuthContext';
 import isEqual from 'lodash/isEqual';
@@ -33,19 +34,38 @@ const useDailyNutrition = (initialDate) => {
 
   const fetchDailyNutrition = useCallback(async (date, force = false) => {
     const userId = user?.userId || user?.id || user?._id;
-  
     if (!userId) {
       return;
     }
-  
+
     const formattedDate = formatDate(date);
     const cacheKey = getCacheKey(date);
-  
+
+    // If forced, clear both local and persisted cache.
     if (force) {
       cache.current.delete(cacheKey);
       lastFetch.current.delete(cacheKey);
+      await AsyncStorage.removeItem(cacheKey);
     }
-  
+
+    // First, check persisted AsyncStorage cache if available.
+    if (!force) {
+      try {
+        const persisted = await AsyncStorage.getItem(cacheKey);
+        if (persisted) {
+          const parsed = JSON.parse(persisted); // expected: { data, timestamp }
+          if (Date.now() - parsed.timestamp < CACHE_DURATION) {
+            setDailyNutrition(parsed.data);
+            prevDailyNutrition.current = parsed.data;
+            return;
+          }
+        }
+      } catch (err) {
+        console.error('Error reading persisted daily nutrition:', err);
+      }
+    }
+
+    // Next, attempt in‑memory cache.
     if (!force && !shouldFetch(cacheKey)) {
       const cachedData = cache.current.get(cacheKey);
       if (cachedData && isEqual(cachedData, prevDailyNutrition.current)) {
@@ -56,15 +76,22 @@ const useDailyNutrition = (initialDate) => {
         return;
       }
     }
-  
+
     setLoading(true);
     try {
       const response = await api.get(`/nutrition/daily/${formattedDate}`);
       const newDailyNutrition = response.data || { calories: 0, protein: 0, carbs: 0, fat: 0, meals: [] };
-  
+
+      // Update in‑memory caches.
       cache.current.set(cacheKey, newDailyNutrition);
       lastFetch.current.set(cacheKey, Date.now());
-  
+
+      // Persist to AsyncStorage along with a timestamp.
+      await AsyncStorage.setItem(
+        cacheKey,
+        JSON.stringify({ data: newDailyNutrition, timestamp: Date.now() })
+      );
+
       if (!isEqual(newDailyNutrition, prevDailyNutrition.current)) {
         setDailyNutrition(newDailyNutrition);
         prevDailyNutrition.current = newDailyNutrition;
@@ -79,7 +106,7 @@ const useDailyNutrition = (initialDate) => {
     } finally {
       setLoading(false);
     }
-  }, [user, formatDate, getCacheKey, shouldFetch, handleError]);
+  }, [user, formatDate, getCacheKey, shouldFetch, handleError, dailyNutrition]);
 
   const clearCache = useCallback(() => {
     cache.current.clear();
