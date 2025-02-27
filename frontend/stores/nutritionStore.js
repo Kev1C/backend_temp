@@ -1,12 +1,13 @@
+// frontend/stores/nutritionStore.js
 import { create } from 'zustand';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { api } from '../services/api';
 import { cacheStore } from './cacheStore';
 import { useAuthStore } from './authStore';
 
-// For daily nutrition, use a shorter TTL (5 minutes) since users can add multiple meals.
-const DAILY_CACHE_DURATION = 30 * 60 * 1000; // 5 minutes
-// Other data (like heatmap) can still use a longer TTL.
+// TTL values
+//const DAILY_CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
+const DAILY_CACHE_DURATION = 30 * 24 * 60 * 60 * 1000; // 5 minutes
 const LONG_CACHE_DURATION = 30 * 24 * 60 * 60 * 1000; // 30 days
 
 export const formatDate = (date) => {
@@ -46,24 +47,26 @@ export const useNutritionStore = create((set, get) => ({
 
   setNutritionalGoals: (goals) => set({ nutritionalGoals: goals }),
 
-  // Use a shorter cache duration for daily nutrition.
+  // Updated fetchDailyNutrition using a stale-while-revalidate strategy.
+  // When not forced and if valid persisted data exists in AsyncStorage, we use it immediately
+  // and trigger a background fetch to update the data.
   fetchDailyNutrition: async (date, force = false) => {
     const formattedDate = formatDate(date);
     const cacheKey = `nutrition_${formattedDate}`;
     const state = get();
 
-    // Bypass cache if force=true.
+    // If already loaded in state for this date (and we are not forcing a refresh), use it.
     if (!force && state.dailyNutrition && state.currentDate === formattedDate) {
       console.log('Using existing state data for:', formattedDate);
       return Promise.resolve(state.dailyNutrition);
     }
 
+    // Try to retrieve persisted data (if not forcing).
     if (!force) {
       try {
         const persisted = await AsyncStorage.getItem(cacheKey);
         if (persisted) {
           const parsed = JSON.parse(persisted);
-          // Note: Use the shorter daily cache duration.
           if (Date.now() - parsed.timestamp < DAILY_CACHE_DURATION) {
             console.log('Using persisted nutrition data for:', formattedDate);
             set({ 
@@ -71,6 +74,25 @@ export const useNutritionStore = create((set, get) => ({
               currentDate: formattedDate, 
               isLoading: false 
             });
+            // Trigger a background revalidation.
+            (async () => {
+              try {
+                const response = await api.get(`/nutrition/daily/${formattedDate}`);
+                const freshData = response.data;
+                cacheStore.getState().set(cacheKey, freshData, LONG_CACHE_DURATION);
+                set({ dailyNutrition: freshData, currentDate: formattedDate });
+                try {
+                  await AsyncStorage.setItem(
+                    cacheKey, 
+                    JSON.stringify({ data: freshData, timestamp: Date.now() })
+                  );
+                } catch (err) {
+                  console.error('Error persisting nutrition data:', err);
+                }
+              } catch (err) {
+                console.error('Background fetch error for nutrition data:', err);
+              }
+            })();
             return parsed.data;
           }
         }
@@ -79,17 +101,20 @@ export const useNutritionStore = create((set, get) => ({
       }
     }
 
+    // If there is a pending request for this date, return it.
     if (state.pendingRequests.has(formattedDate)) {
       console.log('Returning pending request for:', formattedDate);
       return state.pendingRequests.get(formattedDate);
     }
 
+    // No valid cache found (or force is true), do a network fetch.
     const requestPromise = (async () => {
       console.log('Fetching from server for:', formattedDate);
       set({ isLoading: true, error: null });
       try {
         const response = await api.get(`/nutrition/daily/${formattedDate}`);
         const data = response.data;
+        // Update the in-memory cacheStore.
         cacheStore.getState().set(cacheKey, data, LONG_CACHE_DURATION);
         set({ dailyNutrition: data, currentDate: formattedDate, isLoading: false });
         try {
@@ -114,7 +139,7 @@ export const useNutritionStore = create((set, get) => ({
   },
 
   updateDailyNutrition: async (date, newMeal) => {
-    // Use a new Date object as needed.
+    // Create a Date object if date is a string.
     const dateObj = typeof date === 'string' ? new Date(date) : date || new Date();
     const formattedDate = formatDate(dateObj);
     const cacheKey = `nutrition_${formattedDate}`;
@@ -146,7 +171,7 @@ export const useNutritionStore = create((set, get) => ({
       } catch (err) {
         console.error('Error removing persisted nutrition data:', err);
       }
-      // Force a fresh network fetch.
+      // Now force a fresh network fetch to update state.
       await get().fetchDailyNutrition(dateObj, true);
       return serverData;
     } catch (error) {

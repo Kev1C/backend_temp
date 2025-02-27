@@ -1,3 +1,4 @@
+//frontend/screens/Home/HomeScreen.js
 import React, { useMemo, useState, useEffect, useCallback } from 'react';
 import { Text, View, Image, Alert, TouchableOpacity } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -238,7 +239,7 @@ const HomeScreen = () => {
   // Refresh nutrition data every time HomeScreen comes into focus.
   useFocusEffect(
     useCallback(() => {
-      fetchDailyNutrition(selectedDate, true);
+      fetchDailyNutrition(selectedDate);
     }, [selectedDate, fetchDailyNutrition])
   );
 
