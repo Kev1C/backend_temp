@@ -129,14 +129,7 @@ app.use("/api/diamonds", diamondRoutes);
 app.use(notFound);
 app.use(errorHandler);
 
-// Only start the server automatically when this file is run directly.
-if (require.main === module) {
-  const PORT = process.env.PORT || 5000;
-  app.listen(PORT, () => {
-    console.log(`Server running on port ${PORT}`);
-    console.log(`Health check available at: http://localhost:${PORT}/api/health`);
-  });
-}
+// NO SERVER START HERE - this section has been removed
 
 // Export the Express app
 module.exports = app;

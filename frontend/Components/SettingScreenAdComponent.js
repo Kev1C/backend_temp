@@ -21,7 +21,8 @@ const modalWidth = screenWidth * 0.85;
 const modalHeight = screenHeight * 0.6;
 
 const SettingScreenAdComponent = ({ showModal, setShowModal, onAdWatched }) => {
-  const { settingsAdReady, showSettingsRewardedAd, initializeAds } = useAdStore();
+  // Note: We retrieve settingsReward from the ad store here.
+  const { settingsAdReady, showSettingsRewardedAd, initializeAds, settingsReward } = useAdStore();
   const scaleAnim = React.useRef(new Animated.Value(0.8)).current;
   const opacityAnim = React.useRef(new Animated.Value(0)).current;
 
@@ -80,9 +81,7 @@ const SettingScreenAdComponent = ({ showModal, setShowModal, onAdWatched }) => {
       <Animated.View style={[styles.modalOverlay, { opacity: opacityAnim }]}>
         <Animated.View style={[
           styles.modalContent,
-          {
-            transform: [{ scale: scaleAnim }]
-          }
+          { transform: [{ scale: scaleAnim }] }
         ]}>
           <View style={styles.chestContainer}>
             <Image source={DiamondChest} style={styles.modalTopChest} />
@@ -95,7 +94,8 @@ const SettingScreenAdComponent = ({ showModal, setShowModal, onAdWatched }) => {
             </Text>
             <View style={styles.rewardContainer}>
               <MaterialCommunityIcons name="diamond-stone" size={24} color="#00FFFF" />
-              <Text style={styles.rewardText}>45 Diamonds</Text>
+              {/* Dynamic reward amount */}
+              <Text style={styles.rewardText}>{settingsReward} Diamonds</Text>
             </View>
             <Text style={styles.benefitText}>
               Use diamonds to unlock the Food Scanner and get detailed nutrition data instantly
@@ -232,9 +232,9 @@ const styles = StyleSheet.create({
     top: 15,
     right: 15,
     padding: 10,
-    zIndex: 20, // Ensure button is above other elements
-    backgroundColor: 'rgba(255, 255, 255, 0.9)', // Add slight background
-    borderRadius: 20, // Make it circular
+    zIndex: 20,
+    backgroundColor: 'rgba(255, 255, 255, 0.9)',
+    borderRadius: 20,
   },
 });
 

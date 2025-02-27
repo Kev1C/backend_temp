@@ -7,35 +7,34 @@ import {
   AdEventType,
   TestIds,
 } from 'react-native-google-mobile-ads';
-import { useDiamondStore } from './diamondStore'; // Import diamond store
-import { initRewardedAd } from '../utils/adUtils'; // Import the utility
+import { useDiamondStore } from './diamondStore';
+import { initRewardedAd } from '../utils/adUtils';
 
 export const useAdStore = create((set) => {
-  // Initialize the rewarded ad instances for home and settings screens
+  // Define ad unit ids for home and settings
   const homeAdUnitId =
-    //__DEV__
     false
       ? TestIds.REWARDED
       : Platform.OS === 'ios'
       ? 'YOUR_IOS_REWARDED_AD_UNIT_ID_FOR_HOME'
       : process.env.GOOGLE_ADMOB_ANDROID_REWARDED_HomeScreen;
 
-    const settingsAdUnitId =
-    //__DEV__
+  const settingsAdUnitId =
       false
         ? TestIds.REWARDED
         : Platform.OS === 'ios'
         ? 'YOUR_IOS_REWARDED_AD_UNIT_ID_FOR_SETTINGS'
         : process.env.GOOGLE_ADMOB_ANDROID_REWARDED_SettingScreen;
 
-  // Create the store and return state and actions
   return {
     homeRewardedAd: null,
     homeAdReady: false,
+    homeReward: 45, // Default reward amount for home ad
     settingsRewardedAd: null,
     settingsAdReady: false,
+    settingsReward: 45, // Default reward amount for settings ad
 
-    // Initialization function to be called once (e.g., at app startup)
+    // Initialization function for ads
     initializeAds: () => {
       // Home Screen Ad
       const homeKeywords = ['fitness', 'health', 'workout', 'exercise'];
@@ -50,7 +49,11 @@ export const useAdStore = create((set) => {
             set({ homeAdReady: false });
           },
           onEarnedReward: (reward) => {
-            const diamondReward = reward?.amount || 75;
+            // Set the reward value from AdMob or use default 75
+            const diamondReward = reward?.amount || 45;
+            // Update the store reward value so UI shows the right amount next time
+            set({ homeReward: diamondReward });
+            // Award diamonds
             useDiamondStore.getState().addDiamonds(diamondReward);
           }
         }
@@ -77,7 +80,8 @@ export const useAdStore = create((set) => {
             set({ settingsAdReady: false });
           },
           onEarnedReward: (reward) => {
-            const diamondReward = reward?.amount || 75;
+            const diamondReward = reward?.amount || 45;
+            set({ settingsReward: diamondReward });
             useDiamondStore.getState().addDiamonds(diamondReward);
           }
         }
@@ -85,7 +89,7 @@ export const useAdStore = create((set) => {
       set({ settingsRewardedAd: settingsAd.adInstance });
     },
 
-    // Functions to show the preloaded ads
+    // Function to show home ad
     showHomeRewardedAd: async () => {
       const { homeRewardedAd, homeAdReady } = useAdStore.getState();
       if (!homeRewardedAd || !homeAdReady) {
@@ -99,6 +103,7 @@ export const useAdStore = create((set) => {
       }
     },
 
+    // Function to show settings ad
     showSettingsRewardedAd: async () => {
       const { settingsRewardedAd, settingsAdReady } = useAdStore.getState();
       if (!settingsRewardedAd || !settingsAdReady) {

@@ -9,12 +9,13 @@ import {
   Text,
   Alert,
   Dimensions,
-  Animated, Platform,
+  Animated,
+  Platform,
 } from 'react-native';
 import { useDiamondStore } from '../stores/diamondStore';
 import DiamondChest from '../assets/images/cropped.png';
 import { useAdStore } from '../stores/adStore';
-import { MaterialCommunityIcons } from '@expo/vector-icons'; // Add this import
+import { MaterialCommunityIcons } from '@expo/vector-icons';
 
 const screenWidth = Dimensions.get('window').width;
 const screenHeight = Dimensions.get('window').height;
@@ -23,7 +24,7 @@ const modalHeight = screenHeight * 0.55;
 
 const HomescreenAdComponent = () => {
   const { addDiamonds } = useDiamondStore();
-  const { homeAdReady, showHomeRewardedAd, initializeAds } = useAdStore();
+  const { homeAdReady, showHomeRewardedAd, initializeAds, homeReward } = useAdStore();
   const [showModal, setShowModal] = useState(false);
 
   // Initialize ads on mount
@@ -44,7 +45,7 @@ const HomescreenAdComponent = () => {
     setShowModal(false);
   };
 
-  // Add these animations
+  // Animation setup
   const scaleAnim = React.useRef(new Animated.Value(0.8)).current;
   const opacityAnim = React.useRef(new Animated.Value(0)).current;
 
@@ -55,13 +56,13 @@ const HomescreenAdComponent = () => {
           toValue: 1,
           useNativeDriver: true,
           tension: 50,
-          friction: 7
+          friction: 7,
         }),
         Animated.timing(opacityAnim, {
           toValue: 1,
           duration: 300,
-          useNativeDriver: true
-        })
+          useNativeDriver: true,
+        }),
       ]).start();
     }
   }, [showModal]);
@@ -71,13 +72,13 @@ const HomescreenAdComponent = () => {
       Animated.timing(scaleAnim, {
         toValue: 0.8,
         duration: 200,
-        useNativeDriver: true
+        useNativeDriver: true,
       }),
       Animated.timing(opacityAnim, {
         toValue: 0,
         duration: 200,
-        useNativeDriver: true
-      })
+        useNativeDriver: true,
+      }),
     ]).start(() => setShowModal(false));
   };
 
@@ -92,12 +93,12 @@ const HomescreenAdComponent = () => {
 
       <Modal visible={showModal} transparent onRequestClose={handleClose}>
         <Animated.View style={[styles.modalOverlay, { opacity: opacityAnim }]}>
-          <Animated.View style={[
-            styles.modalContent,
-            {
-              transform: [{ scale: scaleAnim }]
-            }
-          ]}>
+          <Animated.View
+            style={[
+              styles.modalContent,
+              { transform: [{ scale: scaleAnim }] },
+            ]}
+          >
             <View style={styles.chestContainer}>
               <Image source={DiamondChest} style={styles.modalTopChest} />
             </View>
@@ -109,7 +110,8 @@ const HomescreenAdComponent = () => {
               </Text>
               <View style={styles.rewardContainer}>
                 <MaterialCommunityIcons name="diamond-stone" size={24} color="#00FFFF" />
-                <Text style={styles.rewardText}>45 Diamonds</Text>
+                {/* Use dynamic reward from the adStore */}
+                <Text style={styles.rewardText}>{homeReward} Diamonds</Text>
               </View>
               <Text style={styles.benefitText}>
                 Use diamonds to unlock the Food Scanner and get detailed nutrition data instantly
