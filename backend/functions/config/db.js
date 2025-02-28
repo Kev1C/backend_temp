@@ -11,6 +11,8 @@ const connectDB = async () => {
   }
 
   try {
+    console.log("MongoDB URI available:", !!process.env.MONGO_URI);
+    
     const conn = await mongoose.connect(process.env.MONGO_URI, {
       maxPoolSize: 10,
       serverSelectionTimeoutMS: 5000,
@@ -18,11 +20,11 @@ const connectDB = async () => {
       family: 4,
     });
 
-    isConnected = conn.connection.readyState === 1; // set flag based on connection state
+    isConnected = conn.connection.readyState === 1;
     console.log(`MongoDB Connected: ${conn.connection.host}`);
   } catch (error) {
     console.error(`Error connecting to MongoDB: ${error.message}`);
-    throw new Error(error);
+    // Log the error but don't throw it to prevent function initialization failure
   }
 };
 

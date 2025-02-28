@@ -5,12 +5,10 @@ const morgan = require("morgan");
 const admin = require("firebase-admin");
 const path = require("path");
 
+// Load environment variables
 try {
   require("dotenv").config({path: path.join(__dirname, ".env")});
-  console.log("Environment variables loaded:", {
-    USE_FIREBASE_EMULATOR: process.env.USE_FIREBASE_EMULATOR,
-    // FIREBASE_PROJECT_ID: process.env.FIREBASE_PROJECT_ID,
-  });
+  console.log("Environment variables loaded successfully");
 } catch (error) {
   console.error("Failed to load .env file:", error);
 }
@@ -18,9 +16,6 @@ try {
 // Import custom middleware and database connection helper
 const {errorHandler, notFound} = require("./middleware/errorMiddleware");
 const connectDB = require("./config/db");
-
-// Remove Firebase Admin SDK initialization from here as it's already in index.js
-// Firebase Admin will be available through the require('firebase-admin') above
 
 // Import routes
 const authRoutes = require("./routes/auth");
@@ -33,24 +28,16 @@ const userRoutes = require("./routes/users");
 const nutritionRoutes = require("./routes/nutritionRoutes");
 const diamondRoutes = require("./routes/diamonds");
 
-// Connect to database
-connectDB().catch(console.error);
-
+// Create Express app first
 const app = express();
+
+// Connect to database but don't block startup if it fails
+connectDB().catch((error) => {
+  console.error("Database connection failed, but continuing function startup:", error.message);
+});
 
 // Request logging using morgan
 app.use(morgan("dev"));
-
-// Custom request logger (optional)
-app.use((req, res, next) => {
-  console.log("Incoming request:", {
-    method: req.method,
-    url: req.url,
-    body: req.body,
-    headers: req.headers,
-  });
-  next();
-});
 
 // URL rewriting middleware for requests starting with "/api/api"
 app.use((req, res, next) => {
@@ -106,11 +93,9 @@ app.use("/api/users", userRoutes);
 app.use("/api/nutrition", nutritionRoutes);
 app.use("/api/diamonds", diamondRoutes);
 
-// Error handling middleware: 404 then global error handler
+// Error handling middleware
 app.use(notFound);
 app.use(errorHandler);
-
-// NO SERVER START HERE - this section has been removed
 
 // Export the Express app
 module.exports = app;
