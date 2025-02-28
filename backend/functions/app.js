@@ -19,27 +19,8 @@ try {
 const {errorHandler, notFound} = require("./middleware/errorMiddleware");
 const connectDB = require("./config/db");
 
-// Initialize Firebase Admin SDK
-try {
-  if (!admin.apps.length) {
-    if (process.env.USE_FIREBASE_EMULATOR) {
-      admin.initializeApp({
-        projectId: "fitness-app-bf54e",
-      });
-    } else if (process.env.FIREBASE_SERVICE_ACCOUNT) {
-      const serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT);
-      admin.initializeApp({
-        credential: admin.credential.cert(serviceAccount),
-        // projectId: process.env.FIREBASE_PROJECT_ID || "fitness-app-bf54e",
-      });
-    } else {
-      admin.initializeApp();
-    }
-    console.log("Firebase Admin SDK initialized successfully.");
-  }
-} catch (error) {
-  console.error("Error initializing Firebase Admin SDK:", error);
-}
+// Remove Firebase Admin SDK initialization from here as it's already in index.js
+// Firebase Admin will be available through the require('firebase-admin') above
 
 // Import routes
 const authRoutes = require("./routes/auth");
