@@ -81,47 +81,19 @@ const authStore = create((set, get) => ({
     try {
       set({ loading: true, error: null });
       
-      // Combine token verification and potential onboarding sync
+      // Simple verification request - no complex onboarding sync here
       const response = await api.post('/auth/verify-token', {
         firebaseToken,
-        includeOnboardingStatus: true, // Request onboarding status
-        // If there is onboarding data available from your onboardingStore, include it:
-        // (Assuming you have a similar store or method to get onboardingData)
-        ...(get().onboardingData ? { onboardingData: get().onboardingData } : {})
+        includeOnboardingStatus: true
       });
 
       if (response.status !== 200) {
         throw new Error('Token verification failed.');
       }
 
-      let { token, user: userData, onboardingNeedsSync } = response.data;
+      const { token, user: userData } = response.data;
 
-      // If onboarding needs sync, call verify-token again with onboarding sync flag
-      if (onboardingNeedsSync) {
-        const newFirebaseToken = await auth.currentUser.getIdToken(true);
-        const regenResponse = await api.post('/auth/verify-token', {
-          firebaseToken: newFirebaseToken,
-          syncOnboarding: true,
-          // Include actual onboarding data as necessary:
-          onboardingData: get().onboardingData || {}
-        });
-
-        if (regenResponse.status !== 200) {
-          throw new Error('Failed to regenerate token after onboarding update.');
-        }
-
-        token = regenResponse.data.token;
-        userData = regenResponse.data.user;
-        firebaseToken = newFirebaseToken;
-      }
-
-      // --- Batch SecureStore operations ---
-      await Promise.all([
-        SecureStore.setItemAsync(SIGNIN_KEY, token),
-        SecureStore.setItemAsync(FIREBASE_TOKEN_KEY, firebaseToken),
-        SecureStore.setItemAsync(USER_DATA_KEY, JSON.stringify(userData))
-      ]);
-
+      // Update state immediately for UI to proceed
       set({
         authToken: token,
         firebaseToken,
@@ -129,9 +101,16 @@ const authStore = create((set, get) => ({
         lastUserFetch: Date.now()
       });
 
-      // Schedule next token refresh
+      // Batch SecureStore operations in background
+      Promise.all([
+        SecureStore.setItemAsync(SIGNIN_KEY, token),
+        SecureStore.setItemAsync(FIREBASE_TOKEN_KEY, firebaseToken),
+        SecureStore.setItemAsync(USER_DATA_KEY, JSON.stringify(userData))
+      ]).catch(err => console.warn('Error in background token storage:', err));
+
+      // Schedule next token refresh in background
       const decoded = jwtDecode(token);
-      get().scheduleTokenRefresh(decoded.exp);
+      setTimeout(() => get().scheduleTokenRefresh(decoded.exp), 0);
 
       return token;
     } catch (error) {
@@ -145,32 +124,61 @@ const authStore = create((set, get) => ({
   initializeAuth: async () => {
     try {
       set({ loading: true });
-      const storageKeys = [SIGNIN_KEY, FIREBASE_TOKEN_KEY, USER_DATA_KEY];
-      const [storedToken, storedFirebaseToken, storedUser] = await Promise.all(
-        storageKeys.map(k => SecureStore.getItemAsync(k))
-      );
-
-      if (storedToken && storedFirebaseToken && storedUser) {
-        const decoded = jwtDecode(storedToken);
-        const now = Date.now() / 1000;
-
-        if (decoded.exp && decoded.exp > now) {
-          set({
-            authToken: storedToken,
-            firebaseToken: storedFirebaseToken,
-            user: JSON.parse(storedUser),
-          });
-
-          get().scheduleTokenRefresh(decoded.exp);
-        } else if (auth.currentUser) {
-          const newFirebaseToken = await auth.currentUser.getIdToken(true);
-          await get().refreshTokenAndSyncOnboarding(newFirebaseToken);
+      
+      // Fast path: just check if we have a token
+      const storedToken = await SecureStore.getItemAsync(SIGNIN_KEY);
+      
+      if (storedToken) {
+        // Do a quick decode - don't validate yet
+        try {
+          const decoded = jwtDecode(storedToken);
+          const now = Date.now() / 1000;
+          
+          if (decoded.exp && decoded.exp > now) {
+            // Token looks valid - set it immediately to unblock UI
+            set({ authToken: storedToken });
+            
+            // Fetch the rest in the background
+            Promise.all([
+              SecureStore.getItemAsync(FIREBASE_TOKEN_KEY),
+              SecureStore.getItemAsync(USER_DATA_KEY)
+            ]).then(([storedFirebaseToken, storedUser]) => {
+              if (storedFirebaseToken && storedUser) {
+                set({
+                  firebaseToken: storedFirebaseToken,
+                  user: JSON.parse(storedUser)
+                });
+                
+                // Schedule refresh in background
+                setTimeout(() => {
+                  get().scheduleTokenRefresh(decoded.exp);
+                }, 0);
+              } else if (auth.currentUser) {
+                // Missing some data but user is logged in
+                auth.currentUser.getIdToken(true)
+                  .then(newFirebaseToken => 
+                    get().refreshTokenAndSyncOnboarding(newFirebaseToken))
+                  .catch(err => console.warn('Background token refresh failed:', err));
+              }
+            }).catch(err => console.warn('Error loading auth data:', err));
+          } else if (auth.currentUser) {
+            // Token expired but user is logged in
+            setTimeout(() => {
+              auth.currentUser.getIdToken(true)
+                .then(newFirebaseToken => 
+                  get().refreshTokenAndSyncOnboarding(newFirebaseToken))
+                .catch(err => console.warn('Background token refresh failed:', err));
+            }, 0);
+          }
+        } catch (decodeError) {
+          console.warn('Error decoding token:', decodeError);
         }
       }
     } catch (error) {
-      set({ error: error.message });
       console.error('Error initializing auth:', error);
+      set({ error: error.message });
     } finally {
+      // Always mark as not loading to unblock UI
       set({ loading: false });
     }
   },
@@ -188,12 +196,63 @@ const authStore = create((set, get) => ({
     }
   },
 
-  signInAnonymously: async () => {
+  signInAnonymously: async (userCredential) => {
     try {
       set({ loading: true, error: null });
-      const result = await signInAsGuest();
+      
+      // Check if there's already a pending auth operation
+      const pendingAuth = get().pendingAuth;
+      if (pendingAuth) {
+        await pendingAuth;
+        set({ loading: false });
+        return;
+      }
+      
+      // Get user credentials - either passed in or sign in as guest
+      const result = userCredential || await signInAsGuest();
       const fbToken = await result.user.getIdToken(true);
-      return await get().refreshTokenAndSyncOnboarding(fbToken);
+      
+      // Create a simpler auth process that completes faster
+      const authPromise = (async () => {
+        try {
+          const response = await api.post('/auth/verify-token', {
+            firebaseToken: fbToken,
+            includeOnboardingStatus: true
+          });
+          
+          if (response.status !== 200) {
+            throw new Error('Token verification failed.');
+          }
+          
+          const { token, user: userData } = response.data;
+          
+          // Update state immediately for UI
+          set({
+            authToken: token,
+            firebaseToken: fbToken,
+            user: userData,
+            lastUserFetch: Date.now()
+          });
+          
+          // Storage operations happen in background
+          Promise.all([
+            SecureStore.setItemAsync(SIGNIN_KEY, token),
+            SecureStore.setItemAsync(FIREBASE_TOKEN_KEY, fbToken),
+            SecureStore.setItemAsync(USER_DATA_KEY, JSON.stringify(userData))
+          ]).catch(err => console.warn('Background storage error:', err));
+          
+          // Schedule refresh in background
+          const decoded = jwtDecode(token);
+          setTimeout(() => get().scheduleTokenRefresh(decoded.exp), 0);
+          
+          return token;
+        } finally {
+          set({ pendingAuth: null });
+        }
+      })();
+      
+      set({ pendingAuth: authPromise });
+      return await authPromise;
     } catch (error) {
       set({ error: error.message, loading: false });
       throw new Error('Guest sign in failed: ' + error.message);
@@ -204,18 +263,22 @@ const authStore = create((set, get) => ({
     try {
       set({ loading: true, error: null });
       get().clearRefreshTimeout();
-      await Promise.all([
-        SecureStore.deleteItemAsync(SIGNIN_KEY),
-        SecureStore.deleteItemAsync(FIREBASE_TOKEN_KEY),
-        SecureStore.deleteItemAsync(USER_DATA_KEY),
-      ]);
+      
+      // Set auth state to null immediately so UI can react
       set({
         authToken: null,
         firebaseToken: null,
         user: null,
-        loading: false,
-        lastUserFetch: null
       });
+      
+      // Clean up storage in background
+      Promise.all([
+        SecureStore.deleteItemAsync(SIGNIN_KEY),
+        SecureStore.deleteItemAsync(FIREBASE_TOKEN_KEY),
+        SecureStore.deleteItemAsync(USER_DATA_KEY),
+      ]).catch(err => console.warn('Error cleaning up auth storage:', err));
+      
+      set({ loading: false, lastUserFetch: null });
     } catch (error) {
       set({ error: error.message, loading: false });
       throw error;
@@ -223,32 +286,50 @@ const authStore = create((set, get) => ({
   },
 
   updateUserData: async (force = false) => {
-    const { lastUserFetch, pendingAuth } = get();
+    const { lastUserFetch, pendingAuth, authToken } = get();
+
+    // Don't update if we don't have a token
+    if (!authToken) return;
 
     if (pendingAuth) {
       await pendingAuth;
     }
 
+    // Skip if recently fetched (unless forced)
     if (!force && lastUserFetch && Date.now() - lastUserFetch < USER_FETCH_INTERVAL) {
       return;
     }
 
     try {
       set({ loading: true, error: null });
+      
+      // Ensure token is valid
       await get().ensureValidToken();
+      
+      // Fetch user data
       const response = await api.get('/users/me');
       const userData = response.data;
 
-      await SecureStore.setItemAsync(USER_DATA_KEY, JSON.stringify(userData));
+      // Update state immediately
       set({
         user: userData,
         lastUserFetch: Date.now(),
         loading: false,
       });
+      
+      // Store in background
+      SecureStore.setItemAsync(USER_DATA_KEY, JSON.stringify(userData))
+        .catch(err => console.warn('Error storing user data:', err));
     } catch (error) {
       set({ error: error.message, loading: false });
       throw error;
     }
+  },
+  
+  // Helper to check if user is a guest
+  isGuest: () => {
+    const { user } = get();
+    return user?.type === 'guest' || false;
   }
 }));
 

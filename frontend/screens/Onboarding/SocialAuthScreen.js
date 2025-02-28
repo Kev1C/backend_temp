@@ -42,29 +42,30 @@ export default function SocialAuthScreen({ navigation }) {
 
         // Get backend JWT using Firebase token
         await signInAnonymously(userCredential);
-
-        // Load the latest onboarding data AFTER signing in
-        await useOnboardingStore.getState().loadOnboardingData();
-
-        // Check if all required onboarding data is present
-        const hasAllData = onboardingData?.gender &&
+        
+        // Navigate immediately to show UI faster
+        navigation.replace('Tabs');
+        
+        // Load onboarding data in background after navigation
+        useOnboardingStore.getState().loadOnboardingData().then(({onboardingData}) => {
+          const hasAllData = onboardingData?.gender &&
                          onboardingData?.height &&
                          onboardingData?.weight &&
                          (onboardingData?.goal || onboardingData?.fitnessGoal);
-
-        if (hasAllData && !isOnboardingComplete) {
-          await completeOnboarding();
-          navigation.replace('Tabs');
-        } else {
-          // If onboarding data is incomplete, start from the beginning
-          navigation.replace('GenderSelection');
-        }
+                         
+          if (!hasAllData) {
+            // If onboarding data is incomplete, start from the beginning
+            useOnboardingStore.getState().resetOnboarding();
+            navigation.replace('GenderSelection');
+          } else {
+            useOnboardingStore.getState().completeOnboarding();
+          }
+        });
       }
     } catch (error) {
       console.error('Google sign in error:', error);
       setError('Failed to sign in with Google. Please try again.');
       Alert.alert('Error', 'Failed to sign in with Google. Please try again.');
-    } finally {
       setLoading(false);
     }
   };
@@ -73,54 +74,33 @@ export default function SocialAuthScreen({ navigation }) {
     try {
       setLoading(true);
       setError(null);
-
-      // Sign in as guest using Firebase
+      
+      // Simplified login flow - authenticate first
       await signInAnonymously();
-
-      // Load the latest onboarding data AFTER signing in
-      await useOnboardingStore.getState().loadOnboardingData();
-
-      // Get the fresh data after loading
-      const { onboardingData, isOnboardingComplete } = useOnboardingStore.getState();
-
-      console.log('Current onboarding data:', onboardingData);
-      console.log('Is onboarding complete?', isOnboardingComplete);
-
-      // Check if all required onboarding data is present
-      const hasAllData = Boolean(
-        onboardingData?.gender &&
-        onboardingData?.height &&
-        onboardingData?.weight &&
-        (onboardingData?.goal || onboardingData?.fitnessGoal)
-      );
-
-      console.log('Has all required data?', hasAllData);
-      console.log('Required fields:', {
-        gender: Boolean(onboardingData?.gender),
-        height: Boolean(onboardingData?.height),
-        weight: Boolean(onboardingData?.weight),
-        goal: Boolean(onboardingData?.goal || onboardingData?.fitnessGoal)
+      
+      // Navigate immediately to home screen
+      navigation.replace('Tabs');
+      
+      // Process onboarding data in background after navigation
+      useOnboardingStore.getState().loadOnboardingData().then(({onboardingData}) => {
+        const hasRequiredData = Boolean(
+          onboardingData?.gender &&
+          onboardingData?.height &&
+          onboardingData?.weight &&
+          (onboardingData?.goal || onboardingData?.fitnessGoal)
+        );
+        
+        if (!hasRequiredData) {
+          useOnboardingStore.getState().resetOnboarding();
+          navigation.replace('GenderSelection');
+        } else {
+          useOnboardingStore.getState().completeOnboarding();
+        }
       });
-
-      if (hasAllData && !isOnboardingComplete) {
-        console.log('Attempting to complete onboarding...');
-        await completeOnboarding();
-        console.log('Onboarding completed, navigating to Tabs');
-        navigation.replace('Tabs');
-      } else if (!hasAllData) {
-        console.log('Missing onboarding data, redirecting to GenderSelection');
-        // Reset onboarding data before starting over
-        await useOnboardingStore.getState().resetOnboarding();
-        navigation.replace('GenderSelection');
-      } else {
-        console.log('Onboarding already complete, navigating to Tabs');
-        navigation.replace('Tabs');
-      }
     } catch (error) {
       console.error('Guest sign in error:', error);
       setError('Failed to sign in as guest. Please try again.');
       Alert.alert('Error', 'Failed to sign in as guest. Please try again.');
-    } finally {
       setLoading(false);
     }
   };

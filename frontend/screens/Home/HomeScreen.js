@@ -45,7 +45,9 @@ const HomeScreen = () => {
   const [recentMeals, setRecentMeals] = useState([]);
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [isInitialized, setIsInitialized] = useState(false);
+  const [isCalculatingNutrients, setIsCalculatingNutrients] = useState(false);
 
+  // Show welcome modal for new users
   useEffect(() => {
     if (isOnboardingComplete && isNewUser) {
       setShowWelcomeModal(true);
@@ -57,71 +59,77 @@ const HomeScreen = () => {
     markUserAsSeen();
   };
 
+  // Initialize UI immediately but calculate nutrients in the background
   useEffect(() => {
-    const initializeNutrients = async () => {
-      if (user && onboardingData && isOnboardingComplete) {
-        const userData = {
-          ...onboardingData,
-          fitnessGoal: onboardingData.goal || onboardingData.fitnessGoal,
-        };
-        try {
-          await fetchCalculations(userData);
-          resetMacros();
-        } catch (error) {
-          console.error('Error initializing nutrients:', error);
-        }
-      }
-    };
-    initializeNutrients();
-  }, [user, onboardingData, isOnboardingComplete, fetchCalculations, resetMacros]);
+    setIsInitialized(true);
+    
+    // Default empty state for new users - don't wait for API
+    if (!dailyNutrition) {
+      const defaultNutrition = {
+        date: formatDate(selectedDate),
+        calories: 0,
+        protein: 0, 
+        carbs: 0,
+        fats: 0,
+        meals: []
+      };
+      useNutritionStore.setState({ dailyNutrition: defaultNutrition, currentDate: formatDate(selectedDate) });
+    }
+    
+    // Perform nutrient calculation in background
+    if (user && onboardingData && isOnboardingComplete && !isCalculatingNutrients) {
+      setIsCalculatingNutrients(true);
+      const userData = {
+        ...onboardingData,
+        fitnessGoal: onboardingData.goal || onboardingData.fitnessGoal,
+      };
+      
+      // Use setTimeout to defer the calculation after initial render
+      setTimeout(() => {
+        fetchCalculations(userData)
+          .then(() => {
+            resetMacros();
+            setIsCalculatingNutrients(false);
+          })
+          .catch(error => {
+            console.error('Error initializing nutrients:', error);
+            setIsCalculatingNutrients(false);
+          });
+      }, 100);
+    }
+  }, [user, onboardingData, isOnboardingComplete, fetchCalculations, resetMacros, selectedDate, dailyNutrition]);
 
   const handleDateSelect = useCallback(
     async (date) => {
       if (!date) return;
       const newFormattedDate = formatDate(date);
       const currentFormattedDate = selectedDate ? formatDate(selectedDate) : null;
+      
       if (currentFormattedDate === newFormattedDate && dailyNutrition) return;
+      
       setSelectedDate(date);
-      await fetchDailyNutrition(date);
-    },
-    [selectedDate, dailyNutrition, fetchDailyNutrition]
-  );
-
-  useEffect(() => {
-    if (!isInitialized) {
-      const initializeData = async () => {
-        console.log('Initial data load for date:', selectedDate);
-        await handleDateSelect(selectedDate);
-        setIsInitialized(true);
-      };
-      initializeData();
-    }
-  }, [isInitialized, handleDateSelect, selectedDate]);
-
-  const fetchRecentMeals = useCallback(
-    async (date) => {
-      try {
-        setLoadingStates((prev) => ({ ...prev, meals: true }));
-        const formattedDate = formatDate(date);
-
-        if (isGuest) {
-          const storedMeals = await AsyncStorage.getItem(`guest-meals-${formattedDate}`);
-          setRecentMeals(storedMeals ? JSON.parse(storedMeals) : []);
-          return;
-        }
-
-        const response = await api.get('/meals/recent', {
-          params: { date: formattedDate },
-        });
-        setRecentMeals(response.data);
-      } catch (error) {
-        console.error('Error fetching recent meals:', error);
-        setRecentMeals([]);
-      } finally {
-        setLoadingStates((prev) => ({ ...prev, meals: false }));
+      
+      // For new users or same-day data, don't fetch nutrition data
+      const isToday = newFormattedDate === formatDate(new Date());
+      const isNewUser = !dailyNutrition || (dailyNutrition.meals && dailyNutrition.meals.length === 0);
+      
+      if (isNewUser && isToday) {
+        // Just set an empty default
+        const defaultNutrition = {
+          date: newFormattedDate,
+          calories: 0,
+          protein: 0,
+          carbs: 0,
+          fats: 0,
+          meals: []
+        };
+        useNutritionStore.setState({ dailyNutrition: defaultNutrition, currentDate: newFormattedDate });
+      } else {
+        // Only fetch data for non-new users or historical dates
+        await fetchDailyNutrition(date);
       }
     },
-    [isGuest]
+    [selectedDate, dailyNutrition, fetchDailyNutrition]
   );
 
   const saveGuestMealData = useCallback(
@@ -170,9 +178,9 @@ const HomeScreen = () => {
       (async () => {
         try {
           setLoadingStates((prev) => ({ ...prev, saving: true }));
-          // Update nutrition data (invalidate caches and fetch fresh data)
+          // Update nutrition data
           await updateDailyNutrition(selectedDate, newMeal);
-          // Save the meal to backend (or locally in guest mode)
+          // Save the meal
           await saveMealToBackend(newMeal, selectedDate);
           // Force a refresh of daily nutrition.
           await fetchDailyNutrition(selectedDate, true);
@@ -197,7 +205,6 @@ const HomeScreen = () => {
       const formattedDate = formatDate(selectedDate);
       const nutritionDate = formatDate(new Date(dailyNutrition.date));
       if (formattedDate === nutritionDate) {
-        console.log('Updating UI with new nutrition data');
         resetMacros();
         addMacros(
           dailyNutrition.protein || 0,
@@ -216,7 +223,7 @@ const HomeScreen = () => {
       return {
         current: { calories: 0, protein: 0, carbs: 0, fats: 0 },
         goals: calculatedNutrients || { calories: 0, protein: 0, carbs: 0, fats: 0 },
-        loading: isLoadingNutrition,
+        loading: isLoadingNutrition || isCalculatingNutrients,
       };
     }
     return {
@@ -227,20 +234,24 @@ const HomeScreen = () => {
         fats: Number(dailyNutrition.fats || 0),
       },
       goals: calculatedNutrients || { calories: 0, protein: 0, carbs: 0, fats: 0 },
-      loading: isLoadingNutrition,
+      loading: isLoadingNutrition || isCalculatingNutrients,
     };
-  }, [dailyNutrition, calculatedNutrients, isLoadingNutrition]);
+  }, [dailyNutrition, calculatedNutrients, isLoadingNutrition, isCalculatingNutrients]);
 
   const mealsData = useMemo(() => ({
     meals: dailyNutrition?.meals || [],
     isLoading: isLoadingNutrition || loadingStates.saving,
   }), [dailyNutrition?.meals, isLoadingNutrition, loadingStates.saving]);
 
-  // Refresh nutrition data every time HomeScreen comes into focus.
+  // Only fetch nutrition data when screen comes into focus for non-new users
   useFocusEffect(
     useCallback(() => {
-      fetchDailyNutrition(selectedDate);
-    }, [selectedDate, fetchDailyNutrition])
+      const isNewUser = !dailyNutrition || 
+                       (dailyNutrition.meals && dailyNutrition.meals.length === 0);
+      if (!isNewUser) {
+        fetchDailyNutrition(selectedDate);
+      }
+    }, [selectedDate, fetchDailyNutrition, dailyNutrition])
   );
 
   return (
