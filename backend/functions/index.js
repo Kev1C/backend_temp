@@ -1,5 +1,5 @@
-//backend/functions/index.js
-const functions = require("firebase-functions");
+// backend/functions/index.js
+// const functions = require("firebase-functions");
 const {onRequest} = require("firebase-functions/v2/https");
 const admin = require("firebase-admin");
 

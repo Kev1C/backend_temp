@@ -12,7 +12,7 @@ const connectDB = async () => {
 
   try {
     console.log("MongoDB URI available:", !!process.env.MONGO_URI);
-    
+
     const conn = await mongoose.connect(process.env.MONGO_URI, {
       maxPoolSize: 10,
       serverSelectionTimeoutMS: 5000,

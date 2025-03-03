@@ -2,7 +2,6 @@
 const express = require("express");
 const cors = require("cors");
 const morgan = require("morgan");
-const admin = require("firebase-admin");
 const path = require("path");
 
 // Load environment variables

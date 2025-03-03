@@ -4,8 +4,8 @@ import { api } from './services/api';
 export default ({ config }) => ({
   ...config, 
   extra: {
-      apiBaseUrl: 'http://127.0.0.1:5001/fitness-app-bf54e/us-central1/api'//'http://127.0.0.1:5001', // Updated to match emulator port
-    //apiBaseUrl: 'https://us-central1-fitness-app-bf54e.cloudfunctions.net/api',
+      //apiBaseUrl: 'http://127.0.0.1:5001/fitness-app-bf54e/us-central1/api'//'http://127.0.0.1:5001', // Updated to match emulator port
+      apiBaseUrl: 'https://api-6vsbghmcqq-uc.a.run.app',
   },
   plugins: [
     [

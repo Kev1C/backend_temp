@@ -1,4 +1,4 @@
-//backend/functions/middleware/firebaseAuth.js
+// backend/functions/middleware/firebaseAuth.js
 const admin = require("firebase-admin");
 
 // No initialization here - rely on the initialization in index.js
@@ -13,10 +13,10 @@ const firebaseAuth = async (req, res, next) => {
   try {
     // Verify the Firebase token
     const decodedToken = await admin.auth().verifyIdToken(firebaseToken);
-    
+
     // Attach the decoded token to the request
     req.user = decodedToken;
-    
+
     console.log("Firebase authentication successful for user:", decodedToken.uid);
     next();
   } catch (error) {
