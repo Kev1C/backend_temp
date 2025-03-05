@@ -1,30 +1,40 @@
 // backend/config/db.js
+const { createClient } = require('@supabase/supabase-js');
+require('dotenv').config();
 
-const mongoose = require("mongoose");
-
-let isConnected = false; // track the connection
+let supabaseClient = null;
 
 const connectDB = async () => {
-  if (isConnected) {
-    console.log("=> using existing database connection");
-    return;
+  if (supabaseClient) {
+    console.log("=> using existing Supabase connection");
+    return supabaseClient;
   }
 
   try {
-    console.log("MongoDB URI available:", !!process.env.MONGO_URI);
+    console.log("Supabase URL available:", !!process.env.SUPABASE_URL);
+    console.log("Supabase Key available:", !!process.env.SUPABASE_SERVICE_KEY);
 
-    const conn = await mongoose.connect(process.env.MONGO_URI, {
-      maxPoolSize: 10,
-      serverSelectionTimeoutMS: 5000,
-      socketTimeoutMS: 45000,
-      family: 4,
-    });
+    supabaseClient = createClient(
+      process.env.SUPABASE_URL,
+      process.env.SUPABASE_SERVICE_KEY,
+      {
+        auth: {
+          persistSession: false,
+        }
+      }
+    );
 
-    isConnected = conn.connection.readyState === 1;
-    console.log(`MongoDB Connected: ${conn.connection.host}`);
+    // Test connection
+    const { data, error } = await supabaseClient.from('users').select('id').limit(1);
+    
+    if (error) throw new Error(`Connection test failed: ${error.message}`);
+    
+    console.log("Supabase Connected");
+    return supabaseClient;
   } catch (error) {
-    console.error(`Error connecting to MongoDB: ${error.message}`);
+    console.error(`Error connecting to Supabase: ${error.message}`);
     // Log the error but don't throw it to prevent function initialization failure
+    return null;
   }
 };
 
