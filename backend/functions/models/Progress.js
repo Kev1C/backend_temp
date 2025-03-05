@@ -1,18 +1,71 @@
-// models/Progress.js
-const mongoose = require("mongoose");
+// backend/models/Progress.js
+const connectDB = require('../config/db');
 
-const ProgressSchema = new mongoose.Schema({
-  user: {type: mongoose.Schema.Types.ObjectId, ref: "User", required: true},
-  date: {type: Date, default: Date.now},
-  weight: {type: Number}, // in kg or lbs
-  muscleMass: {type: Number}, // in kg or appropriate unit
-  fatPercentage: {type: Number},
-  measurements: {
-    chest: {type: Number},
-    waist: {type: Number},
-    hips: {type: Number},
-    // Add more as needed
-  },
-}, {timestamps: true});
+class Progress {
+  // Find progress entries by user ID
+  static async findByUser(userId) {
+    const supabase = await connectDB();
+    
+    const { data, error } = await supabase
+      .from('progress')
+      .select('*')
+      .eq('user_id', userId)
+      .order('date', { ascending: false });
+    
+    if (error) {
+      console.error("Error finding progress:", error);
+      throw error;
+    }
 
-module.exports = mongoose.model("Progress", ProgressSchema);
+    return data;
+  }
+
+  // Create new progress entry
+  static async create(progressData) {
+    const supabase = await connectDB();
+    
+    const { data, error } = await supabase
+      .from('progress')
+      .insert([{
+        user_id: progressData.user,
+        date: progressData.date || new Date(),
+        weight: progressData.weight,
+        muscle_mass: progressData.muscleMass,
+        fat_percentage: progressData.fatPercentage,
+        chest_measurement: progressData.measurements?.chest,
+        waist_measurement: progressData.measurements?.waist,
+        hips_measurement: progressData.measurements?.hips
+      }])
+      .select()
+      .single();
+    
+    if (error) {
+      console.error("Error creating progress:", error);
+      throw error;
+    }
+
+    return data;
+  }
+
+  // Get latest progress entry
+  static async findLatest(userId) {
+    const supabase = await connectDB();
+    
+    const { data, error } = await supabase
+      .from('progress')
+      .select('*')
+      .eq('user_id', userId)
+      .order('date', { ascending: false })
+      .limit(1)
+      .single();
+    
+    if (error && error.code !== 'PGRST116') { // PGRST116 is "not found"
+      console.error("Error finding latest progress:", error);
+      throw error;
+    }
+
+    return data;
+  }
+}
+
+module.exports = Progress;

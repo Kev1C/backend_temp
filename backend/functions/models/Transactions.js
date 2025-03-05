@@ -1,29 +1,49 @@
-// backend/models/Transaction.js
-const mongoose = require("mongoose");
+// backend/models/Transactions.js
+const connectDB = require('../config/db');
 
-const transactionSchema = new mongoose.Schema({
-  user: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: "User",
-    required: true,
-  },
-  type: {
-    type: String,
-    enum: ["EARN", "SPEND", "PURCHASE"], // Possible transaction types
-    required: true,
-  },
-  amount: {
-    type: Number,
-    required: true,
-  },
-  description: {
-    type: String,
-    required: true,
-  },
-  balanceAfter: { // Store the balance after the transaction for auditing
-    type: Number,
-    required: true,
-  },
-}, {timestamps: true});
+class Transaction {
+  // Create new transaction
+  static async create(transactionData) {
+    const supabase = await connectDB();
+    
+    const { data, error } = await supabase
+      .from('transactions')
+      .insert([{
+        user_id: transactionData.user,
+        type: transactionData.type,
+        amount: transactionData.amount,
+        description: transactionData.description,
+        balance_after: transactionData.balanceAfter
+      }])
+      .select()
+      .single();
+    
+    if (error) {
+      console.error("Error creating transaction:", error);
+      throw error;
+    }
 
-module.exports = mongoose.model("Transaction", transactionSchema);
+    return data;
+  }
+
+  // Get user's transaction history
+  static async findByUser(userId, limit = 20) {
+    const supabase = await connectDB();
+    
+    const { data, error } = await supabase
+      .from('transactions')
+      .select('*')
+      .eq('user_id', userId)
+      .order('created_at', { ascending: false })
+      .limit(limit);
+    
+    if (error) {
+      console.error("Error finding transactions:", error);
+      throw error;
+    }
+
+    return data;
+  }
+}
+
+module.exports = Transaction;
