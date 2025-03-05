@@ -1,8 +1,8 @@
 // backend/controllers/foodAnalysisController.js
-const {GoogleGenerativeAI} = require("@google/generative-ai");
+const { GoogleGenerativeAI } = require("@google/generative-ai");
 require("dotenv").config();
 const Diamond = require("../models/Diamond");
-const Transaction = require("../models/Transactions"); // Import Transaction model
+const Transaction = require("../models/Transactions");
 const asyncHandler = require("express-async-handler");
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
@@ -27,7 +27,7 @@ const analyzeFood = asyncHandler(async (req, res) => {
     });
   }
 
-  const {imageBase64} = req.body;
+  const { imageBase64 } = req.body;
 
   if (!imageBase64) {
     console.error("No image data in request");
@@ -39,9 +39,10 @@ const analyzeFood = asyncHandler(async (req, res) => {
 
   // **Diamond Deduction Logic**
   const userId = req.user.userId;
-  const analysisCost = parseInt(process.env.ANALYSIS_COST, 10); // Use the defined constant
+  const analysisCost = parseInt(process.env.ANALYSIS_COST, 10);
 
-  const diamond = await Diamond.findOne({user: userId});
+  // Get diamond balance using the updated Diamond model
+  const diamond = await Diamond.findByUser(userId);
   if (!diamond) {
     return res.status(404).json({
       success: false,
@@ -56,24 +57,23 @@ const analyzeFood = asyncHandler(async (req, res) => {
     });
   }
 
-  // Deduct diamonds and record the transaction
-  diamond.balance -= analysisCost;
-  await diamond.save();
+  // Deduct diamonds and update balance
+  const newBalance = diamond.balance - analysisCost;
+  await Diamond.updateBalance(userId, newBalance);
 
-  // Create a transaction record
+  // Create a transaction record using the updated Transaction model
   await Transaction.create({
     user: userId,
     type: "SPEND",
     amount: analysisCost,
     description: "Deducted diamonds for food analysis",
-    balanceAfter: diamond.balance,
+    balanceAfter: newBalance,
   });
 
   console.log("Image size:", Math.round(imageBase64.length / 1024), "KB");
   console.log("Image data received, analyzing with Gemini...");
 
   // Initialize the model
-  // const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash-exp" });
   const model = genAI.getGenerativeModel({model: "gemini-2.0-flash-thinking-exp-01-21"});
 
   // Prepare the image data
@@ -132,7 +132,7 @@ const analyzeFood = asyncHandler(async (req, res) => {
     *   If you are unsure about an aspect, provide your best estimate based on available information and consider indicating the uncertainty in your reasoning (though not in the final JSON output).
     *   If the image contains multiple food items, provide an analysis for the most prominent or central item.
     *   Assume the photo was taken with a standard phone camera.
-    `;
+  `;
 
   try {
     // Generate content using Gemini

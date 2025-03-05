@@ -1,15 +1,14 @@
 // controllers/userController.js
 const asyncHandler = require("express-async-handler");
 const User = require("../models/User");
+const DailyNutrition = require("../models/DailyNutrition");
 
 // Get user data
 const getUserData = async (req, res) => {
   try {
     const userId = req.user.userId || req.user.id;
 
-    const user = await User.findById(userId)
-        .select("-password")
-        .lean();
+    const user = await User.findById(userId);
 
     if (!user) {
       return res.status(404).json({
@@ -48,18 +47,7 @@ const updateUserData = async (req, res) => {
       updates.isOnboardingComplete = isOnboardingComplete;
     }
 
-    // Add timestamp for updates
-    updates.lastUpdated = Date.now();
-
-    const user = await User.findOneAndUpdate(
-        {_id: userId},
-        {$set: updates},
-        {
-          new: true,
-          lean: true,
-          select: "-password",
-        },
-    );
+    const user = await User.update(userId, updates);
 
     if (!user) {
       return res.status(404).json({message: "User not found"});
@@ -81,41 +69,56 @@ const updateUserData = async (req, res) => {
 
 // Update nutritional goals with optimized query and etag support
 const updateNutritionalGoals = asyncHandler(async (req, res) => {
-  const userId = req.user.userId || req.user._id;
+  const userId = req.user.userId || req.user.id;
   const {calories, protein, carbs, fat} = req.body;
 
-  const updates = {};
-  if (calories) updates["nutritionalGoals.calories"] = calories;
-  if (protein) updates["nutritionalGoals.protein"] = protein;
-  if (carbs) updates["nutritionalGoals.carbs"] = carbs;
-  if (fat) updates["nutritionalGoals.fat"] = fat;
-  updates["nutritionalGoals.lastUpdated"] = Date.now();
+  try {
+    // Get the current date
+    const today = new Date().toISOString().split('T')[0];
+    
+    // Find existing daily nutrition record for today
+    let dailyNutrition = await DailyNutrition.findByUserAndDate(userId, today);
+    
+    if (dailyNutrition) {
+      // Update existing daily nutrition record
+      dailyNutrition = await DailyNutrition.update(dailyNutrition.id, {
+        calories: calories || dailyNutrition.calories,
+        protein: protein || dailyNutrition.protein,
+        carbs: carbs || dailyNutrition.carbs,
+        fats: fat || dailyNutrition.fats
+      });
+    } else {
+      // Create a new daily nutrition record
+      dailyNutrition = await DailyNutrition.create({
+        userId,
+        date: today,
+        calories: calories || 0,
+        protein: protein || 0,
+        carbs: carbs || 0,
+        fats: fat || 0
+      });
+    }
 
-  const updatedUser = await User.findByIdAndUpdate(
-      userId,
-      {$set: updates},
-      {
-        new: true,
-        lean: true,
-        select: "nutritionalGoals",
-      },
-  );
+    // Generate ETag for caching
+    const etag = require("crypto")
+        .createHash("md5")
+        .update(JSON.stringify(dailyNutrition))
+        .digest("hex");
 
-  if (!updatedUser) {
-    res.status(404);
-    throw new Error("User not found");
+    res.set("ETag", etag);
+    res.json({
+      nutritionalGoals: {
+        calories: dailyNutrition.calories,
+        protein: dailyNutrition.protein,
+        carbs: dailyNutrition.carbs,
+        fat: dailyNutrition.fats,
+        lastUpdated: new Date()
+      }
+    });
+  } catch (error) {
+    console.error("Error updating nutritional goals:", error);
+    res.status(500).json({ message: "Server error" });
   }
-
-  // Generate ETag for caching
-  const etag = require("crypto")
-      .createHash("md5")
-      .update(JSON.stringify(updatedUser.nutritionalGoals))
-      .digest("hex");
-
-  res.set("ETag", etag);
-  res.json({
-    nutritionalGoals: updatedUser.nutritionalGoals,
-  });
 });
 
 module.exports = {
