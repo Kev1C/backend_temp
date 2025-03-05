@@ -1,13 +1,16 @@
 // backend/routes/meals.js
-const express = require("express");
+const express = require('express');
 const router = express.Router();
-const {getRecentMeals, addMeal} = require("../controllers/mealController");
-const auth = require("../middleware/auth");
+const { getRecentMeals, addMeal } = require('../controllers/mealController');
+const auth = require('../middleware/auth');
 
-// Get recent meals
-router.get("/recent", auth, getRecentMeals);
+// Apply auth middleware to all meal routes
+router.use(auth);
 
-// Add a new meal
-router.post("/", auth, addMeal);
+// GET /api/meals - Get recent meals
+router.get('/', getRecentMeals);
+
+// POST /api/meals - Add a new meal
+router.post('/', addMeal);
 
 module.exports = router;

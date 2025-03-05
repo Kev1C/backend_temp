@@ -9,19 +9,13 @@ const supabase = createClient(
   process.env.SUPABASE_SERVICE_KEY
 );
 
-// Sign up with email/password
-const signUp = async (req, res) => {
+// Sign up anonymously
+const signUpAnonymously = async (req, res) => {
   try {
-    const { email, password, username } = req.body;
-    
-    if (!email || !password) {
-      return res.status(400).json({ message: "Email and password are required" });
-    }
-    
-    // Create the auth user in Supabase
+    // Create anonymous user in Supabase
     const { data: authData, error: authError } = await supabase.auth.signUp({
-      email,
-      password,
+      email: null,
+      password: null
     });
     
     if (authError) {
@@ -31,10 +25,10 @@ const signUp = async (req, res) => {
     // Create the user record in our database
     const user = await User.create({
       id: authData.user.id,
-      username: username || email.split('@')[0],
-      email,
+      username: `user_${authData.user.id.substring(0, 8)}`,
+      email: null,
       authProvider: 'supabase',
-      type: "regular",
+      type: "anonymous",
       isOnboardingComplete: false
     });
     
@@ -62,62 +56,12 @@ const signUp = async (req, res) => {
       onboardingNeedsSync: !user.isOnboardingComplete
     });
   } catch (error) {
-    console.error("Signup error:", error);
-    res.status(500).json({ message: "Error creating account" });
+    console.error("Anonymous signup error:", error);
+    res.status(500).json({ message: "Error creating anonymous account" });
   }
 };
 
-// Sign in with email/password
-const signIn = async (req, res) => {
-  try {
-    const { email, password } = req.body;
-    
-    if (!email || !password) {
-      return res.status(400).json({ message: "Email and password are required" });
-    }
-    
-    // Sign in with Supabase
-    const { data, error } = await supabase.auth.signInWithPassword({
-      email,
-      password,
-    });
-    
-    if (error) {
-      return res.status(401).json({ message: error.message });
-    }
-    
-    // Get user details from our users table
-    const user = await User.findById(data.user.id);
-    
-    if (!user) {
-      return res.status(404).json({ message: "User not found" });
-    }
-    
-    res.json({
-      token: data.session.access_token,
-      user: {
-        id: user.id,
-        email: user.email,
-        username: user.username,
-        authProvider: user.authProvider,
-        type: user.type,
-        gender: user.gender,
-        age: user.age,
-        height: user.height,
-        weight: user.weight,
-        fitnessGoal: user.fitnessGoal,
-        isOnboardingComplete: user.isOnboardingComplete,
-        diamonds: user.diamonds
-      },
-      onboardingNeedsSync: !user.isOnboardingComplete,
-    });
-  } catch (error) {
-    console.error("Signin error:", error);
-    res.status(500).json({ message: "Error signing in" });
-  }
-};
-
-// Sign in with OAuth providers (Google, Facebook, etc.)
+// Sign in with OAuth providers (Google, Apple, Facebook)
 const signInWithOAuth = async (req, res) => {
   try {
     const { provider } = req.body;
@@ -168,7 +112,7 @@ const handleOAuthCallback = async (req, res) => {
       // Create user record if not exists
       user = await User.create({
         id: data.user.id,
-        username: data.user.email ? data.user.email.split('@')[0] : `user_${data.user.id}`,
+        username: data.user.email ? data.user.email.split('@')[0] : `user_${data.user.id.substring(0, 8)}`,
         email: data.user.email,
         authProvider: data.user.app_metadata.provider || 'supabase',
         type: "regular",
@@ -269,61 +213,59 @@ const getCurrentUser = async (req, res) => {
   }
 };
 
-// Reset password
-const resetPassword = async (req, res) => {
+// Delete user account
+const deleteAccount = async (req, res) => {
   try {
-    const { email } = req.body;
+    // Get the user ID from the authenticated session
+    const { data: { user } } = await supabase.auth.getUser();
     
-    if (!email) {
-      return res.status(400).json({ message: "Email is required" });
+    if (!user) {
+      return res.status(401).json({ message: "Not authenticated" });
     }
     
-    const { error } = await supabase.auth.resetPasswordForEmail(email, {
-      redirectTo: process.env.PASSWORD_RESET_REDIRECT_URL,
-    });
+    // Delete user's diamond balance first (foreign key constraint)
+    const supabaseClient = await connectDB();
+    const { error: diamondError } = await supabaseClient
+      .from('diamonds')
+      .delete()
+      .eq('user_id', user.id);
     
-    if (error) {
-      return res.status(400).json({ message: error.message });
+    if (diamondError) {
+      console.error("Error deleting user's diamonds:", diamondError);
+      return res.status(500).json({ message: "Error deleting account data" });
     }
     
-    res.json({ message: "Password reset email sent" });
+    // Delete user from our database
+    const { error: userError } = await supabaseClient
+      .from('users')
+      .delete()
+      .eq('id', user.id);
+    
+    if (userError) {
+      console.error("Error deleting user record:", userError);
+      return res.status(500).json({ message: "Error deleting user record" });
+    }
+    
+    // Delete user from Supabase Auth
+    const { error: authError } = await supabase.auth.admin.deleteUser(user.id);
+    
+    if (authError) {
+      console.error("Error deleting auth user:", authError);
+      return res.status(500).json({ message: "Error deleting authentication data" });
+    }
+    
+    res.json({ message: "Account deleted successfully" });
   } catch (error) {
-    console.error("Password reset error:", error);
-    res.status(500).json({ message: "Error sending password reset email" });
-  }
-};
-
-// Update user password
-const updatePassword = async (req, res) => {
-  try {
-    const { password } = req.body;
-    
-    if (!password) {
-      return res.status(400).json({ message: "New password is required" });
-    }
-    
-    const { error } = await supabase.auth.updateUser({
-      password
-    });
-    
-    if (error) {
-      return res.status(400).json({ message: error.message });
-    }
-    
-    res.json({ message: "Password updated successfully" });
-  } catch (error) {
-    console.error("Password update error:", error);
-    res.status(500).json({ message: "Error updating password" });
+    console.error("Account deletion error:", error);
+    res.status(500).json({ message: "Error deleting account" });
   }
 };
 
 module.exports = {
-  signUp,
-  signIn,
+  signUpAnonymously,
   signInWithOAuth,
   handleOAuthCallback,
   signOut,
   getCurrentUser,
-  resetPassword,
-  updatePassword
+  deleteAccount
 };

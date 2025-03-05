@@ -2,7 +2,11 @@
 const connectDB = require('../config/db');
 
 class Progress {
-  // Find progress entries by user ID
+  /**
+   * Find progress entries by user ID
+   * @param {string} userId - The user's ID
+   * @returns {Promise<Array>} Array of progress entries
+   */
   static async findByUser(userId) {
     const supabase = await connectDB();
     
@@ -20,7 +24,11 @@ class Progress {
     return data;
   }
 
-  // Create new progress entry
+  /**
+   * Create new progress entry
+   * @param {Object} progressData - The progress data to save
+   * @returns {Promise<Object>} Created progress entry
+   */
   static async create(progressData) {
     const supabase = await connectDB();
     
@@ -47,7 +55,11 @@ class Progress {
     return data;
   }
 
-  // Get latest progress entry
+  /**
+   * Get latest progress entry
+   * @param {string} userId - The user's ID
+   * @returns {Promise<Object|null>} Latest progress entry or null
+   */
   static async findLatest(userId) {
     const supabase = await connectDB();
     

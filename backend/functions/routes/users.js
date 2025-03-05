@@ -1,16 +1,22 @@
-// backend/routes/users.js
-const express = require("express");
+const express = require('express');
 const router = express.Router();
-const auth = require("../middleware/auth");
-const {getUserData, updateUserData, updateNutritionalGoals} = require("../controllers/userController");
+const {
+  getUserData,
+  updateUserData,
+  updateNutritionalGoals
+} = require('../controllers/userController');
+const auth = require('../middleware/auth');
 
-// Get user data
-router.get("/me", auth, getUserData);
+// Apply auth middleware to all user routes
+router.use(auth);
 
-// Update user data
-router.put("/me", auth, updateUserData);
+// GET /api/users/me - Get current user data
+router.get('/me', getUserData);
 
-// Update nutritional goals
-router.put("/nutrition-goals", auth, updateNutritionalGoals);
+// PUT /api/users/me - Update user data
+router.put('/me', updateUserData);
+
+// POST /api/users/goals - Update nutritional goals
+router.post('/goals', updateNutritionalGoals);
 
 module.exports = router;

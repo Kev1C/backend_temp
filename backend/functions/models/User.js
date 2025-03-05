@@ -38,7 +38,7 @@ class User {
     return this.transformUserData(data);
   }
 
-  // Find user by Firebase UID
+  // Find user by Firebase UID (for migration purposes only)
   static async findByFirebaseUid(firebaseUid) {
     const supabase = await connectDB();
     
@@ -80,10 +80,11 @@ class User {
     const { data, error } = await supabase
       .from('users')
       .insert([{
+        id: userData.id, // This ensures the Supabase Auth ID matches our users table ID
         username: userData.username,
         email: userData.email,
         firebase_uid: userData.firebaseUid,
-        auth_provider: userData.authProvider || 'firebase',
+        auth_provider: userData.authProvider || 'supabase',
         user_type: userData.type || 'regular',
         role: userData.role || 'user',
         gender: userData.gender,

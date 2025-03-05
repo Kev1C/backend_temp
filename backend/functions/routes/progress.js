@@ -1,8 +1,7 @@
 // backend/routes/progress.js
 const express = require("express");
 const router = express.Router();
-const Progress = require("../models/Progress");
-const User = require("../models/User"); // Add this if not already imported
+const progressController = require("../controllers/progressController");
 const auth = require("../middleware/auth");
 
 // Add Progress Entry
@@ -12,29 +11,22 @@ router.post("/", auth, async (req, res) => {
     console.log("Request body:", req.body);
     console.log("User ID:", req.user.userId);
 
-    const {weight, muscleMass, fatPercentage} = req.body;
+    const { weight } = req.body;
 
     // Validate input
     if (!weight) {
       return res.status(400).json({
         error: "Weight is required.",
-        received: {weight},
+        received: { weight },
       });
     }
 
-    const progress = new Progress({
-      user: req.user.userId,
-      weight: Number(weight),
-      muscleMass: muscleMass ? Number(muscleMass) : null,
-      fatPercentage: fatPercentage ? Number(fatPercentage) : null,
-      measurements: req.body.measurements,
-      date: req.body.date || new Date(),
-    });
-
-    console.log("Progress object before save:", progress);
-    const savedProgress = await progress.save();
+    const savedProgress = await progressController.createProgress(
+      req.user.userId, 
+      req.body
+    );
+    
     console.log("Saved progress:", savedProgress);
-
     res.status(201).json(savedProgress);
   } catch (err) {
     console.error("Error saving progress:", err);
@@ -52,14 +44,7 @@ router.get("/", auth, async (req, res) => {
     console.log("User ID from request:", req.user.userId);
     console.log("Auth header:", req.header("Authorization"));
 
-    // Verify user exists
-    const userExists = await User.findById(req.user.userId);
-    console.log("User exists:", !!userExists);
-
-    // Get progress entries
-    const progresses = await Progress.find({user: req.user.userId})
-        .sort({date: -1})
-        .lean();
+    const progresses = await progressController.getUserProgress(req.user.userId);
 
     console.log("Retrieved progress entries:", progresses.length);
     console.log("First entry (if exists):", progresses[0] || "No entries");
@@ -69,6 +54,25 @@ router.get("/", auth, async (req, res) => {
     console.error("Error fetching progresses:", err);
     res.status(500).json({
       error: "Server error while fetching progresses.",
+      details: err.message,
+    });
+  }
+});
+
+// Get latest progress entry
+router.get("/latest", auth, async (req, res) => {
+  try {
+    const latestProgress = await progressController.getLatestProgress(req.user.userId);
+    
+    if (!latestProgress) {
+      return res.status(404).json({ message: "No progress entries found" });
+    }
+    
+    res.json(latestProgress);
+  } catch (err) {
+    console.error("Error fetching latest progress:", err);
+    res.status(500).json({
+      error: "Server error while fetching latest progress.",
       details: err.message,
     });
   }

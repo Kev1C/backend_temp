@@ -1,106 +1,43 @@
 // backend/routes/nutritionRoutes.js
-const express = require("express");
+const express = require('express');
 const router = express.Router();
-const auth = require("../middleware/auth");
 const {
   getDailyNutrition,
-  getNutritionCalculations,
   updateDailyNutrition,
+  getNutritionCalculations,
   updateMacros,
   resetMacros,
   calculateNutritionalNeeds,
-  getNutritionHeatmapData, // From notworking
-  getMonthlyNutrition, // From notworking
-} = require("../controllers/nutritionController");
-const Meal = require("../models/Meal");
-const DailyNutrition = require("../models/DailyNutrition");
+  getNutritionHeatmapData,
+  getMonthlyNutrition
+} = require('../controllers/nutritionController');
+const auth = require('../middleware/auth');
 
-// Get daily nutrition
-router.get("/daily/:date", auth, getDailyNutrition);
+// Apply auth middleware to all nutrition routes
+router.use(auth);
 
-// Get monthly nutrition (from notworking)
-router.get("/monthly/:year/:month", auth, getMonthlyNutrition);
+// GET /api/nutrition/daily/:date - Get daily nutrition data
+router.get('/daily/:date', getDailyNutrition);
 
-// Update daily nutrition
-router.post("/daily/:date", auth, updateDailyNutrition);
+// POST /api/nutrition/daily/:date - Update daily nutrition data
+router.post('/daily/:date', updateDailyNutrition);
 
-// Get nutrition calculations
-router.get("/calculations", auth, getNutritionCalculations);
+// GET /api/nutrition/calculations - Get nutrition calculations
+router.get('/calculations', getNutritionCalculations);
 
-// Update macros
-router.post("/macros", auth, updateMacros);
+// POST /api/nutrition/macros - Update daily macros
+router.post('/macros', updateMacros);
 
-// Reset macros
-router.post("/macros/reset", auth, resetMacros);
+// POST /api/nutrition/macros/reset - Reset daily macros
+router.post('/macros/reset', resetMacros);
 
-// Calculate nutritional needs
-router.post("/calculate", auth, calculateNutritionalNeeds);
+// POST /api/nutrition/calculate - Calculate user's daily nutritional needs
+router.post('/calculate', calculateNutritionalNeeds);
 
-// Get nutrition heatmap data (from notworking)
-router.get("/heatmap", auth, getNutritionHeatmapData);
+// GET /api/nutrition/heatmap - Get nutrition completion data for heatmap
+router.get('/heatmap', getNutritionHeatmapData);
 
-// Save meal and update daily nutrition
-router.post("/meals", auth, async (req, res) => {
-  try {
-    const {name, image, calories, carbs, protein, fats, time, date} = req.body;
-    const userId = req.user.id;
-    const mealDate = new Date(date);
-
-    // Start a session for transaction
-    const session = await Meal.startSession();
-    let savedMeal;
-
-    try {
-      await session.withTransaction(async () => {
-        // Create new meal entry
-        savedMeal = await Meal.create([{
-          userId,
-          name,
-          image,
-          calories,
-          carbs,
-          protein,
-          fats,
-          time,
-          date: mealDate,
-        }], {session});
-
-        // Update or create daily nutrition
-        await DailyNutrition.findOneAndUpdate(
-            {
-              userId,
-              date: {
-                $gte: new Date(mealDate.setHours(0, 0, 0, 0)),
-                $lt: new Date(mealDate.setHours(23, 59, 59, 999)),
-              },
-            },
-            {
-              $inc: {
-                calories,
-                carbs,
-                protein,
-                fats,
-              },
-              $push: {meals: savedMeal[0]._id},
-            },
-            {
-              upsert: true,
-              new: true,
-              session,
-            },
-        );
-      });
-
-      await session.endSession();
-      res.status(201).json(savedMeal[0]);
-    } catch (error) {
-      await session.endSession();
-      throw error;
-    }
-  } catch (error) {
-    console.error("Error saving meal:", error);
-    res.status(500).json({message: "Error saving meal", error: error.message});
-  }
-});
+// GET /api/nutrition/monthly/:year/:month - Get monthly nutrition data
+router.get('/monthly/:year/:month', getMonthlyNutrition);
 
 module.exports = router;

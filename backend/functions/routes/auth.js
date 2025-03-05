@@ -1,45 +1,25 @@
 // backend/routes/auth.js
-const express = require("express");
+
+const express = require('express');
 const router = express.Router();
-const firebaseAuth = require("../middleware/firebaseAuth");
-const {verifyFirebaseToken} = require("../controllers/authController");
-// const authMiddleware = require("../middleware/auth");
-const User = require("../models/User"); // Add User model import
+const { 
+  signUpAnonymously,
+  signInWithOAuth,
+  handleOAuthCallback,
+  signOut,
+  getCurrentUser,
+  deleteAccount
+} = require('../controllers/authController');
+const auth = require('../middleware/auth');
 
-// Firebase auth routes
-router.post("/verify-token", verifyFirebaseToken);
-router.post("/authenticate", firebaseAuth, async (req, res) => {
-  try {
-    // Find or create user in your database
-    let user = await User.findOne({firebaseUid: req.user.firebaseUid});
+// Public routes
+router.post('/signup/anonymous', signUpAnonymously);
+router.post('/signin/oauth', signInWithOAuth);
+router.get('/callback', handleOAuthCallback);
 
-    if (!user) {
-      user = new User({
-        firebaseUid: req.user.firebaseUid,
-        email: req.user.email,
-        isOnboardingComplete: false,
-      });
-      await user.save();
-    }
-
-    res.json({
-      token: req.backendToken,
-      user: {
-        id: user._id,
-        email: user.email,
-      },
-    });
-  } catch (error) {
-    console.error("Auth Error:", error);
-    res.status(500).json({message: "Server error during authentication"});
-  }
-});
-
-// Regular auth routes
-// router.post('/register', register);
-// router.post('/login', login);
-// router.get('/me', authMiddleware, getCurrentUser);
-// router.put('/profile', authMiddleware, updateProfile);
-// router.post('/refresh', refreshToken);
+// Protected routes (require authentication)
+router.post('/signout', auth, signOut);
+router.get('/me', auth, getCurrentUser);
+router.delete('/account', auth, deleteAccount);
 
 module.exports = router;
