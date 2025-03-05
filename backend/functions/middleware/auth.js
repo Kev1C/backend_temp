@@ -1,44 +1,39 @@
-// middleware/auth.js
-const jwt = require("jsonwebtoken");
+// backend/middleware/auth.js
+const { createClient } = require('@supabase/supabase-js');
+require('dotenv').config();
 
-// Token verification cache (TTL: 5 minutes)
-const tokenCache = new Map();
-const CACHE_TTL = 5 * 60 * 1000; // 5 minutes in milliseconds
+const supabase = createClient(
+  process.env.SUPABASE_URL,
+  process.env.SUPABASE_SERVICE_KEY
+);
 
-const auth = (req, res, next) => {
-  const authHeader = req.header("Authorization");
-
-  if (!authHeader) {
-    return res.status(401).json({message: "No token, authorization denied"});
-  }
-
+const auth = async (req, res, next) => {
   try {
-    // Remove "Bearer " prefix from the token
-    const token = authHeader.replace("Bearer ", "");
+    // Get token from header
+    const token = req.header('Authorization')?.replace('Bearer ', '');
 
-    // Check cache first
-    const cachedUser = tokenCache.get(token);
-    if (cachedUser) {
-      req.user = cachedUser;
-      return next();
+    if (!token) {
+      return res.status(401).json({ message: 'No authentication token, access denied' });
     }
 
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    const userIdToUse = decoded.userId;
+    // Verify with Supabase
+    const { data, error } = await supabase.auth.getUser(token);
 
-    const user = {
-      userId: userIdToUse,
-      id: userIdToUse,
+    if (error || !data.user) {
+      return res.status(401).json({ message: 'Token verification failed, access denied' });
+    }
+
+    // Add user info to request
+    req.user = {
+      userId: data.user.id,
+      email: data.user.email,
+      // Any additional user metadata is available in data.user.user_metadata
     };
 
-    // Cache the user data
-    tokenCache.set(token, user);
-    setTimeout(() => tokenCache.delete(token), CACHE_TTL);
-
-    req.user = user;
     next();
-  } catch (err) {
-    res.status(401).json({message: "Token is not valid"});
+  } catch (error) {
+    console.error('Auth middleware error:', error);
+    res.status(500).json({ message: 'Server error in auth middleware' });
   }
 };
 
