@@ -3,7 +3,6 @@ import { create } from 'zustand';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { api } from '../services/api';
 import { cacheStore } from './cacheStore';
-import { useAuthStore } from './authStore';
 
 // TTL values
 //const DAILY_CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
@@ -48,8 +47,6 @@ export const useNutritionStore = create((set, get) => ({
   setNutritionalGoals: (goals) => set({ nutritionalGoals: goals }),
 
   // Updated fetchDailyNutrition using a stale-while-revalidate strategy.
-  // When not forced and if valid persisted data exists in AsyncStorage, we use it immediately
-  // and trigger a background fetch to update the data.
   fetchDailyNutrition: async (date, force = false) => {
     const formattedDate = formatDate(date);
     const cacheKey = `nutrition_${formattedDate}`;
@@ -77,7 +74,7 @@ export const useNutritionStore = create((set, get) => ({
             // Trigger a background revalidation.
             (async () => {
               try {
-                const response = await api.get(`/nutrition/daily/${formattedDate}`);
+                const response = await api.getDailyNutrition(formattedDate);
                 const freshData = response.data;
                 cacheStore.getState().set(cacheKey, freshData, LONG_CACHE_DURATION);
                 set({ dailyNutrition: freshData, currentDate: formattedDate });
@@ -112,7 +109,7 @@ export const useNutritionStore = create((set, get) => ({
       console.log('Fetching from server for:', formattedDate);
       set({ isLoading: true, error: null });
       try {
-        const response = await api.get(`/nutrition/daily/${formattedDate}`);
+        const response = await api.getDailyNutrition(formattedDate);
         const data = response.data;
         // Update the in-memory cacheStore.
         cacheStore.getState().set(cacheKey, data, LONG_CACHE_DURATION);
@@ -150,17 +147,13 @@ export const useNutritionStore = create((set, get) => ({
         if (!newMeal.name || !newMeal.image || !newMeal.time) {
           throw new Error('Missing required fields: name, image, or time');
         }
-        await useAuthStore.getState().ensureValidToken();
-        const response = await api.post(`/nutrition/daily/${formattedDate}`, {
-          headers: { Authorization: `Bearer ${useAuthStore.getState().authToken}` },
-          meal: { ...newMeal, date: formattedDate }
+        const response = await api.addMeal({
+          ...newMeal, 
+          date: formattedDate
         });
         serverData = response.data;
       } else {
-        await useAuthStore.getState().ensureValidToken();
-        const response = await api.get(`/nutrition/daily/${formattedDate}`, {
-          headers: { Authorization: `Bearer ${useAuthStore.getState().authToken}` }
-        });
+        const response = await api.getDailyNutrition(formattedDate);
         serverData = response.data;
       }
       // Invalidate caches immediately.
@@ -193,11 +186,7 @@ export const useNutritionStore = create((set, get) => ({
     set({ isLoadingHeatmap: true, heatmapError: null });
     try {
       set({ heatmapData: {} });
-      await useAuthStore.getState().ensureValidToken();
-      const response = await api.get('/nutrition/heatmap', {
-        headers: { Authorization: `Bearer ${useAuthStore.getState().authToken}` },
-        params: { startDate, endDate }
-      });
+      const response = await api.getNutritionSummary({ startDate, endDate });
       if (!response.data || typeof response.data !== 'object') {
         throw new Error('Invalid data format received from server');
       }
@@ -219,10 +208,7 @@ export const useNutritionStore = create((set, get) => ({
     const cachedData = cacheStore.getState().get(cacheKey);
     if (cachedData) return cachedData;
     try {
-      await useAuthStore.getState().ensureValidToken();
-      const response = await api.get(`/nutrition/monthly/${year}/${month}`, {
-        headers: { Authorization: `Bearer ${useAuthStore.getState().authToken}` }
-      });
+      const response = await api.getNutritionSummary({ year, month });
       const data = response.data;
       cacheStore.getState().set(cacheKey, data, LONG_CACHE_DURATION);
       return data;

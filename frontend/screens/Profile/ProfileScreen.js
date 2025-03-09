@@ -16,7 +16,7 @@ const MacroNutrientsChart = lazy(() => import('../../Components/MacroNutrientsCh
 const NutritionHeatmap = lazy(() => import('../../Components/NutritionHeatmap'));
 
 const ProfileScreen = ({ navigation }) => {
-  const { user, loading: userLoading } = useAuthStore();
+  const { user, isLoading: userLoading, isAuthenticated } = useAuthStore();
   const theme = useTheme();
   const cache = useCacheStore();
   const [isRefreshing, setIsRefreshing] = useState(false);
@@ -24,9 +24,7 @@ const ProfileScreen = ({ navigation }) => {
   const insets = useSafeAreaInsets();
 
   const {
-    macroData,
-    calendarData,
-    loading: nutritionLoading,
+    nutritionalGoals,
     heatmapData,
     isLoadingHeatmap,
     heatmapError,
@@ -34,7 +32,7 @@ const ProfileScreen = ({ navigation }) => {
     currentStreak
   } = useNutritionStore();
 
-  const loading = userLoading || nutritionLoading || isLoadingHeatmap;
+  const loading = userLoading || isLoadingHeatmap;
 
   const UserInfoSection = useMemo(() => (
     <View style={styles.userInfoSection}>
@@ -44,8 +42,8 @@ const ProfileScreen = ({ navigation }) => {
           <Text style={styles.streakText}>{currentStreak}</Text>
           <Caption style={styles.streakCaption}>day{currentStreak !== 1 ? 's' : ''} streak</Caption>
         </View>
-        {user?.name && (
-          <Title style={[styles.title, { color: theme.colors.text }]}>{user.name}</Title>
+        {user?.user_metadata?.name && (
+          <Title style={[styles.title, { color: theme.colors.text }]}>{user.user_metadata.name}</Title>
         )}
       </View>
       <TouchableOpacity
@@ -57,7 +55,21 @@ const ProfileScreen = ({ navigation }) => {
         <Icon name="menu" size={28} color={theme.colors.primary} />
       </TouchableOpacity>
     </View>
-  ), [user?.name, theme.colors.text, theme.colors.primary, currentStreak, navigation]);
+  ), [user?.user_metadata?.name, theme.colors.text, theme.colors.primary, currentStreak, navigation]);
+
+  const onRefresh = useCallback(async () => {
+    if (isRefreshing) return;
+
+    setIsRefreshing(true);
+    try {
+      const { startDate, endDate } = getDateRange();
+      await fetchHeatmapData(startDate, endDate);
+    } catch (error) {
+      console.error('Error during refresh:', error);
+    } finally {
+      setIsRefreshing(false);
+    }
+  }, [isRefreshing, getDateRange, fetchHeatmapData]);
 
   const ErrorSection = useMemo(() => heatmapError && (
     <View style={styles.errorContainer}>
@@ -84,20 +96,6 @@ const ProfileScreen = ({ navigation }) => {
     };
   }, []);
 
-  const onRefresh = useCallback(async () => {
-    if (isRefreshing) return;
-
-    setIsRefreshing(true);
-    try {
-      const { startDate, endDate } = getDateRange();
-      await fetchHeatmapData(startDate, endDate);
-    } catch (error) {
-      console.error('Error during refresh:', error);
-    } finally {
-      setIsRefreshing(false);
-    }
-  }, [isRefreshing, getDateRange, fetchHeatmapData]);
-
   // Prefetch data when the app starts
   useFocusEffect(
     useCallback(() => {
@@ -119,7 +117,7 @@ const ProfileScreen = ({ navigation }) => {
       };
 
       prefetchData();
-    }, [isDataReady, isLoadingHeatmap, getDateRange, fetchHeatmapData])
+    }, [isDataReady, isLoadingHeatmap, getDateRange, fetchHeatmapData, cache])
   );
 
   useEffect(() => {
@@ -142,7 +140,7 @@ const ProfileScreen = ({ navigation }) => {
     };
 
     initializeData();
-  }, [getDateRange, fetchHeatmapData]);
+  }, [getDateRange, fetchHeatmapData, heatmapData, cache]);
 
   return (
     <ScrollView
@@ -169,7 +167,7 @@ const ProfileScreen = ({ navigation }) => {
                 <NutritionHeatmap data={heatmapData} />
               </View>
               <View style={styles.section}>
-                <MacroNutrientsChart data={macroData} />
+                <MacroNutrientsChart data={nutritionalGoals} />
               </View>
             </>
           )}

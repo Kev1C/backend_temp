@@ -4,6 +4,7 @@ import { View, StyleSheet, Dimensions, Image, TextInput, ActivityIndicator } fro
 import { Text, Button, IconButton, Chip, useTheme } from 'react-native-paper';
 import BottomSheet, { BottomSheetScrollView, BottomSheetBackdrop } from '@gorhom/bottom-sheet';
 import { useNutritionStore, formatDate } from '../../stores/nutritionStore';
+import { useDiamondStore } from '../../stores/diamondStore';
 import { api } from '../../services/api';
 
 const FoodAnalysisBottomSheet = ({
@@ -24,6 +25,7 @@ const FoodAnalysisBottomSheet = ({
   onRetake,
 }) => {
   const theme = useTheme();
+  const diamondStore = useDiamondStore();
   const [currentSnapPoint, setCurrentSnapPoint] = React.useState(0);
   const snapPoints = React.useMemo(() => ['60%', '80%'], []);
 
@@ -98,6 +100,26 @@ const FoodAnalysisBottomSheet = ({
     },
     [handleSheetChanges]
   );
+
+  const handleConfirm = async () => {
+    try {
+      // Check if user has enough diamonds
+      if (diamondStore.balance < 150) {
+        // Show insufficient diamonds error
+        alert('Insufficient diamonds. You need 150 diamonds for food analysis.');
+        return;
+      }
+      
+      // Deduct diamonds first
+      await diamondStore.deductDiamonds(150);
+      
+      // Then proceed with the original onConfirm
+      onConfirm();
+    } catch (error) {
+      console.error('Error processing food analysis:', error);
+      alert('Failed to process food analysis. Please try again.');
+    }
+  };
 
   const renderBackdrop = (props) => (
     <BottomSheetBackdrop {...props} disappearsOnIndex={-1} appearsOnIndex={0} opacity={0.5} />
@@ -254,7 +276,7 @@ const FoodAnalysisBottomSheet = ({
                       <Button
                         icon="check"
                         mode="contained"
-                        onPress={onConfirm}
+                        onPress={handleConfirm}
                         style={styles.confirmButton}
                         labelStyle={styles.buttonLabel}
                       >

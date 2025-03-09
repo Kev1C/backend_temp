@@ -14,6 +14,7 @@ import AdComponent from '../../Components/SettingScreenAdComponent';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { FlashList } from "@shopify/flash-list";
 import { useAdStore } from '../../stores/adStore';
+import supabase from '../../services/supabaseClient';
 
 const GOALS = [
     { id: 'lose_weight', title: 'Lose weight', subtitle: 'Burn fat & get lean', icon: 'fire' },
@@ -67,11 +68,10 @@ const ModalOption = React.memo(({ item, selectedId, onSelect, theme, styles }) =
 
 const SettingsScreen = () => {
     const { theme } = useContext(ThemeContext);
-    const { signOut, user, updateUserData } = useAuthStore();
+    const { signOut, user, isLoading: authLoading } = useAuthStore();
     const navigation = useNavigation();
     const { saveOnboardingData, onboardingData } = useOnboardingStore();
     const { balance, fetchBalance, addDiamonds } = useDiamondStore();
-    const { authToken } = useAuthStore();
     const [selectedGoal, setSelectedGoal] = useState(onboardingData?.fitnessGoal || 'get_fitter');
     const [tempGoal, setTempGoal] = useState(selectedGoal);
     const [selectedActivity, setSelectedActivity] = useState(onboardingData?.activityLevel || 'moderately_active');
@@ -82,6 +82,7 @@ const SettingsScreen = () => {
     const [isDataLoading, setIsDataLoading] = useState(true);
     const { settingsAdReady } = useAdStore();
     const [showAdModal, setShowAdModal] = useState(false);
+    const [userProfile, setUserProfile] = useState(null);
 
     const styles = useMemo(() => getStyles(theme), [theme]);
 
@@ -89,10 +90,24 @@ const SettingsScreen = () => {
         const loadUserData = async () => {
             setIsDataLoading(true);
             try {
-                await updateUserData();
-                if (authToken) {
-                    await fetchBalance(authToken);
+                // Fetch user profile data from Supabase profiles table
+                const { data: profileData, error: profileError } = await supabase
+                    .from('profiles')
+                    .select('*')
+                    .eq('id', user?.id)
+                    .single();
+                
+                if (profileError && profileError.code !== 'PGRST116') {
+                    console.error('Error fetching profile:', profileError);
+                    throw profileError;
                 }
+                
+                if (profileData) {
+                    setUserProfile(profileData);
+                }
+                
+                // Fetch diamond balance
+                await fetchBalance();
             } catch (error) {
                 console.error('Error loading user data:', error);
                 Alert.alert('Error', 'Failed to load user data. Please try again.', [
@@ -104,8 +119,10 @@ const SettingsScreen = () => {
             }
         };
 
-        loadUserData();
-    }, [authToken, updateUserData, fetchBalance]);
+        if (user) {
+            loadUserData();
+        }
+    }, [user, fetchBalance]);
 
     const handleLogout = useCallback(() => {
         Alert.alert(
@@ -132,14 +149,14 @@ const SettingsScreen = () => {
     const handleAdWatched = useCallback(async (reward) => {
         const diamondsToAdd = reward.amount || 75;
         try {
-            await addDiamonds(diamondsToAdd, authToken);
-            await fetchBalance(authToken);
+            await addDiamonds(diamondsToAdd);
+            await fetchBalance();
             Alert.alert('Success', `You've earned ${diamondsToAdd} diamonds!`);
         } catch (error) {
             console.error('Error adding diamonds:', error);
             Alert.alert('Error', 'Failed to add diamonds. Please try again.');
         }
-    }, [addDiamonds, authToken, fetchBalance]);
+    }, [addDiamonds, fetchBalance]);
 
     const handleGoalSelection = useCallback(async () => {
         try {
@@ -209,7 +226,7 @@ const SettingsScreen = () => {
         );
     }, [styles, theme]);
 
-    if (isDataLoading) {
+    if (isDataLoading || authLoading) {
         return (
             <View style={[styles.safeArea, { paddingTop: insets.top, justifyContent: 'center', alignItems: 'center' }]}>
                 <ActivityIndicator size="large" color={theme.colors.primary} />
@@ -246,10 +263,20 @@ const SettingsScreen = () => {
                 </View>
 
                 <View style={styles.settingsContainer}>
-                    {/* <UserStat label="User ID" value={user?.id || '--'} icon="account" theme={theme} styles={styles} />
-                    <UserStat label="Age" value={user?.age || '--'} icon="calendar" theme={theme} styles={styles} /> */}
-                    <UserStat label="Height" value={user?.height ? `${user.height} cm` : '--'} icon="human-male-height" theme={theme} styles={styles} />
-                    <UserStat label="Weight" value={user?.weight ? `${user.weight} kg` : '--'} icon="weight" theme={theme} styles={styles} />
+                    <UserStat 
+                        label="Height" 
+                        value={userProfile?.height ? `${userProfile.height} cm` : '--'} 
+                        icon="human-male-height" 
+                        theme={theme} 
+                        styles={styles} 
+                    />
+                    <UserStat 
+                        label="Weight" 
+                        value={userProfile?.weight ? `${userProfile.weight} kg` : '--'} 
+                        icon="weight" 
+                        theme={theme} 
+                        styles={styles} 
+                    />
                 </View>
 
                 <Divider style={styles.divider} />
@@ -308,6 +335,11 @@ const SettingsScreen = () => {
                 </TouchableOpacity>
 
                 <Divider style={styles.divider} />
+
+                <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
+                    <MaterialCommunityIcons name="logout" size={20} color={theme.colors.error} />
+                    <Text style={styles.logoutButtonText}>Logout</Text>
+                </TouchableOpacity>
 
                 <AdComponent
                     balance={balance}
